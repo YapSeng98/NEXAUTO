@@ -178,6 +178,47 @@ tr:last-child td{border-bottom:none;}
 .table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
 .table-wrap table{min-width:640px;}
 
+/* login */
+.login-screen{display:none;position:fixed;inset:0;z-index:60;background:var(--canvas);overflow-y:auto;}
+html[data-authed="0"] .login-screen{display:flex;align-items:center;justify-content:center;padding:28px 16px calc(28px + env(safe-area-inset-bottom,0px));}
+html[data-authed="0"] .app,html[data-authed="0"] .bottom-nav{display:none;}
+.login-box{width:100%;max-width:392px;}
+.login-head{text-align:center;margin-bottom:20px;}
+.login-mark{width:46px;height:46px;border-radius:12px;background:var(--green);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;}
+.login-mark svg{width:26px;height:26px;}
+.login-head h1{font-size:25px;margin:0;letter-spacing:.4px;}
+.login-head p{font-size:13.5px;color:var(--text-secondary);margin:4px 0 0;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;}
+.login-card .field{margin-bottom:14px;}
+.pw-wrap{position:relative;display:flex;}
+.pw-wrap input{padding-right:44px;}
+.pw-toggle{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;padding:7px;border-radius:6px;color:var(--text-muted);display:flex;}
+.pw-toggle:hover{color:var(--text-secondary);background:var(--surface-2);}
+.pw-toggle svg{width:18px;height:18px;}
+.login-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);}
+.check input{width:16px;height:16px;accent-color:var(--green);margin:0;}
+.btn.block{width:100%;padding:11px;font-size:14.5px;}
+.login-error{background:var(--red-light);color:var(--red);border-radius:8px;padding:10px 12px;font-size:13px;font-weight:500;margin:0 0 14px;display:none;}
+.login-error.show{display:block;}
+.demo-card{margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;}
+.demo-card h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin:0 0 10px;font-weight:600;}
+.demo-acc{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;width:100%;background:none;border-left:none;border-right:none;border-top:none;text-align:left;}
+.demo-acc:last-child{border-bottom:none;}
+.demo-acc:hover .demo-cred{color:var(--green-dark);}
+.demo-acc .demo-role{color:var(--text-secondary);}
+.demo-cred{font-family:'Space Grotesk',monospace;font-weight:600;font-size:12.5px;}
+.login-foot{text-align:center;font-size:12px;color:var(--text-muted);margin:14px 0 0;line-height:1.5;}
+
+/* user menu */
+.user-chip{display:flex;align-items:center;gap:9px;background:none;border:1px solid var(--border);border-radius:999px;padding:4px 6px 4px 4px;}
+.user-chip:hover{border-color:var(--border-strong);background:var(--surface-2);}
+.user-chip .avatar{width:28px;height:28px;flex-basis:28px;font-size:11px;}
+.user-chip .u-meta{text-align:left;line-height:1.25;padding-right:4px;}
+.user-chip .u-name{display:block;font-size:13px;font-weight:600;}
+.user-chip .u-role{display:block;font-size:11px;color:var(--text-secondary);}
+@media (max-width:520px){.user-chip .u-meta{display:none;}}
+
 /* role gating */
 html[data-can-cost="0"] [data-cost],
 html[data-can-price="0"] [data-price],
@@ -287,6 +328,36 @@ input[type=color]{width:40px;height:36px;padding:2px;border:1px solid var(--bord
 </style>
 </head>
 <body>
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-head">
+      <span class="login-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9l2-4h9l3 5h2v7"/><path d="M4 17h1.6M8.8 17h6.4M18.4 17H20"/><circle cx="7.2" cy="17" r="1.6"/><circle cx="16.8" cy="17" r="1.6"/></svg></span>
+      <h1>NEXAUTO</h1>
+      <p>Workshop operations</p>
+    </div>
+    <form class="login-card" id="loginForm" novalidate>
+      <p class="login-error" id="loginError" role="alert" aria-live="assertive"></p>
+      <div class="field"><label for="loginUser">Username</label><input type="text" id="loginUser" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="alex.tan"></div>
+      <div class="field"><label for="loginPass">Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="loginPass" name="password" autocomplete="current-password" placeholder="Your password">
+          <button type="button" class="pw-toggle" id="pwToggle" data-action="toggle-pw" aria-label="Show password" aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="login-row">
+        <label class="check"><input type="checkbox" id="loginRemember" name="remember"> Keep me signed in</label>
+      </div>
+      <button type="submit" class="btn primary block" id="loginSubmit">Sign in</button>
+    </form>
+    <div class="demo-card" id="demoAccounts">
+      <h2>Demo accounts</h2>
+    </div>
+    <p class="login-foot">Demo only. Data is stored in this browser and permissions are enforced in the page, not on a server.</p>
+  </div>
+</div>
+
 <div class="app">
   <aside class="sidebar" aria-label="Main navigation">
     <div class="brand">
@@ -306,9 +377,12 @@ input[type=color]{width:40px;height:36px;padding:2px;border:1px solid var(--bord
         <h1 id="pageTitle">Dashboard</h1>
         <p class="sub" id="pageSub"></p>
       </div>
-      <div>
-        <label class="sr-only" for="roleSelect">Signed in as</label>
-        <select id="roleSelect" class="role-select"></select>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="user-chip" id="userChip">
+          <span class="avatar" id="topAvatar">AT</span>
+          <span class="u-meta"><span class="u-name" id="userName">Alex Tan</span><span class="u-role" id="userRole">Owner</span></span>
+        </span>
+        <button class="btn sm" data-action="sign-out" id="signOutBtn">Sign out</button>
       </div>
     </header>
 
@@ -408,6 +482,38 @@ var NAV = [
   {v:"settings", label:"Settings", short:"Settings", ic:"gear"}
 ];
 
+/* ================= credentials =================
+   Demo-grade only. The digest below is not a password hash and the check runs in
+   the browser, so anyone can read it. Real auth arrives with the backend; see
+   docs/SECURITY.md. Never reuse this scheme for anything that matters. */
+function digest(text){
+  var a = 0x811c9dc5, b = 0x1000193;
+  for(var i = 0; i < text.length; i++){
+    var c = text.charCodeAt(i);
+    a = ((a ^ c) * 0x01000193) >>> 0;
+    b = ((b + c) * 0x85ebca6b ^ (b >>> 7)) >>> 0;
+  }
+  return ("00000000" + a.toString(16)).slice(-8) + ("00000000" + b.toString(16)).slice(-8);
+}
+function setPassword(user, pw){
+  user.salt = uid("z") + uid("z");
+  user.pwHash = digest(user.salt + "|" + pw);
+}
+function checkPassword(user, pw){
+  return !!user && !!user.pwHash && user.pwHash === digest(user.salt + "|" + pw);
+}
+function normUsername(s){ return String(s == null ? "" : s).trim().toLowerCase(); }
+function suggestUsername(name){
+  var base = String(name).toLowerCase().replace(/[^a-z0-9\s.]/g, "").trim().replace(/\s+/g, ".").slice(0, 22) || "user";
+  var u = base, n = 2;
+  while(DB.staff.some(function(x){ return x.username === u; })){ u = base + n; n++; }
+  return u;
+}
+function userByName(username){
+  var u = normUsername(username);
+  return DB.staff.filter(function(x){ return normUsername(x.username) === u; })[0] || null;
+}
+
 /* ================= seed data ================= */
 function freshInspection(map){
   return INSPECTION_TEMPLATE.map(function(n, i){ var s = map && map[i]; return {name:n, status: s ? s[0] : "unchecked", note: s ? (s[1]||"") : ""}; });
@@ -421,10 +527,13 @@ function seed(){
   var now = Date.now();
   function ago(min){ return new Date(now - min*60000).toISOString(); }
   var staff = [
-    {id:"s1", name:"Alex Tan", role:"owner"}, {id:"s2", name:"Joanne Lim", role:"manager"},
-    {id:"s3", name:"Priya Nair", role:"advisor"}, {id:"s4", name:"Marcus Lee", role:"technician"},
-    {id:"s5", name:"Daniel Koh", role:"technician"}
+    {id:"s1", name:"Alex Tan", role:"owner", username:"alex.tan", pw:"owner123"},
+    {id:"s2", name:"Joanne Lim", role:"manager", username:"joanne.lim", pw:"manager123"},
+    {id:"s3", name:"Priya Nair", role:"advisor", username:"priya.nair", pw:"advisor123"},
+    {id:"s4", name:"Marcus Lee", role:"technician", username:"marcus.lee", pw:"tech123"},
+    {id:"s5", name:"Daniel Koh", role:"technician", username:"daniel.koh", pw:"tech123"}
   ];
+  staff.forEach(function(s){ setPassword(s, s.pw); delete s.pw; });
   var suppliers = [
     {id:"sp1", name:"Castrol Lubricants SG", phone:"6123 4455"},
     {id:"sp2", name:"AutoParts Hub", phone:"6789 1100"},
@@ -503,21 +612,69 @@ function seed(){
     {id:"m3", sku:"OIL-5W30", qty:-1, type:"sale", ref:"WO-1042", reason:"", by:"s3", at:ago(150)},
     {id:"m4", sku:"FLT-OIL01", qty:-1, type:"sale", ref:"WO-1042", reason:"", by:"s3", at:ago(150)}
   ];
-  return {v:4, staff:staff, suppliers:suppliers, inventory:inventory, customers:customers, orders:orders,
+  return {v:5, staff:staff, suppliers:suppliers, inventory:inventory, customers:customers, orders:orders,
     purchaseOrders:purchaseOrders, opportunities:opportunities, movements:movements, nextWO:1048, nextPO:202,
     history:[1120,1380,990,1560,1720,1290], settings:{color:null}};
 }
 
 /* ================= storage ================= */
-var KEY = "nexauto_demo_v4";
+var KEY = "nexauto_demo_v5";
+var SESSION_KEY = "nexauto_session";
+var LOCKOUT_KEY = "nexauto_lockouts";
+var SESSION_HOURS = 12;
+var MAX_ATTEMPTS = 5;
+var LOCK_SECONDS = 60;
 var DB = null;
 try { DB = JSON.parse(localStorage.getItem(KEY)); } catch(e){ DB = null; }
-if(!DB || DB.v !== 4) DB = seed();
+if(!DB || DB.v !== 5) DB = seed();
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch(e){} }
+
+/* ================= session ================= */
+function sessionStore(remember){ return remember ? localStorage : sessionStorage; }
+function readSession(){
+  var raw = null;
+  try { raw = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY); } catch(e){ return null; }
+  if(!raw) return null;
+  var s = null;
+  try { s = JSON.parse(raw); } catch(e){ return null; }
+  if(!s || !s.userId || !s.at) return null;
+  if(Date.now() - s.at > SESSION_HOURS * 3600000) return null;
+  var u = DB.staff.filter(function(x){ return x.id === s.userId; })[0];
+  if(!u || u.active === false) return null;
+  return s;
+}
+function writeSession(userId, remember){
+  var s = JSON.stringify({userId:userId, at:Date.now(), remember:!!remember});
+  try {
+    localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem(SESSION_KEY);
+    sessionStore(remember).setItem(SESSION_KEY, s);
+  } catch(e){}
+}
+function clearSession(){
+  try { localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem(SESSION_KEY); } catch(e){}
+}
+function readLocks(){
+  try { return JSON.parse(localStorage.getItem(LOCKOUT_KEY)) || {}; } catch(e){ return {}; }
+}
+function writeLocks(l){ try { localStorage.setItem(LOCKOUT_KEY, JSON.stringify(l)); } catch(e){} }
+function lockStatus(username){
+  var l = readLocks()[normUsername(username)];
+  if(!l || !l.until || l.until <= Date.now()) return 0;
+  return Math.ceil((l.until - Date.now())/1000);
+}
+function noteFailure(username){
+  var key = normUsername(username), locks = readLocks(), l = locks[key] || {n:0, until:0};
+  l.n = (l.n || 0) + 1;
+  if(l.n >= MAX_ATTEMPTS){ l.until = Date.now() + LOCK_SECONDS*1000; l.n = 0; }
+  locks[key] = l; writeLocks(locks);
+  return l.until > Date.now() ? LOCK_SECONDS : MAX_ATTEMPTS - l.n;
+}
+function clearFailures(username){
+  var locks = readLocks(); delete locks[normUsername(username)]; writeLocks(locks);
+}
 
 /* ================= state & lookups ================= */
 var state = {role:"owner", userId:null, view:"dashboard", orderFilter:"all", orderQuery:"", invTab:"parts", invQuery:"", custQuery:"", panel:null, orderTab:"overview"};
-try { state.userId = localStorage.getItem("nexauto_user"); } catch(e){}
 
 function can(k){ return !!PERMS[state.role][k]; }
 function activeUsers(){ return DB.staff.filter(function(s){ return s.active !== false; }); }
@@ -594,15 +751,75 @@ function refresh(){
 }
 function setRole(){
   var u0 = me(); state.userId = u0.id; state.role = u0.role; var role = u0.role;
-  try { localStorage.setItem("nexauto_user", u0.id); } catch(e){}
-  $("#roleSelect").innerHTML = activeUsers().map(function(x){ return opt(x.id, x.name + " · " + ROLE_LABEL[x.role], x.id === u0.id); }).join("");
   var root = document.documentElement, p = PERMS[role];
   root.dataset.canCost = p.cost; root.dataset.canPrice = p.price; root.dataset.canRevenue = p.revenue;
   root.dataset.canPurchase = p.purchase; root.dataset.canStaff = p.staff; root.dataset.canEdit = p.edit;
   var u = me();
   $("#sideAvatar").textContent = initials(u.name); $("#sideName").textContent = u.name; $("#sideRole").textContent = ROLE_LABEL[role];
+  $("#topAvatar").textContent = initials(u.name); $("#userName").textContent = u.name; $("#userRole").textContent = ROLE_LABEL[role];
   $("#pageSub").textContent = u.name + " · " + new Date().toLocaleDateString(undefined, {weekday:"long", day:"numeric", month:"long"});
   refresh();
+}
+
+/* ================= auth ================= */
+function loginError(msg){
+  var e = $("#loginError");
+  e.textContent = msg || "";
+  e.classList.toggle("show", !!msg);
+}
+function renderDemoAccounts(){
+  var box = $("#demoAccounts");
+  if(!box) return;
+  var seeded = [["alex.tan","owner123"],["joanne.lim","manager123"],["priya.nair","advisor123"],["marcus.lee","tech123"]];
+  box.innerHTML = '<h2>Demo accounts</h2>' + seeded.map(function(pair){
+    var u = userByName(pair[0]);
+    if(!u || u.active === false) return "";
+    return '<button type="button" class="demo-acc" data-action="use-demo" data-u="' + esc(pair[0]) + '" data-p="' + esc(pair[1]) + '">' +
+      '<span class="demo-role">' + esc(ROLE_LABEL[u.role]) + '</span>' +
+      '<span class="demo-cred">' + esc(pair[0]) + ' / ' + esc(pair[1]) + '</span></button>';
+  }).join("");
+}
+function showLogin(msg){
+  state.userId = null; state.role = "owner"; state.panel = null;
+  document.documentElement.dataset.authed = "0";
+  var f = $("#loginForm");
+  f.reset();
+  $("#loginPass").type = "password";
+  $("#pwToggle").setAttribute("aria-pressed", "false");
+  $("#pwToggle").setAttribute("aria-label", "Show password");
+  loginError(msg);
+  renderDemoAccounts();
+  if($("#loginUser").focus) $("#loginUser").focus();
+}
+function enterApp(){
+  document.documentElement.dataset.authed = "1";
+  setRole();
+  goto("dashboard");
+}
+function attemptLogin(username, password, remember){
+  var name = normUsername(username);
+  if(!name || !password) return "Enter your username and password.";
+  var wait = lockStatus(name);
+  if(wait) return "Too many failed attempts. Try again in " + wait + "s.";
+  var u = userByName(name);
+  // Same message whether the user exists or the password is wrong: do not leak which.
+  if(!u || u.active === false || !checkPassword(u, password)){
+    var left = noteFailure(name);
+    return left === LOCK_SECONDS
+      ? "Too many failed attempts. Try again in " + LOCK_SECONDS + "s."
+      : "Wrong username or password. " + left + " attempt" + (left === 1 ? "" : "s") + " left.";
+  }
+  clearFailures(name);
+  state.userId = u.id;
+  writeSession(u.id, remember);
+  return null;
+}
+function signOut(){
+  var name = me() ? me().name : "";
+  clearSession();
+  closePanel(); closeModal();
+  showLogin("");
+  if(name) toast("Signed out");
 }
 function applyTheme(c){
   if(c) document.documentElement.style.setProperty("--green", c);
@@ -967,8 +1184,8 @@ function renderSettings(){
     '<div class="swatches">' + THEMES.map(function(t){ return '<button class="swatch' + (cur.toLowerCase() === t.c.toLowerCase() ? ' active' : '') + '" style="background:' + t.c + '" data-action="theme" data-c="' + t.c + '" aria-label="' + t.name + '" title="' + t.name + '"></button>'; }).join("") +
     '<label class="sr-only" for="customColor">Custom colour</label><input type="color" id="customColor" value="' + cur + '" title="Custom colour"></div></div>';
   html += '<div class="card"><div class="section-head"><h2>Users</h2><button class="btn primary" data-action="new-staff" data-staff>' + icon("plus") + 'Add user</button></div>' +
-    activeUsers().map(function(s){ return '<div class="line"><div class="l" style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:30px;height:30px;flex-basis:30px;font-size:11px">' + initials(s.name) + '</span>' + esc(s.name) + '</div><div class="r"><span class="badge ' + (s.role === "technician" ? "b-neutral" : "b-green") + '">' + ROLE_LABEL[s.role] + '</span><button class="btn sm" data-action="edit-staff" data-id="' + s.id + '" data-staff>Edit</button></div></div>'; }).join("") +
-    '<p class="sub" style="color:var(--text-muted);font-size:12px;margin:12px 0 0">Pick who you are signed in as at the top. Owners see everything and manage users. Managers see profit but cannot manage users. Advisors see prices but not cost or profit. Technicians only see their own jobs, with no prices.</p></div>';
+    activeUsers().map(function(s){ return '<div class="line"><div class="l" style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:30px;height:30px;flex-basis:30px;font-size:11px">' + initials(s.name) + '</span><span>' + esc(s.name) + (s.id === state.userId ? ' <span class="badge b-green">You</span>' : '') + '<span style="display:block;font-size:12px;color:var(--text-muted)">' + esc(s.username || "—") + '</span></span></div><div class="r"><span class="badge ' + (s.role === "technician" ? "b-neutral" : "b-green") + '">' + ROLE_LABEL[s.role] + '</span><button class="btn sm" data-action="edit-staff" data-id="' + s.id + '" data-staff>Edit</button></div></div>'; }).join("") +
+    '<p class="sub" style="color:var(--text-muted);font-size:12px;margin:12px 0 0">Each user signs in with their own username and password. Owners see everything and manage users. Managers see profit but cannot manage users. Advisors see prices but not cost or profit. Technicians only see their own jobs, with no prices.</p></div>';
   html += '<div class="card"><div class="section-head"><h2>Demo data</h2></div><p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Your changes are saved in this browser. Reset to start the demo fresh.</p><button class="btn danger" data-action="reset">Reset demo data</button></div>';
   $("#v-settings").innerHTML = html;
 }
@@ -1173,28 +1390,56 @@ function modalNewSupplier(){
 }
 function ownerCount(){ return activeUsers().filter(function(x){ return x.role === "owner"; }).length; }
 function roleOptions(sel){ return ["owner","manager","advisor","technician"].map(function(r){ return opt(r, ROLE_LABEL[r], r === sel); }).join(""); }
+function validUsername(u){ return /^[a-z0-9][a-z0-9._-]{2,23}$/.test(u); }
+function usernameTaken(u, exceptId){
+  return DB.staff.some(function(x){ return x.id !== exceptId && normUsername(x.username) === u; });
+}
 function modalNewStaff(){
-  openModal("Add user", field("Full name", '<input type="text" name="name" required placeholder="Siti Aminah">') + field("Role", '<select name="role">' + roleOptions("technician") + '</select>'), "Add user", function(fd){
+  var body = field("Full name", '<input type="text" name="name" required placeholder="Siti Aminah">') +
+    field("Role", '<select name="role">' + roleOptions("technician") + '</select>') +
+    field("Username", '<input type="text" name="username" required autocapitalize="none" spellcheck="false" placeholder="siti.aminah">') +
+    field("Temporary password", '<input type="text" name="password" required placeholder="At least 6 characters">') +
+    '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">They sign in with this username and password. Ask them to change it after the first sign-in.</p>';
+  openModal("Add user", body, "Add user", function(fd){
     var name = fd.get("name").trim();
     if(activeUsers().some(function(x){ return x.name.toLowerCase() === name.toLowerCase(); })) return "A user with this name already exists.";
-    DB.staff.push({id:uid("s"), name:name, role:fd.get("role"), active:true}); toast("User added"); setRole();
+    var username = normUsername(fd.get("username"));
+    if(!validUsername(username)) return "Username must be 3-24 characters: letters, numbers, dot, dash or underscore.";
+    if(usernameTaken(username, null)) return "That username is already taken.";
+    var pw = String(fd.get("password"));
+    if(pw.length < 6) return "Password must be at least 6 characters.";
+    var u = {id:uid("s"), name:name, role:fd.get("role"), username:username, active:true};
+    setPassword(u, pw);
+    DB.staff.push(u); toast("User added"); setRole();
+  }, function(form){
+    var nameEl = form.elements.namedItem("name"), userEl = form.elements.namedItem("username"), touched = false;
+    userEl.addEventListener("input", function(){ touched = true; });
+    nameEl.addEventListener("input", function(){ if(!touched) userEl.value = suggestUsername(nameEl.value); });
   });
 }
 function modalEditStaff(u){
   var jobs = DB.orders.filter(function(o){ return (o.technicianId === u.id || o.advisorId === u.id) && ["completed","declined"].indexOf(o.stage) < 0; }).length;
   var body = field("Full name", '<input type="text" name="name" required value="' + esc(u.name) + '">') +
     field("Role", '<select name="role">' + roleOptions(u.role) + '</select>') +
+    field("Username", '<input type="text" name="username" required autocapitalize="none" spellcheck="false" value="' + esc(u.username || "") + '">') +
+    field("New password", '<input type="text" name="password" placeholder="Leave blank to keep the current one">') +
     '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">' + (jobs ? esc(u.name) + ' has ' + jobs + ' open job' + (jobs>1?'s':'') + '. They stay assigned after a role change.' : 'No open jobs assigned.') + '</p>' +
     '<button type="button" class="btn danger sm" data-action="remove-staff" data-id="' + u.id + '">' + icon("trash") + 'Deactivate user</button>';
   openModal("Edit user", body, "Save changes", function(fd){
     var name = fd.get("name").trim(), role = fd.get("role");
     if(activeUsers().some(function(x){ return x.id !== u.id && x.name.toLowerCase() === name.toLowerCase(); })) return "Another user already has this name.";
+    var username = normUsername(fd.get("username"));
+    if(!validUsername(username)) return "Username must be 3-24 characters: letters, numbers, dot, dash or underscore.";
+    if(usernameTaken(username, u.id)) return "That username is already taken.";
+    var pw = String(fd.get("password") || "");
+    if(pw && pw.length < 6) return "Password must be at least 6 characters.";
     if(u.role === "owner" && role !== "owner" && ownerCount() === 1) return "Keep at least one owner. Make someone else owner first.";
     var openTech = DB.orders.filter(function(o){ return o.technicianId === u.id && ["completed","declined"].indexOf(o.stage) < 0; }).length;
     if(u.role === "technician" && role !== "technician" && openTech) return u.name + " has " + openTech + " open job" + (openTech > 1 ? "s" : "") + " as technician. Reassign them first.";
     var changed = u.role !== role;
-    u.name = name; u.role = role;
-    toast(changed ? name + " is now " + ROLE_LABEL[role].toLowerCase() : "User updated");
+    u.name = name; u.role = role; u.username = username;
+    if(pw){ setPassword(u, pw); clearFailures(username); }
+    toast(pw ? "Password updated for " + name : changed ? name + " is now " + ROLE_LABEL[role].toLowerCase() : "User updated");
     setRole();
   });
 }
@@ -1264,6 +1509,21 @@ document.addEventListener("click", function(e){
       if(po){ po.items.forEach(function(i){ var p = part(i.sku); if(p){ p.stock += i.qty; move(p.sku, i.qty, "receive", po.id); } }); po.status = "received"; po.receivedAt = nowISO(); toast(po.id + " received. Stock updated."); refresh(); }
       break;
     case "new-supplier": modalNewSupplier(); break;
+    case "sign-out": signOut(); break;
+    case "toggle-pw": {
+      var pf = $("#loginPass"), shown = pf.type === "text";
+      pf.type = shown ? "password" : "text";
+      el.setAttribute("aria-pressed", shown ? "false" : "true");
+      el.setAttribute("aria-label", shown ? "Show password" : "Hide password");
+      pf.focus();
+      break;
+    }
+    case "use-demo":
+      $("#loginUser").value = el.dataset.u;
+      $("#loginPass").value = el.dataset.p;
+      loginError("");
+      $("#loginSubmit").focus();
+      break;
     case "new-staff": modalNewStaff(); break;
     case "edit-staff": modalEditStaff(DB.staff.filter(function(x){ return x.id === el.dataset.id; })[0]); break;
     case "remove-staff": removeStaff(DB.staff.filter(function(x){ return x.id === el.dataset.id; })[0]); break;
@@ -1275,7 +1535,6 @@ document.addEventListener("click", function(e){
 });
 document.addEventListener("change", function(e){
   var el = e.target, o = currentOrder();
-  if(el.id === "roleSelect"){ closePanel(); state.userId = el.value; setRole(); if(state.view !== "dashboard") renderView(state.view); return; }
   if(el.id === "customColor"){ DB.settings.color = el.value; applyTheme(el.value); save(); renderSettings(); return; }
   if(!o) return;
   if(el.dataset.action === "reassign"){ o.technicianId = el.value; log(o, "Reassigned to " + staffName(el.value)); toast("Technician updated"); refresh(); }
@@ -1294,10 +1553,30 @@ document.addEventListener("input", function(e){
 $("#backdrop").addEventListener("click", closePanel);
 document.addEventListener("keydown", function(e){ if(e.key === "Escape"){ if($("#modalWrap").classList.contains("open")) closeModal(); else closePanel(); } });
 
+$("#loginForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  var err = attemptLogin($("#loginUser").value, $("#loginPass").value, $("#loginRemember").checked);
+  $("#loginPass").value = "";
+  if(err){ loginError(err); return; }
+  loginError("");
+  enterApp();
+  toast("Welcome back, " + me().name.split(" ")[0]);
+});
+$("#loginForm").addEventListener("input", function(){ loginError(""); });
+
 /* ================= init ================= */
 applyTheme(DB.settings.color);
-setRole();
-goto("dashboard");
+save();
+var session = readSession();
+if(session){
+  state.userId = session.userId;
+  document.documentElement.dataset.authed = "1";
+  setRole();
+  goto("dashboard");
+} else {
+  clearSession();
+  showLogin("");
+}
 })();
 </script>
 </body>

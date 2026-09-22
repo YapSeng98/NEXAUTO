@@ -10,6 +10,7 @@ Workshop operations app for auto repair shops. It covers vehicle check-in, inspe
 
 | Module | What you can do |
 |---|---|
+| Sign in | Each user has their own username and password, with a lockout after five failed attempts and a session that can be remembered or not |
 | Dashboard | Revenue and profit today, workshop pipeline, follow-ups due, low stock alerts, quick actions |
 | Orders | Check in vehicles, 10-point inspection, build and send quotes, approve or decline, extra-work approval, payment |
 | Inventory | Parts with on-hand, reserved and available stock, stock adjustments, purchase orders, receiving, suppliers, stock history |
@@ -17,9 +18,25 @@ Workshop operations app for auto repair shops. It covers vehicle check-in, inspe
 | Reports | 7-day revenue, average ticket, quote approval rate, parts vs labor, jobs per technician |
 | Settings | Brand colour (Castrol green by default), user management, reset demo data |
 
-## Roles
+## Signing in
 
-Sign in as any user from the dropdown at the top right. What you see depends on that user's role.
+Each user signs in with their own username and password. What you see depends on
+that user's role. The demo accounts are listed on the login screen, and clicking
+one fills the form:
+
+| Role | Username | Password |
+|---|---|---|
+| Owner | `alex.tan` | `owner123` |
+| Manager | `joanne.lim` | `manager123` |
+| Service advisor | `priya.nair` | `advisor123` |
+| Technician | `marcus.lee` | `tech123` |
+| Technician | `daniel.koh` | `tech123` |
+
+Owners add users and set their credentials in **Settings → Users**. Sessions last
+12 hours, and are kept after closing the tab only if you tick **Keep me signed
+in**. Five wrong passwords lock that username for a minute.
+
+## Roles
 
 | Action | Owner | Manager | Advisor | Technician |
 |---|---|---|---|---|
@@ -55,14 +72,14 @@ Full details: [docs/PROCESS.md](docs/PROCESS.md)
 
 ## Demo script (5 minutes)
 
-1. Signed in as **Alex Tan (Owner)**, open **Orders → WO-1047** (the BMW).
+1. Sign in as **alex.tan / owner123** (Owner), then open **Orders → WO-1047** (the BMW).
 2. Start the inspection, mark all 10 items, and set one to **Problem**. Then finish the inspection.
 3. In **Quote and items**, click **Add to quote** on the finding, add a part, and send the quote.
 4. Click **Approved**. Parts are now reserved (check **Inventory**).
 5. Add another part. It's flagged **Needs approval** and blocks payment until you approve it.
 6. Mark the work done, then take payment. Stock is deducted and follow-ups are created.
-7. Sign in as **Priya Nair (Advisor)**. Profit is hidden and discounts are capped at 10%.
-8. Sign in as **Marcus Lee (Technician)**. You only see your own jobs, with no prices.
+7. **Sign out**, then sign in as **priya.nair / advisor123** (Advisor). Profit is hidden and discounts are capped at 10%.
+8. Sign out and sign in as **marcus.lee / tech123** (Technician). You only see your own jobs, with no prices.
 
 ## Project structure
 
@@ -73,7 +90,9 @@ docs/
   PROCESS.md          Work order lifecycle, stage gates, stock flow, follow-ups
   ROLES.md            Permission matrix and access rules
   ARCHITECTURE.md     Current demo design and production target
-  TEST_REPORT.md      Results of the 113 automated checks
+  SECURITY.md         Security review of the demo, with severities
+  SUPABASE_PLAN.md    Migration plan: schema, RLS policies, auth, phases
+  TEST_REPORT.md      Results of the 162 automated checks
 tests/
   suite.js            Automated end-to-end test suite
 package.json          Test script
@@ -86,7 +105,7 @@ npm install
 npm test
 ```
 
-The suite loads `index.html` in a simulated browser and clicks through every process as each role. It ends with `TOTAL: 113 passed, 0 failed`.
+The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 162 passed, 0 failed`.
 
 ## Change the brand colour
 
@@ -100,16 +119,27 @@ Every other shade (hover states, light tints, dark mode) is calculated from this
 
 ## Known limits of the demo
 
-- **Permissions run in the browser only.** A technical user could still read hidden prices in the page code. Production needs server-side checks (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)).
+The short version: **the login screen is a UI, not a security control.** Data,
+permission rules and the password check all live in the visitor's browser, which
+the visitor controls. Specifically:
+
+- **Permissions run in the browser only.** Hidden prices are hidden with CSS, so
+  they are still present in the page and readable in devtools by any role. This
+  is verified, not theoretical — see [docs/SECURITY.md](docs/SECURITY.md).
+- **Sign-in can be bypassed** by anyone willing to edit browser storage, and the
+  password digest is a demo placeholder, not a password hash.
 - **Data lives in the browser**, so nothing is shared between devices or staff.
 - **No invoice numbering, GST, deposits or partial payments yet.**
 - **Some report history is sample data** (the previous 6 days of revenue and the monthly job baselines).
 
+Everything in that list is fixed by moving the data and the rules to a server.
+[docs/SUPABASE_PLAN.md](docs/SUPABASE_PLAN.md) is the plan for doing that.
+
 ## Roadmap
 
-1. Backend API with login and server-side permissions
-2. Shared database (PostgreSQL) with `shop_id` on every table for multi-branch use
-3. Billing: invoice numbers, GST, deposits, partial payments, PDF invoices
-4. Customer quote approval link over WhatsApp or SMS
-5. Inspection photos
-6. Automatic reminders for follow-ups
+1. **Phase 0, now:** SRI hashes on CDN scripts, a CSP, and a build flag for the demo credentials
+2. Supabase backend: schema, Row Level Security per role, real auth ([plan](docs/SUPABASE_PLAN.md))
+3. Atomic stock and payment operations, plus an append-only audit log
+4. Billing: invoice numbers, GST, deposits, partial payments, PDF invoices
+5. Customer quote approval link over WhatsApp or SMS
+6. Inspection photos, and automatic follow-up reminders

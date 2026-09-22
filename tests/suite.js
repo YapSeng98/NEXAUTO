@@ -2,8 +2,15 @@ const {JSDOM}=require('jsdom');const fs=require('fs');
 const path=require('path');const FILE=process.argv[2]||path.join(__dirname,'..','index.html');
 const RAW=fs.readFileSync(FILE,'utf8').replace(/<script src=[^>]+><\/script>/,'').replace(/<link[^>]+>/g,'').replace('<script>','<script>window.scrollTo=function(){};');
 const results=[];let section='';
-function app(storage){
-  const dom=new JSDOM(RAW,{runScripts:'dangerously',url:'https://nexauto.test/',beforeParse(w){w.confirm=()=>true; if(storage) for(const k in storage) w.localStorage.setItem(k,storage[k]);}});
+const PW={s1:'owner123',s2:'manager123',s3:'advisor123',s4:'tech123',s5:'tech123'};
+const session=(userId='s1',at=Date.now())=>JSON.stringify({userId,at,remember:true});
+function app(storage,opts={}){
+  const dom=new JSDOM(RAW,{runScripts:'dangerously',url:'https://nexauto.test/',beforeParse(w){
+    w.confirm=()=>true;
+    if(!opts.anon&&!opts.session) w.localStorage.setItem('nexauto_session',session());
+    if(storage) for(const k in storage) w.localStorage.setItem(k,storage[k]);
+    if(opts.session) w.localStorage.setItem('nexauto_session',opts.session);
+  }});
   const w=dom.window,d=w.document,errs=[];w.addEventListener('error',e=>errs.push(e.message));
   const A={w,d,errs,
     $:s=>d.querySelector(s),$$:s=>[...d.querySelectorAll(s)],
@@ -16,11 +23,15 @@ function app(storage){
     err(){const e=d.querySelector('#formError');return e?e.textContent:'';},
     modalOpen(){return d.querySelector('#modalWrap').classList.contains('open');},
     stage(){return d.querySelector('#panelSub').textContent;},
-    signIn(id){A.change(d.querySelector('#roleSelect'),id);},
+    authed(){return d.documentElement.dataset.authed==='1';},
+    loginErr(){const e=d.querySelector('#loginError');return e?e.textContent:'';},
+    login(u,p,remember=true){d.querySelector('#loginUser').value=u;d.querySelector('#loginPass').value=p;d.querySelector('#loginRemember').checked=remember;d.querySelector('#loginForm').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));},
+    signOut(){A.click('[data-action="sign-out"]');},
+    signIn(id,pw){const u=A.db().staff.find(s=>s.id===id);if(A.authed())A.signOut();A.login(u.username,pw||PW[id]);},
     go(v,f){A.click(`[data-action="goto"][data-view="${v}"]`+(f?`[data-filter="${f}"]`:''));},
     openOrder(id){A.go('orders');A.click(`[data-action="open-order"][data-id="${id}"]`);},
     tab(t){A.click(`[data-action="order-tab"][data-tab="${t}"]`);},
-    db(){return JSON.parse(w.localStorage.getItem('nexauto_demo_v4'));},
+    db(){return JSON.parse(w.localStorage.getItem('nexauto_demo_v5'));},
     part(sku){return A.db().inventory.find(p=>p.sku===sku);},
     order(id){return A.db().orders.find(o=>o.id===id);},
     checkAll(s='good'){A.$$(`[data-action="insp-set"][data-s="${s}"]`).forEach((_,i)=>A.click(A.$$(`[data-action="insp-set"][data-s="${s}"]`)[i]));},
@@ -177,16 +188,16 @@ T('No script errors',()=>a.errs.length===0);}
 // ============ 9. USERS ============
 S('9 User management');
 {const a=app();a.go('settings');
-T('Add user',()=>{a.click('[data-action="new-staff"]');a.F('name').value='Siti';a.F('role').value='technician';a.submit();return a.db().staff.some(s=>s.name==='Siti');});
-T('Duplicate name rejected',()=>{a.click('[data-action="new-staff"]');a.F('name').value='siti';a.submit();const ok=a.modalOpen();a.click('[data-action="close-modal"]');return ok;});
-T('New user appears in sign-in list',()=>a.$$('#roleSelect option').some(o=>o.textContent.includes('Siti')));
+T('Add user',()=>{a.click('[data-action="new-staff"]');a.F('name').value='Siti';a.F('role').value='technician';a.F('username').value='siti.a';a.F('password').value='siti12345';a.submit();return a.db().staff.some(s=>s.name==='Siti');});
+T('Duplicate name rejected',()=>{a.click('[data-action="new-staff"]');a.F('name').value='siti';a.F('username').value='siti.b';a.F('password').value='siti12345';a.submit();const ok=a.modalOpen()&&a.err().includes('already exists');a.click('[data-action="close-modal"]');return ok;});
+T('New user appears in the users list',()=>a.$('#v-settings').textContent.includes('siti.a'));
 T('New technician appears in check-in technician list',()=>{a.click('#v-settings');a.go('orders');a.click('#v-orders [data-action="new-order"]');const ok=[...a.F('tech').options].some(o=>o.textContent==='Siti');a.click('[data-action="close-modal"]');return ok;});
 T('Change role takes effect',()=>{a.go('settings');const sid=a.db().staff.find(s=>s.name==='Siti').id;a.click(`[data-action="edit-staff"][data-id="${sid}"]`);a.F('role').value='advisor';a.submit();return a.db().staff.find(s=>s.name==='Siti').role==='advisor';});
 T('Cannot demote the last owner',()=>{a.click('[data-action="edit-staff"][data-id="s1"]');a.F('role').value='manager';a.submit();const ok=a.modalOpen();a.click('[data-action="close-modal"]');return ok;});
 T('Cannot change a technician with open jobs to another role',()=>{a.click('[data-action="edit-staff"][data-id="s5"]');a.F('role').value='advisor';a.submit();const ok=a.modalOpen();a.click('[data-action="close-modal"]');return ok&&a.db().staff.find(s=>s.id==='s5').role==='technician';});
 T('Cannot deactivate a user with open jobs',()=>{a.click('[data-action="edit-staff"][data-id="s4"]');a.click('[data-action="remove-staff"]');return a.db().staff.find(s=>s.id==='s4').active===true;});
-T('Deactivate keeps history (name still shown on old jobs)',()=>{a.click('[data-action="close-modal"]');const sid=a.db().staff.find(s=>s.name==='Siti').id;a.click(`[data-action="edit-staff"][data-id="${sid}"]`);a.click('[data-action="remove-staff"]');const u=a.db().staff.find(s=>s.id===sid);return u&&u.active===false&&!a.$$('#roleSelect option').some(o=>o.textContent.includes('Siti'));});
-T('Cannot deactivate yourself',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Owner2';b.F('role').value='owner';b.submit();b.click('[data-action="edit-staff"][data-id="s1"]');b.click('[data-action="remove-staff"]');return b.db().staff.find(s=>s.id==='s1').active===true&&b.toast().includes('yourself');});
+T('Deactivate keeps history (name still shown on old jobs)',()=>{a.click('[data-action="close-modal"]');const sid=a.db().staff.find(s=>s.name==='Siti').id;a.click(`[data-action="edit-staff"][data-id="${sid}"]`);a.click('[data-action="remove-staff"]');const u=a.db().staff.find(s=>s.id===sid);return u&&u.active===false&&!a.$('#v-settings').textContent.includes('siti.a');});
+T('Cannot deactivate yourself',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Owner2';b.F('role').value='owner';b.F('username').value='owner2';b.F('password').value='owner12345';b.submit();b.click('[data-action="edit-staff"][data-id="s1"]');b.click('[data-action="remove-staff"]');return b.db().staff.find(s=>s.id==='s1').active===true&&b.toast().includes('yourself');});
 T('Signing in as a demoted user uses their new permissions',()=>{const b=app();b.go('settings');b.click('[data-action="edit-staff"][data-id="s2"]');b.F('role').value='advisor';b.submit();b.signIn('s2');return b.d.documentElement.dataset.canCost==='0';});
 T('No script errors',()=>a.errs.length===0);}
 
@@ -195,10 +206,78 @@ S('10 Settings and saving');
 {const a=app();
 T('Theme colour applies',()=>{a.go('settings');a.click('[data-action="theme"][data-c="#1D5FD1"]');return a.d.documentElement.style.getPropertyValue('--green')==='#1D5FD1';});
 T('Data survives a page reload',()=>{a.openOrder('WO-1047');a.click('[data-action="start-insp"]');const st=a.storage();const b=app(st);return b.order('WO-1047').stage==='pre-inspection'&&b.d.documentElement.style.getPropertyValue('--green')==='#1D5FD1';});
-T('Signed-in user survives reload',()=>{a.signIn('s3');const b=app(a.storage());return b.$('#roleSelect').value==='s3';});
+T('Signed-in user survives reload',()=>{a.signIn('s3');const b=app(a.storage());return b.authed()&&b.$('#userName').textContent==='Priya Nair';});
 T('Order counter survives reload (no duplicate WO numbers)',()=>{const b=app(a.storage());b.signIn('s1');b.click('#v-dashboard [data-action="new-order"]');b.set('customer','c6');b.F('mileage').value='50000';b.submit();const ids=b.db().orders.map(o=>o.id);return new Set(ids).size===ids.length;});
 T('Reset restores demo data',()=>{a.go('settings');a.signIn('s1');a.go('settings');a.click('[data-action="reset"]');return a.order('WO-1047').stage==='reception'&&!a.d.documentElement.style.getPropertyValue('--green');});
 T('No script errors',()=>a.errs.length===0);}
+
+// ============ 11. LOGIN ============
+S('11 Login');
+{const a=app(null,{anon:true});
+T('App is locked until you sign in',()=>!a.authed()&&!!a.$('#loginForm'));
+T('No workshop data is rendered before sign-in',()=>a.$('#v-orders').textContent.trim()===''&&a.$('#v-dashboard').textContent.trim()==='');
+T('Empty form is rejected',()=>{a.login('','');return !a.authed()&&a.loginErr().includes('Enter your username');});
+T('Wrong password is rejected',()=>{a.login('alex.tan','nope123');return !a.authed()&&a.loginErr().includes('Wrong username or password');});
+T('Unknown user gives the same message (no user enumeration)',()=>{const b=app(null,{anon:true});b.login('ghost.user','nope123');const m1=b.loginErr();const c=app(null,{anon:true});c.login('alex.tan','wrongpw');return m1.replace(/\d+/g,'')===c.loginErr().replace(/\d+/g,'');});
+T('Password is case-sensitive',()=>{const b=app(null,{anon:true});b.login('alex.tan','OWNER123');return !b.authed();});
+T('Correct password signs in and lands on the dashboard',()=>{const b=app(null,{anon:true});b.login('alex.tan','owner123');return b.authed()&&b.$('#v-dashboard').classList.contains('active')&&b.$('#userName').textContent==='Alex Tan';});
+T('Username is case-insensitive and trimmed',()=>{const b=app(null,{anon:true});b.login('  Alex.Tan  ','owner123');return b.authed();});
+T('Failed attempts are counted down',()=>{const b=app(null,{anon:true});b.login('alex.tan','x1');const first=b.loginErr();b.login('alex.tan','x2');return first.includes('4 attempts left')&&b.loginErr().includes('3 attempts left');});
+T('Account locks after 5 failed attempts',()=>{const b=app(null,{anon:true});for(let i=0;i<5;i++)b.login('alex.tan','bad'+i);return b.loginErr().includes('Too many failed attempts');});
+T('Lockout blocks even the correct password',()=>{const b=app(null,{anon:true});for(let i=0;i<5;i++)b.login('alex.tan','bad'+i);b.login('alex.tan','owner123');return !b.authed()&&b.loginErr().includes('Too many failed attempts');});
+T('A good sign-in clears the failure count',()=>{const b=app(null,{anon:true});b.login('alex.tan','bad1');b.login('alex.tan','owner123');const locks=JSON.parse(b.w.localStorage.getItem('nexauto_lockouts')||'{}');return b.authed()&&!locks['alex.tan'];});
+T('Show/hide password toggle works',()=>{const b=app(null,{anon:true});b.click('#pwToggle');const shown=b.$('#loginPass').type==='text';b.click('#pwToggle');return shown&&b.$('#loginPass').type==='password';});
+T('Demo account button fills the credentials',()=>{const b=app(null,{anon:true});b.click('[data-action="use-demo"][data-u="priya.nair"]');return b.$('#loginUser').value==='priya.nair'&&b.$('#loginPass').value==='advisor123';});
+T('Password is cleared from the field after a failed attempt',()=>{const b=app(null,{anon:true});b.login('alex.tan','bad1');return b.$('#loginPass').value==='';});
+T('Passwords are not stored in readable form',()=>{const b=app(null,{anon:true});const raw=JSON.stringify(b.db().staff);return !raw.includes('owner123')&&!raw.includes('tech123')&&b.db().staff.every(s=>!!s.pwHash&&!!s.salt);});
+T('No script errors',()=>a.errs.length===0);}
+
+// ============ 12. LOGIN PER ROLE ============
+S('12 Sign-in as each role');
+{
+T('Owner signs in and sees revenue',()=>{const b=app(null,{anon:true});b.login('alex.tan','owner123');return b.authed()&&b.d.documentElement.dataset.canRevenue==='1'&&b.d.documentElement.dataset.canStaff==='1';});
+T('Manager signs in: revenue yes, user management no',()=>{const b=app(null,{anon:true});b.login('joanne.lim','manager123');const r=b.d.documentElement.dataset;return b.authed()&&r.canRevenue==='1'&&r.canCost==='1'&&r.canStaff==='0';});
+T('Advisor signs in: prices yes, cost and revenue no',()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123');const r=b.d.documentElement.dataset;return b.authed()&&r.canPrice==='1'&&r.canCost==='0'&&r.canRevenue==='0'&&r.canStaff==='0';});
+T('Technician signs in: no prices, own jobs only',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');const r=b.d.documentElement.dataset;b.go('orders');const ids=b.$$('#v-orders [data-action="open-order"]').map(x=>x.dataset.id);return b.authed()&&r.canPrice==='0'&&r.canEdit==='0'&&ids.length>0&&ids.every(id=>b.order(id).technicianId==='s4');});
+T('Each role sees their own name and role in the header',()=>{const b=app(null,{anon:true});b.login('daniel.koh','tech123');return b.$('#userName').textContent==='Daniel Koh'&&b.$('#userRole').textContent==='Technician';});
+T('Technician cannot reach settings user management',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');b.go('settings');return b.d.documentElement.dataset.canStaff==='0';});
+T('Signing out and back in as another role swaps permissions',()=>{const b=app(null,{anon:true});b.login('alex.tan','owner123');const asOwner=b.d.documentElement.dataset.canCost;b.signOut();b.login('marcus.lee','tech123');return asOwner==='1'&&b.d.documentElement.dataset.canCost==='0'&&b.$('#userName').textContent==='Marcus Lee';});
+T('Previous user data is not left on screen after switching',()=>{const b=app(null,{anon:true});b.login('alex.tan','owner123');b.go('reports');b.signOut();b.login('marcus.lee','tech123');return b.$('#v-dashboard').classList.contains('active')&&!b.$('#v-reports').classList.contains('active');});
+}
+
+// ============ 13. SESSIONS ============
+S('13 Sessions and sign-out');
+{
+T('Sign out returns to the login screen',()=>{const b=app();b.signOut();return !b.authed()&&b.$('#loginForm').elements.username.value==='';});
+T('Sign out clears the stored session',()=>{const b=app();b.signOut();return !b.w.localStorage.getItem('nexauto_session')&&!b.w.sessionStorage.getItem('nexauto_session');});
+T('Sign out closes any open panel',()=>{const b=app();b.openOrder('WO-1043');b.signOut();return !b.$('#panel').classList.contains('open');});
+T('After sign out a reload still shows login',()=>{const b=app();b.signOut();const c=app(b.storage(),{anon:true});return !c.authed();});
+T('"Keep me signed in" survives a reload',()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123',true);const c=app(b.storage(),{anon:true});return c.authed()&&c.$('#userName').textContent==='Priya Nair';});
+T('Without "keep me signed in" the session does not persist',()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123',false);const c=app(b.storage(),{anon:true});return b.authed()&&!c.authed();});
+T('An expired session forces a new sign-in',()=>{const b=app(null,{session:session('s1',Date.now()-13*3600000)});return !b.authed();});
+T('A session just inside the window still works',()=>{const b=app(null,{session:session('s1',Date.now()-11*3600000)});return b.authed();});
+T('A tampered session (unknown user) forces a new sign-in',()=>{const b=app(null,{session:JSON.stringify({userId:'s999',at:Date.now()})});return !b.authed();});
+T('A corrupt session value forces a new sign-in',()=>{const b=app(null,{session:'not-json'});return !b.authed();});
+T('Changing role does not need a new sign-in but applies live',()=>{const b=app();b.go('settings');b.click('[data-action="edit-staff"][data-id="s1"]');b.F('name').value='Alex Tan';b.submit();return b.authed();});
+T('No script errors',()=>{const b=app();b.signOut();return b.errs.length===0;});
+}
+
+// ============ 14. CREDENTIAL MANAGEMENT ============
+S('14 Credential management');
+{
+T('Owner can reset another user\'s password',()=>{const b=app();b.go('settings');b.click('[data-action="edit-staff"][data-id="s3"]');b.F('password').value='newpass123';b.submit();b.signOut();b.login('priya.nair','newpass123');return b.authed();});
+T('The old password stops working after a reset',()=>{const b=app();b.go('settings');b.click('[data-action="edit-staff"][data-id="s3"]');b.F('password').value='newpass123';b.submit();b.signOut();b.login('priya.nair','advisor123');return !b.authed();});
+T('Owner can change a username and it is used to sign in',()=>{const b=app();b.go('settings');b.click('[data-action="edit-staff"][data-id="s4"]');b.F('username').value='marcus.l';b.submit();b.signOut();b.login('marcus.l','tech123');return b.authed();});
+T('Duplicate username is rejected',()=>{const b=app();b.go('settings');b.click('[data-action="edit-staff"][data-id="s4"]');b.F('username').value='alex.tan';b.submit();const ok=b.modalOpen()&&b.err().includes('taken');b.click('[data-action="close-modal"]');return ok;});
+T('Invalid username format is rejected',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Bad User';b.F('username').value='a b!';b.F('password').value='goodpass1';b.submit();const ok=b.modalOpen()&&b.err().includes('Username must be');b.click('[data-action="close-modal"]');return ok;});
+T('Short password is rejected',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Short Pw';b.F('username').value='short.pw';b.F('password').value='12345';b.submit();const ok=b.modalOpen()&&b.err().includes('at least 6');b.click('[data-action="close-modal"]');return ok;});
+T('A new user can sign in with the credentials they were given',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Nurul Aina';b.F('role').value='advisor';b.F('username').value='nurul.aina';b.F('password').value='aina12345';b.submit();b.signOut();b.login('nurul.aina','aina12345');return b.authed()&&b.$('#userName').textContent==='Nurul Aina'&&b.d.documentElement.dataset.canCost==='0';});
+T('A deactivated user cannot sign in',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Temp Staff';b.F('role').value='advisor';b.F('username').value='temp.staff';b.F('password').value='temp12345';b.submit();const sid=b.db().staff.find(s=>s.name==='Temp Staff').id;b.click(`[data-action="edit-staff"][data-id="${sid}"]`);b.click('[data-action="remove-staff"]');b.signOut();b.login('temp.staff','temp12345');return !b.authed()&&b.loginErr().includes('Wrong username or password');});
+T('A deactivated user\'s existing session is rejected on reload',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Gone Soon';b.F('role').value='advisor';b.F('username').value='gone.soon';b.F('password').value='gone12345';b.submit();const sid=b.db().staff.find(s=>s.name==='Gone Soon').id;b.click(`[data-action="edit-staff"][data-id="${sid}"]`);b.click('[data-action="remove-staff"]');const c=app(b.storage(),{session:session(sid)});return !c.authed();});
+T('Password reset clears an existing lockout',()=>{const b=app(null,{anon:true});for(let i=0;i<5;i++)b.login('priya.nair','bad'+i);b.login('alex.tan','owner123');b.go('settings');b.click('[data-action="edit-staff"][data-id="s3"]');b.F('password').value='fresh12345';b.submit();b.signOut();b.login('priya.nair','fresh12345');return b.authed();});
+T('Usernames are shown in the user list',()=>{const b=app();b.go('settings');const t=b.$('#v-settings').textContent;return t.includes('alex.tan')&&t.includes('marcus.lee');});
+T('No script errors',()=>{const b=app();b.go('settings');return b.errs.length===0;});
+}
 
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;

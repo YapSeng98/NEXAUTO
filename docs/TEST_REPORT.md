@@ -1,8 +1,8 @@
 # Test report
 
-**Result: 113 of 113 checks passed.**
+**Result: 162 of 162 checks passed.**
 
-The suite (`tests/suite.js`) loads `index.html` in a simulated browser, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
+The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
 ## Summary
 
@@ -18,6 +18,41 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, clicks t
 | Roles and permissions | 18 | 18 |
 | User management | 12 | 12 |
 | Settings and saving | 6 | 6 |
+| Login | 17 | 17 |
+| Sign-in as each role | 8 | 8 |
+| Sessions and sign-out | 12 | 12 |
+| Credential management | 12 | 12 |
+
+## Login coverage (added in v0.5.0)
+
+Every user switch in the suite now goes through the real login form rather than a
+dropdown, so the 113 original checks exercise authentication as a side effect.
+
+What the 49 new checks cover:
+
+- **Getting in:** correct credentials for all four roles, case-insensitive and
+  trimmed usernames, case-sensitive passwords, the demo-account shortcut.
+- **Being kept out:** wrong password, unknown user, empty fields, deactivated
+  accounts, and a locked account refusing even the correct password.
+- **Not leaking:** an unknown username and a wrong password return the identical
+  message, so the form cannot be used to discover who works here. Passwords never
+  appear in readable form in storage, and the field is cleared after a failure.
+- **Lockout:** five failures locks the account for 60 seconds; a successful
+  sign-in or a password reset clears the counter.
+- **Sessions:** "Keep me signed in" survives a reload and the unticked case does
+  not; a session older than 12 hours, one naming an unknown user, one naming a
+  deactivated user, and a corrupt one each force a fresh sign-in.
+- **Sign-out:** clears both storages, closes any open panel, and a reload
+  afterwards still shows the login screen.
+- **Credentials:** owners can reset a password (the old one stops working) and
+  change a username (the new one signs in); duplicate usernames, malformed
+  usernames and passwords under six characters are rejected.
+- **Isolation:** signing out and back in as another role swaps permissions and
+  leaves none of the previous user's view on screen.
+
+Verified separately in a real browser: login, failed attempt with the countdown,
+sign-in as owner, manager and technician, technician seeing only their own four
+jobs with no prices, session surviving a reload, and a clean console throughout.
 
 ## Bugs found and fixed during testing
 
