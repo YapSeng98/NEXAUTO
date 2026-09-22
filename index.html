@@ -797,10 +797,10 @@ function timing(k){
 }
 var DEFAULT_INSPECTION = ["Engine oil level and condition","Brake pads and discs","Tyres and tread depth","Battery health","Lights and signals","Suspension and steering","Coolant level","Wipers and washer","Air-con performance","Underbody and leaks"];
 var BASE_PERMS = {
-  owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, pay:1, checkin:1, config:1, additems:1},
-  manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, config:1, additems:1},
-  advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, config:0, additems:1},
-  technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, pay:0, checkin:1, config:0, additems:1}
+  owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, approve:1, pay:1, checkin:1, config:1, additems:1},
+  manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, approve:1, pay:1, checkin:1, config:1, additems:1},
+  advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, approve:1, pay:1, checkin:1, config:0, additems:1},
+  technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, approve:0, pay:0, checkin:1, config:0, additems:1}
 };
 var ROLE_LABEL = {owner:"Owner", manager:"Manager", advisor:"Service advisor", technician:"Technician"};
 /* What each flag actually lets someone do, in the order the matrix shows them. */
@@ -809,6 +809,7 @@ var PERM_DEFS = [
   ["checkin",  "Check a vehicle in", "Book a car in and link it to a customer"],
   ["additems", "Add parts and work to a quote", "Adding is not pricing \u2014 that needs the flag below"],
   ["edit",     "Price lines, discount and send quotes", "The advisor's job: set prices, apply a discount, send the quote"],
+  ["approve",  "Record the customer's answer on a quote", "Mark a sent quote approved or declined. Approving reserves the parts"],
   ["price",    "See selling prices", "Prices on jobs, parts and the customer quotation"],
   ["cost",     "See cost prices and profit", "What the shop paid, and the margin"],
   ["revenue",  "See shop revenue and reports", "Takings, profit and the whole Reports page"],
@@ -1646,9 +1647,15 @@ function orderActions(o, ic){
   if(o.stage === "reception") b.push('<button class="btn primary" data-action="start-insp">Start inspection</button>');
   if(o.stage === "pre-inspection") b.push('<button class="btn primary" data-action="finish-insp">' + (ic.unchecked ? 'Finish inspection (' + ic.unchecked + ' left)' : 'Finish inspection') + '</button>');
   if(o.stage === "quotation"){
-    if(!can("edit")) b.push('<button class="btn" disabled style="opacity:.7">' + (o.quoteStatus === "sent" ? "Quote sent, waiting for the customer" : "Waiting for an advisor to build the quote") + '</button>');
-    else if(o.quoteStatus === "draft") b.push('<button class="btn primary" data-action="send-quote">Send quote to customer</button>');
-    else { b.push('<button class="btn danger" data-action="decline-quote">Declined</button>'); b.push('<button class="btn primary" data-action="approve-quote">Approved</button>'); }
+    if(o.quoteStatus === "draft"){
+      b.push(can("edit") ? '<button class="btn primary" data-action="send-quote">Send quote to customer</button>'
+                         : '<button class="btn" disabled style="opacity:.7">Waiting for an advisor to build the quote</button>');
+    } else if(can("approve")){
+      b.push('<button class="btn danger" data-action="decline-quote">Declined</button>');
+      b.push('<button class="btn primary" data-action="approve-quote">Approved</button>');
+    } else {
+      b.push('<button class="btn" disabled style="opacity:.7">Quote sent, waiting for the customer</button>');
+    }
   }
   if(o.stage === "in-service"){
     var pendN = o.items.filter(function(i){ return !i.approved; }).length;
@@ -1741,6 +1748,7 @@ function doSendQuote(o){
   o.quoteStatus = "sent"; log(o, "Quotation sent to customer (" + money(totals(o).total) + ")"); toast("Quote sent"); refresh();
 }
 function doApprove(o){
+  if(!can("approve")){ toast("You cannot record the customer's answer", true); return; }
   var err = reserve(o, false);
   if(err){ toast(err, true); return; }
   o.stage = "in-service"; o.stageSince = nowISO(); o.quoteStatus = "approved"; log(o, "Customer approved quotation, parts reserved"); toast("Approved. Parts reserved, job is in service."); refresh();
@@ -1751,6 +1759,7 @@ function doApproveExtra(o){
   log(o, "Customer approved additional work (" + money(totals(o).total) + " total)"); toast("Additional work approved"); refresh();
 }
 function doDecline(o){
+  if(!can("approve")){ toast("You cannot record the customer's answer", true); return; }
   o.stage = "declined"; o.stageSince = nowISO(); o.quoteStatus = "rejected"; log(o, "Customer declined quotation");
   DB.opportunities.push({id:uid("o"), customerId:o.customerId, type:"declined-quote", text:"Declined quote " + money(totals(o).total) + " on " + o.id, dueAt:new Date(Date.now()+timing("followDeclined")*86400000).toISOString(), sourceOrderId:o.id, status:"open", createdAt:nowISO()});
   toast("Marked declined. Follow-up added."); state.orderTab = "overview"; refresh();

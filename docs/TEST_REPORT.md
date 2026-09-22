@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 440 of 440 checks passed.**
+**Result: 445 of 445 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -42,7 +42,18 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Quotation preview | 19 | 19 |
 | Shop-configurable settings | 19 | 19 |
 | Locked settings | 9 | 9 |
-| Role permissions | 20 | 20 |
+| Role permissions | 25 | 25 |
+
+## Approving a quote is its own permission (v0.17.0)
+
+Recording the customer's answer was bundled into `edit`, so the only way to let
+someone approve a quote was to also let them price and discount it. It is now
+its own flag, `approve`, on the Roles matrix and defaulting to today's
+behaviour: owner, manager and advisor yes, technician no.
+
+Both handlers refuse the action outright rather than relying on the hidden
+button — a check appends an `approve-quote` button to the panel of a role
+without the flag, clicks it, and asserts the job stays in quotation.
 
 ## Responsive audit (v0.16.0)
 

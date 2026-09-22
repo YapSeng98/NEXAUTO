@@ -35,7 +35,8 @@ Each role maps to a set of flags in the `PERMS` object in `index.html`.
 | `purchase` | Purchase orders, receiving, stock adjustments, suppliers | ✓ | ✓ | ✓ | – |
 | `staff` | Add, edit and deactivate users | ✓ | – | – | – |
 | `all` | See every order and customer | ✓ | ✓ | ✓ | – |
-| `edit` | Edit quotes, discounts, follow-ups | ✓ | ✓ | ✓ | – |
+| `edit` | Price lines, discounts, send quotes | ✓ | ✓ | ✓ | – |
+| `approve` | Record the customer's answer on a sent quote | ✓ | ✓ | ✓ | – |
 | `checkin` | Check a vehicle in and link it to a customer | ✓ | ✓ | ✓ | ✓ |
 | `config` | Edit the shop's lists and timings in Settings | ✓ | ✓ | – | – |
 | `additems` | Add parts and work to a job's quote | ✓ | ✓ | ✓ | ✓ |
