@@ -23,6 +23,11 @@ function app(storage,opts={}){
     err(){const e=d.querySelector('#formError');return e?e.textContent:'';},
     modalOpen(){return d.querySelector('#modalWrap').classList.contains('open');},
     stage(){return d.querySelector('#panelSub').textContent;},
+    kpi(label){const k=A.$$('#v-reports .kpi').find(e=>e.querySelector('.label').textContent.trim()===label);return k?k.querySelector('.value').textContent.trim():null;},
+    num(s){return Number(String(s==null?'':s).replace(/[^0-9.-]/g,''));},
+    range(r){A.click(`[data-action="report-range"][data-r="${r}"]`);},
+    total(o){let s=0,c=0;o.items.forEach(i=>{s+=i.qty*i.price;c+=i.qty*i.cost;});const t=Math.max(0,s-(o.discount||0));return{total:t,cost:c,profit:t-c};},
+    paidBetween(from,to){return A.db().orders.filter(o=>o.stage==='completed'&&o.payment&&new Date(o.payment.paidAt).getTime()>=from&&new Date(o.payment.paidAt).getTime()<to);},
     authed(){return d.documentElement.dataset.authed==='1';},
     loginErr(){const e=d.querySelector('#loginError');return e?e.textContent:'';},
     login(u,p,remember=true){d.querySelector('#loginUser').value=u;d.querySelector('#loginPass').value=p;d.querySelector('#loginRemember').checked=remember;d.querySelector('#loginForm').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));},
@@ -278,6 +283,79 @@ T('Password reset clears an existing lockout',()=>{const b=app(null,{anon:true})
 T('Usernames are shown in the user list',()=>{const b=app();b.go('settings');const t=b.$('#v-settings').textContent;return t.includes('alex.tan')&&t.includes('marcus.lee');});
 T('No script errors',()=>{const b=app();b.go('settings');return b.errs.length===0;});
 }
+
+// ============ 15. SIX MONTHS OF DATA ============
+S('15 Historical data');
+{const a=app();const db=a.db();
+const hist=db.orders.filter(o=>o.stage==='completed'||o.stage==='declined');
+const paid=db.orders.filter(o=>o.stage==='completed'&&o.payment);
+const days=t=>(Date.now()-new Date(t).getTime())/86400000;
+T('Six months of closed jobs exist',()=>paid.length>150);
+T('History reaches back about 6 months',()=>{const oldest=Math.max(...paid.map(o=>days(o.payment.paidAt)));return oldest>165&&oldest<190;});
+T('History runs up to the present',()=>Math.min(...paid.map(o=>days(o.payment.paidAt)))<2);
+T('Every order number is unique',()=>{const ids=db.orders.map(o=>o.id);return new Set(ids).size===ids.length;});
+T('Historical jobs are numbered below the live ones',()=>{const live=['WO-1041','WO-1042','WO-1043','WO-1044','WO-1045','WO-1046','WO-1047'];const older=db.orders.filter(o=>!live.includes(o.id));return older.every(o=>Number(o.id.slice(3))<1041);});
+T('Next order number is still free',()=>!db.orders.some(o=>o.id==='WO-'+db.nextWO));
+T('Every order points at a real customer and vehicle',()=>db.orders.every(o=>{const c=db.customers.find(x=>x.id===o.customerId);return c&&c.vehicles.some(v=>v.id===o.vehicleId);}));
+T('Every order has a real technician and advisor',()=>db.orders.every(o=>db.staff.some(s=>s.id===o.technicianId)&&db.staff.some(s=>s.id===o.advisorId)));
+T('Completed jobs all carry a payment that matches the total',()=>paid.every(o=>o.payment.amount===a.total(o).total));
+T('Declined jobs carry no payment',()=>db.orders.filter(o=>o.stage==='declined').every(o=>!o.payment&&o.quoteStatus==='rejected'));
+T('Some jobs were declined, so approval rate is not a flat 100%',()=>{const d=db.orders.filter(o=>o.stage==='declined').length;return d>5&&d<hist.length*0.3;});
+T('Every job has priced items',()=>db.orders.every(o=>o.stage==='reception'||o.stage==='pre-inspection'||(o.items.length>0&&o.items.every(i=>i.price>=0&&i.qty>0))));
+T('Parts on historical jobs match the price list',()=>paid.every(o=>o.items.filter(i=>i.type==='part').every(i=>{const p=db.inventory.find(x=>x.sku===i.sku);return p&&i.price===p.price&&i.cost===p.cost;})));
+T('Mileage increases across each vehicle\'s visits',()=>{const byVeh={};db.orders.slice().sort((x,y)=>x.createdAt.localeCompare(y.createdAt)).forEach(o=>{(byVeh[o.vehicleId]=byVeh[o.vehicleId]||[]).push(o.mileage);});return Object.values(byVeh).every(list=>list.every((m,i)=>i===0||m>=list[i-1]));});
+T('Customers have repeat visits',()=>{const n={};paid.forEach(o=>n[o.customerId]=(n[o.customerId]||0)+1);return Math.max(...Object.values(n))>=4;});
+T('Stock movements reference real jobs and parts',()=>db.movements.every(m=>db.inventory.some(p=>p.sku===m.sku)&&(m.type!=='sale'||db.orders.some(o=>o.id===m.ref))));
+T('Every sale movement reduces stock, every receipt increases it',()=>db.movements.every(m=>m.type==='sale'?m.qty<0:m.type==='receive'?m.qty>0:true));
+T('The dataset is identical on every visit',()=>{const b=app();const sum=x=>x.db().orders.filter(o=>o.payment).reduce((s,o)=>s+o.payment.amount,0);return sum(a)===sum(b)&&a.db().customers.length===b.db().customers.length;});
+T('No script errors',()=>a.errs.length===0);}
+
+// ============ 16. REPORTS ============
+S('16 Reports');
+{const a=app();a.go('reports');
+T('Reports open on the 30-day range',()=>a.$('[data-action="report-range"][data-r="30d"]').classList.contains('active'));
+T('Revenue is a real figure, not a placeholder',()=>{const v=a.num(a.kpi('Revenue'));return v>0&&v!==1120+1380+990+1560+1720+1290;});
+T('30-day revenue matches the orders paid in that window',()=>{const from=new Date();from.setHours(0,0,0,0);from.setDate(from.getDate()-29);const end=new Date();end.setHours(0,0,0,0);end.setDate(end.getDate()+1);const want=a.paidBetween(from.getTime(),end.getTime()).reduce((s,o)=>s+a.total(o).total,0);return a.num(a.kpi('Revenue'))===want;});
+T('Paid job count is shown and matches',()=>{const from=new Date();from.setHours(0,0,0,0);from.setDate(from.getDate()-29);const end=new Date();end.setHours(0,0,0,0);end.setDate(end.getDate()+1);const n=a.paidBetween(from.getTime(),end.getTime()).length;return a.$$('#v-reports .kpi')[0].querySelector('.foot').textContent.includes(n+' paid jobs');});
+T('Gross profit is revenue minus cost',()=>{const from=new Date();from.setHours(0,0,0,0);from.setDate(from.getDate()-29);const end=new Date();end.setHours(0,0,0,0);end.setDate(end.getDate()+1);const rows=a.paidBetween(from.getTime(),end.getTime());const want=rows.reduce((s,o)=>s+a.total(o).profit,0);return a.num(a.kpi('Gross profit'))===want;});
+T('Average ticket is revenue divided by jobs',()=>{const rev=a.num(a.kpi('Revenue')),avg=a.num(a.kpi('Average ticket'));const n=Number(a.$$('#v-reports .kpi')[0].querySelector('.foot').textContent.match(/\d+/)[0]);return avg===Math.round(rev/n);});
+T('Switching to 6 months increases revenue',()=>{const m30=a.num(a.kpi('Revenue'));a.range('6m');const m6=a.num(a.kpi('Revenue'));return m6>m30;});
+T('Switching to 7 days decreases revenue',()=>{a.range('7d');const w=a.num(a.kpi('Revenue'));a.range('6m');return w<a.num(a.kpi('Revenue'));});
+T('The 6-month chart is bucketed by month',()=>{a.range('6m');return a.$('#v-reports .badge').textContent==='6 months';});
+T('6-month revenue matches the orders paid in that window',()=>{a.range('6m');const from=new Date();from.setDate(1);from.setHours(0,0,0,0);from.setMonth(from.getMonth()-5);const end=new Date();end.setDate(1);end.setHours(0,0,0,0);end.setMonth(end.getMonth()+1);const want=a.paidBetween(from.getTime(),end.getTime()).reduce((s,o)=>s+a.total(o).total,0);return a.num(a.kpi('Revenue'))===want;});
+T('The selected range stays highlighted',()=>{a.range('7d');return a.$('[data-action="report-range"][data-r="7d"]').classList.contains('active')&&!a.$('[data-action="report-range"][data-r="30d"]').classList.contains('active');});
+T('Quote approval is a percentage under 100 with a count behind it',()=>{a.range('6m');const p=a.num(a.kpi('Quote approval'));const foot=a.$$('#v-reports .kpi')[3].querySelector('.foot').textContent;return p>0&&p<100&&/\d+ of \d+/.test(foot);});
+T('Parts and labor split adds up to 100%',()=>{a.range('6m');const pct=a.$$('#v-reports .line .r').map(e=>Number(e.textContent.match(/(\d+)%/)[1]));return pct.length===2&&pct[0]+pct[1]===100;});
+T('Changing range does not leave stale figures',()=>{a.range('7d');const w=a.num(a.kpi('Revenue'));a.range('7d');return a.num(a.kpi('Revenue'))===w;});
+T('No script errors',()=>a.errs.length===0);}
+
+// ============ 17. REPORTS BY ROLE ============
+S('17 Reports by role');
+{
+T('Manager sees the shop revenue report',()=>{const b=app(null,{anon:true});b.login('joanne.lim','manager123');b.go('reports');return b.num(b.kpi('Revenue'))>0;});
+T('Advisor cannot see shop revenue',()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123');b.go('reports');return b.d.documentElement.dataset.canRevenue==='0'&&!!b.$('#v-reports [data-personal]');});
+T('Technician sees their own completed jobs instead',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');b.go('reports');b.range('6m');const mine=b.db().orders.filter(o=>o.stage==='completed'&&o.payment&&o.technicianId==='s4').length;return b.num(b.kpi('Jobs completed'))>0&&b.num(b.kpi('Jobs completed'))<=mine;});
+T('Technician job count is real, not padded',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');b.go('reports');b.range('6m');const from=new Date();from.setDate(1);from.setHours(0,0,0,0);from.setMonth(from.getMonth()-5);const end=new Date();end.setDate(1);end.setHours(0,0,0,0);end.setMonth(end.getMonth()+1);const want=b.paidBetween(from.getTime(),end.getTime()).filter(o=>o.technicianId==='s4').length;return b.num(b.kpi('Jobs completed'))===want;});
+T('Technician report shows no money anywhere',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');b.go('reports');return !b.$('#v-reports [data-personal]').textContent.includes('$');});
+}
+
+// ============ 18. ORDERS WITH HISTORY ============
+S('18 Orders list with history');
+{const a=app();a.go('orders');
+T('Orders open on the live jobs, not six months of history',()=>a.$('[data-action="order-filter"][data-f="open"]').classList.contains('active'));
+T('Open list shows only jobs still in the workshop',()=>a.$$('#v-orders [data-action="open-order"]').every(b=>{const o=a.order(b.dataset.id);return o.stage!=='completed'&&o.stage!=='declined';}));
+T('The list is capped rather than drawing every job',()=>{a.click('[data-action="order-filter"][data-f="all"]');return a.$$('#v-orders [data-action="open-order"]').length<=25&&a.db().orders.length>200;});
+T('Show more reveals the next page',()=>{const before=a.$$('#v-orders [data-action="open-order"]').length;a.click('[data-action="more-orders"]');return a.$$('#v-orders [data-action="open-order"]').length>before;});
+T('Show more disappears once everything is listed',()=>{for(let i=0;i<20&&a.$('[data-action="more-orders"]');i++)a.click('[data-action="more-orders"]');return !a.$('[data-action="more-orders"]')&&a.$$('#v-orders [data-action="open-order"]').length===a.db().orders.length;});
+T('Changing filter resets the page size',()=>{a.click('[data-action="order-filter"][data-f="completed"]');return a.$$('#v-orders [data-action="open-order"]').length<=25;});
+T('Completed filter shows only completed jobs',()=>a.$$('#v-orders [data-action="open-order"]').every(b=>a.order(b.dataset.id).stage==='completed'));
+T('Declined filter shows only declined jobs',()=>{a.click('[data-action="order-filter"][data-f="declined"]');const rows=a.$$('#v-orders [data-action="open-order"]');return rows.length>0&&rows.every(b=>a.order(b.dataset.id).stage==='declined');});
+T('Chip counts match the data',()=>{const db=a.db();const chip=f=>Number(a.$(`[data-action="order-filter"][data-f="${f}"] .n`).textContent);return chip('all')===db.orders.length&&chip('completed')===db.orders.filter(o=>o.stage==='completed').length&&chip('declined')===db.orders.filter(o=>o.stage==='declined').length;});
+T('Search finds a historical job by number',()=>{const old=a.db().orders.find(o=>o.stage==='completed'&&o.id!=='WO-1041'&&o.id!=='WO-1042');a.click('[data-action="order-filter"][data-f="all"]');const s=a.$('#orderSearch');s.value=old.id;s.dispatchEvent(new a.w.Event('input',{bubbles:true}));const rows=a.$$('#v-orders [data-action="open-order"]');return rows.length===1&&rows[0].dataset.id===old.id;});
+T('A historical job opens and shows its payment',()=>{const id=a.$$('#v-orders [data-action="open-order"]')[0].dataset.id;a.click(`[data-action="open-order"][data-id="${id}"]`);return a.$('#panelTitle').textContent.length>0&&a.$('#panel').classList.contains('open');});
+T('Stock history is capped and says so',()=>{a.click('[data-action="close-panel"]');a.go('inventory');a.click('[data-action="inv-tab"][data-tab="history"]');const rows=a.$$('#v-inventory tbody tr').length;return rows<=60&&a.$('#v-inventory .badge').textContent.includes('of '+a.db().movements.length);});
+T('A customer with history shows past visits',()=>{a.go('customers');const db=a.db();const n={};db.orders.filter(o=>o.stage==='completed').forEach(o=>n[o.customerId]=(n[o.customerId]||0)+1);const busiest=Object.keys(n).sort((x,y)=>n[y]-n[x])[0];a.click(`[data-action="open-customer"][data-id="${busiest}"]`);return a.$$('#panelBody [data-action="open-order"]').length>=4;});
+T('No script errors',()=>a.errs.length===0);}
 
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;

@@ -15,7 +15,7 @@ Workshop operations app for auto repair shops. It covers vehicle check-in, inspe
 | Orders | Check in vehicles, 10-point inspection, build and send quotes, approve or decline, extra-work approval, payment |
 | Inventory | Parts with on-hand, reserved and available stock, stock adjustments, purchase orders, receiving, suppliers, stock history |
 | Customers | Customer profiles, multiple vehicles, service history, lifetime spend, follow-ups |
-| Reports | 7-day revenue, average ticket, quote approval rate, parts vs labor, jobs per technician |
+| Reports | Revenue over 7 days, 30 days or 6 months, gross profit and margin, average ticket, quote approval rate, parts vs labor, jobs per technician |
 | Settings | Brand colour (Castrol green by default), user management, reset demo data |
 
 ## Signing in
@@ -92,7 +92,7 @@ docs/
   ARCHITECTURE.md     Current demo design and production target
   SECURITY.md         Security review of the demo, with severities
   SUPABASE_PLAN.md    Migration plan: schema, RLS policies, auth, phases
-  TEST_REPORT.md      Results of the 162 automated checks
+  TEST_REPORT.md      Results of the 215 automated checks
 tests/
   suite.js            Automated end-to-end test suite
 package.json          Test script
@@ -105,7 +105,7 @@ npm install
 npm test
 ```
 
-The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 162 passed, 0 failed`.
+The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 215 passed, 0 failed`.
 
 ## Change the brand colour
 
@@ -130,7 +130,7 @@ the visitor controls. Specifically:
   password digest is a demo placeholder, not a password hash.
 - **Data lives in the browser**, so nothing is shared between devices or staff.
 - **No invoice numbering, GST, deposits or partial payments yet.**
-- **Some report history is sample data** (the previous 6 days of revenue and the monthly job baselines).
+- **The 6 months of history is generated, not real** — it is built from a fixed seed so every visitor sees the same workshop. It is internally consistent (payments match totals, stock movements match jobs), but it describes no actual business.
 
 Everything in that list is fixed by moving the data and the rules to a server.
 [docs/SUPABASE_PLAN.md](docs/SUPABASE_PLAN.md) is the plan for doing that.

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 :root{
   --canvas:#F3F5F2; --surface:#FFFFFF; --surface-2:#F7F8F6;
@@ -598,6 +598,10 @@ function seed(){
     {id:"o2", customerId:"c3", type:"road-tax", text:"Road tax renewal", dueAt:ahead(20), sourceOrderId:null, status:"open", createdAt:ago(2600)},
     {id:"o3", customerId:"c4", type:"service-due", text:"Last service 9 months ago", dueAt:ahead(-3), sourceOrderId:null, status:"open", createdAt:ago(3000)}
   ];
+  var past = buildHistory(now, customers, inventory, staff);
+  customers = customers.concat(past.customers);
+  orders = past.orders.concat(orders);
+
   staff.forEach(function(x){ x.active = true; });
   inventory.forEach(function(x){ x.reserved = 0; });
   orders.forEach(function(o){
@@ -606,15 +610,121 @@ function seed(){
     if(o.stage === "in-service") o.items.forEach(function(i){ if(i.type === "part"){ var pp = inventory.filter(function(x){ return x.sku === i.sku; })[0]; if(pp) pp.reserved += i.qty; } });
     o.log.forEach(function(l){ l.by = "s3"; });
   });
-  var movements = [
+  var movements = past.movements.concat([
     {id:"m1", sku:"OIL-5W30", qty:30, type:"receive", ref:"PO-200", reason:"", by:"s2", at:ago(3000)},
     {id:"m2", sku:"BLT-TIM01", qty:-1, type:"sale", ref:"WO-1041", reason:"", by:"s3", at:ago(60)},
     {id:"m3", sku:"OIL-5W30", qty:-1, type:"sale", ref:"WO-1042", reason:"", by:"s3", at:ago(150)},
     {id:"m4", sku:"FLT-OIL01", qty:-1, type:"sale", ref:"WO-1042", reason:"", by:"s3", at:ago(150)}
-  ];
+  ]);
   return {v:5, staff:staff, suppliers:suppliers, inventory:inventory, customers:customers, orders:orders,
     purchaseOrders:purchaseOrders, opportunities:opportunities, movements:movements, nextWO:1048, nextPO:202,
-    history:[1120,1380,990,1560,1720,1290], settings:{color:null}};
+    settings:{color:null}};
+}
+
+/* ---- six months of closed jobs, so the reports have something real to read ----
+   Deterministic: the same seed gives every visitor the same history, which keeps
+   the tests and any screenshot in the docs stable. */
+function buildHistory(now, baseCustomers, inventory, staff){
+  var rand = (function(s){ return function(){ s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; })(20250322);
+  function pick(a){ return a[Math.floor(rand() * a.length)]; }
+  function between(lo, hi){ return lo + Math.floor(rand() * (hi - lo + 1)); }
+  function priceOf(sku){ return inventory.filter(function(p){ return p.sku === sku; })[0]; }
+
+  var GIVEN = ["Wei Ming","Siti","Rajesh","Chloe","Hafiz","Mei Ling","Daniel","Nurul","Kenneth","Priya",
+    "Joshua","Farhana","Ryan","Lakshmi","Adrian","Zul","Cheryl","Ismail","Jason","Divya",
+    "Samuel","Aina","Terence","Kavitha","Bryan","Syafiq","Michelle","Arun","Gerald","Huda"];
+  var FAMILY = ["Tan","Lim","Kumar","Ong","Rahman","Goh","Chua","Ibrahim","Nair","Teo",
+    "Wong","Yusof","Sim","Pillai","Koh","Hassan","Chan","Raj","Low","Abdullah"];
+  var MODELS = ["Toyota Corolla 2018","Honda Civic 2020","Mazda 3 2019","Hyundai Avante 2021","Kia Cerato 2020",
+    "Nissan Almera 2018","Toyota Vios 2021","Honda Jazz 2017","Mazda CX-5 2020","Subaru Impreza 2019",
+    "Mitsubishi Attrage 2019","BMW 320i 2018","Mercedes C180 2019","Volkswagen Golf 2018","Toyota Altis 2022"];
+
+  var JOBS = [
+    {name:"Routine oil change", parts:[["OIL-5W30",1],["FLT-OIL01",1]], labor:70, complaint:"Due for servicing"},
+    {name:"Major service", parts:[["OIL-0W20",1],["FLT-OIL01",1],["FLT-CAB01",1]], labor:220, complaint:"60,000km major service"},
+    {name:"Brake service", parts:[["BRK-PADF1",1],["BRK-FLU01",1]], labor:150, complaint:"Squealing when braking"},
+    {name:"Battery replacement", parts:[["BAT-55B24",1]], labor:40, complaint:"Car won't start in the morning"},
+    {name:"Air-con service", parts:[["FLT-CAB01",1]], labor:200, complaint:"Air-con not cold"},
+    {name:"Wiper replacement", parts:[["WPR-STD01",1]], labor:20, complaint:"Wipers streaking"},
+    {name:"Timing belt replacement", parts:[["BLT-TIM01",1]], labor:190, complaint:"Timing belt due"},
+    {name:"Suspension repair", parts:[["SHK-ABS01",1]], labor:260, complaint:"Knocking over bumps"},
+    {name:"Diagnostics", parts:[], labor:90, complaint:"Engine warning light on"},
+    {name:"Tyre rotation and alignment", parts:[], labor:60, complaint:"Pulling to one side"}
+  ];
+  var METHODS = ["Card","PayNow","Cash","Card","PayNow"];
+
+  // A pool of regulars, so customer history and repeat visits look real.
+  var customers = [], plates = {};
+  for(var i = 0; i < 46; i++){
+    var cid = "hc" + i;
+    var plate;
+    do { plate = "SGP " + between(1000, 9989) + " " + "ABCDEFGHJKLMPRSTUVWXYZ"[between(0, 21)]; } while(plates[plate]);
+    plates[plate] = 1;
+    customers.push({id:cid, name:pick(GIVEN) + " " + pick(FAMILY), phone:(rand() < .5 ? "9" : "8") + between(100, 999) + " " + between(1000, 9999),
+      tier:rand() < .18 ? "Gold" : rand() < .45 ? "Silver" : "Standard",
+      vehicles:[{id:"hv" + i, plate:plate, model:pick(MODELS)}]});
+  }
+  // Only the generated regulars get history: the seven demo customers keep the
+  // mileage on their live jobs, which check-in validates against.
+  var pool = customers;
+  var techs = staff.filter(function(s){ return s.role === "technician"; });
+  var advisors = staff.filter(function(s){ return s.role !== "technician"; });
+
+  var orders = [], movements = [], mileage = {};
+  var DAYS = 182;
+  for(var d = DAYS; d >= 1; d--){
+    var date = new Date(now - d * 86400000);
+    var dow = date.getDay();
+    if(dow === 0) continue;                                    // closed Sundays
+    // Gentle growth over the half-year, so the trend is readable in the chart.
+    var growth = 0.75 + (DAYS - d) / DAYS * 0.5;
+    var jobs = Math.round((dow === 6 ? between(0, 2) : between(1, 3)) * growth);
+    for(var j = 0; j < jobs; j++){
+      var c = pick(pool), v = c.vehicles[0], job = pick(JOBS);
+      var tech = pick(techs), adv = pick(advisors);
+      var declined = rand() < 0.11;
+      var openedAt = new Date(date); openedAt.setHours(9 + Math.min(j * 2, 7), between(0, 59), 0, 0);
+      var closedAt = new Date(openedAt.getTime() + between(90, 400) * 60000);
+
+      var items = job.parts.map(function(p){
+        var inv = priceOf(p[0]);
+        return {id:uid("i"), type:"part", sku:p[0], name:inv.name, qty:p[1], price:inv.price, cost:inv.cost, approved:!declined};
+      });
+      items.push({id:uid("i"), type:"labor", sku:"", name:"Labor: " + job.name.toLowerCase(), qty:1,
+        price:job.labor, cost:Math.round(job.labor * 0.35), approved:!declined});
+
+      var sub = items.reduce(function(s, it){ return s + it.qty * it.price; }, 0);
+      var discount = rand() < 0.22 ? Math.round(sub * (rand() < .5 ? 0.05 : 0.1) / 5) * 5 : 0;
+      mileage[v.id] = (mileage[v.id] || between(15000, 90000)) + between(3000, 11000);
+
+      var o = {id:"", customerId:c.id, vehicleId:v.id, stage:declined ? "declined" : "completed",
+        advisorId:adv.id, technicianId:tech.id, mileage:mileage[v.id], complaint:job.complaint,
+        createdAt:openedAt.toISOString(), inspection:allGood(), quoteStatus:declined ? "rejected" : "approved",
+        workDone:!declined, discount:discount, items:items,
+        payment:declined ? null : {method:pick(METHODS), amount:sub - discount, paidAt:closedAt.toISOString()},
+        log:[{t:openedAt.toISOString(), x:"Checked in by " + adv.name, by:adv.id},
+             {t:closedAt.toISOString(), x:declined ? "Customer declined the quotation" : "Paid by " + pick(METHODS).toLowerCase(), by:adv.id}]};
+      o.closedAt = closedAt.toISOString();
+      orders.push(o);
+    }
+  }
+  // Numbered last so the newest historical job is WO-1040, just below the live set.
+  orders.forEach(function(o, i){
+    o.id = "WO-" + (1041 - orders.length + i);
+    if(o.stage === "completed") o.items.forEach(function(it){
+      if(it.type === "part") movements.push({id:uid("m"), sku:it.sku, qty:-it.qty, type:"sale", ref:o.id, reason:"", by:o.advisorId, at:o.closedAt});
+    });
+    delete o.closedAt;
+  });
+  // Periodic restocking, so the stock history reads like a real ledger.
+  var restock = ["OIL-5W30","FLT-OIL01","BRK-PADF1","BAT-55B24","FLT-CAB01","OIL-0W20"];
+  for(var w = DAYS; w > 0; w -= 21){
+    var sku = pick(restock), at = new Date(now - w * 86400000);
+    at.setHours(10, 30, 0, 0);
+    movements.push({id:uid("m"), sku:sku, qty:between(12, 36), type:"receive", ref:"PO-" + between(150, 199), reason:"", by:"s2", at:at.toISOString()});
+  }
+  movements.sort(function(a, b){ return a.at.localeCompare(b.at); });
+  return {orders:orders, customers:customers, movements:movements};
 }
 
 /* ================= storage ================= */
@@ -674,7 +784,8 @@ function clearFailures(username){
 }
 
 /* ================= state & lookups ================= */
-var state = {role:"owner", userId:null, view:"dashboard", orderFilter:"all", orderQuery:"", invTab:"parts", invQuery:"", custQuery:"", panel:null, orderTab:"overview"};
+var ORDER_PAGE = 25;
+var state = {role:"owner", userId:null, view:"dashboard", orderFilter:"open", orderQuery:"", orderLimit:ORDER_PAGE, invTab:"parts", invQuery:"", custQuery:"", panel:null, orderTab:"overview", reportRange:"30d"};
 
 function can(k){ return !!PERMS[state.role][k]; }
 function activeUsers(){ return DB.staff.filter(function(s){ return s.active !== false; }); }
@@ -735,7 +846,7 @@ function renderNav(){
 }
 function goto(view, opts){
   state.view = view;
-  if(opts && opts.filter) state.orderFilter = opts.filter;
+  if(opts && opts.filter){ state.orderFilter = opts.filter; state.orderLimit = ORDER_PAGE; }
   $$(".view").forEach(function(v){ v.classList.toggle("active", v.dataset.view === view); });
   var n = NAV.filter(function(x){ return x.v === view; })[0];
   $("#pageTitle").textContent = n.label;
@@ -883,23 +994,30 @@ function oppRowHTML(o){
 }
 
 /* ================= orders ================= */
+function isOpenJob(o){ return o.stage !== "completed" && o.stage !== "declined"; }
 function renderOrders(){
   var base = visibleOrders();
-  var filters = ["all"].concat(STAGES, ["declined"]);
+  var filters = ["open","all"].concat(STAGES, ["declined"]);
   var chips = filters.map(function(f){
-    var n = f === "all" ? base.length : base.filter(function(o){ return o.stage === f; }).length;
-    return '<button class="chip' + (state.orderFilter === f ? ' active' : '') + '" data-action="order-filter" data-f="' + f + '">' + (f === "all" ? "All" : STAGE_LABEL[f]) + '<span class="n">' + n + '</span></button>';
+    var n = f === "all" ? base.length : f === "open" ? base.filter(isOpenJob).length : base.filter(function(o){ return o.stage === f; }).length;
+    var label = f === "all" ? "All" : f === "open" ? "Open" : STAGE_LABEL[f];
+    return '<button class="chip' + (state.orderFilter === f ? ' active' : '') + '" data-action="order-filter" data-f="' + f + '">' + label + '<span class="n">' + n + '</span></button>';
   }).join("");
   var q = state.orderQuery.toLowerCase();
   var list = base.filter(function(o){
-    if(state.orderFilter !== "all" && o.stage !== state.orderFilter) return false;
+    if(state.orderFilter === "open"){ if(!isOpenJob(o)) return false; }
+    else if(state.orderFilter !== "all" && o.stage !== state.orderFilter) return false;
     if(!q) return true;
     var c = cust(o.customerId), v = veh(c, o.vehicleId);
     return (o.id + " " + (c?c.name:"") + " " + (v?v.plate+" "+v.model:"") + " " + staffName(o.technicianId)).toLowerCase().indexOf(q) > -1;
   });
+  // Six months of closed jobs live in here, so only the newest are drawn at once.
+  var shown = list.slice(0, state.orderLimit);
+  var more = list.length - shown.length;
   var html = '<div class="toolbar"><input type="search" id="orderSearch" placeholder="Search plate, customer, technician or order no." value="' + esc(state.orderQuery) + '"><button class="btn primary" data-action="new-order" data-edit>' + icon("plus") + '<span>New order</span></button></div>' +
     '<div class="chips">' + chips + '</div>' +
-    '<div class="list">' + (list.length ? list.map(orderRowHTML).join("") : '<div class="empty">No orders here. Check a vehicle in with New order.</div>') + '</div>';
+    '<div class="list">' + (shown.length ? shown.map(orderRowHTML).join("") : '<div class="empty">No orders here. Check a vehicle in with New order.</div>') + '</div>' +
+    (more > 0 ? '<button class="btn" style="width:100%;margin-top:12px" data-action="more-orders">Show ' + Math.min(more, ORDER_PAGE) + ' more · ' + more + ' older job' + (more > 1 ? 's' : '') + '</button>' : '');
   $("#v-orders").innerHTML = html;
 }
 function orderRowHTML(o){
@@ -1083,9 +1201,10 @@ function renderInventory(){
         '<div class="row-end"><span class="amt" data-cost>' + money(tot) + '</span>' + (po.status === "ordered" ? '<button class="btn sm primary" data-action="receive-po" data-id="' + po.id + '" data-purchase>Receive</button>' : '<span class="badge b-green">Received</span>') + '</div></div>';
     }).join("") : '<div class="empty">No purchase orders yet.</div>') + '</div>';
   } else if(state.invTab === "history"){
-    var mv = DB.movements.slice().sort(function(a,b){ return b.at.localeCompare(a.at); });
+    var all = DB.movements.slice().sort(function(a,b){ return b.at.localeCompare(a.at); });
+    var mv = all.slice(0, 60);
     var TL = {receive:["Received","b-green"], sale:["Used on job","b-neutral"], adjust:["Adjusted","b-amber"]};
-    html += '<div class="section-head"><h2>Stock history</h2></div><div class="table-wrap"><table><thead><tr><th>When</th><th>Part</th><th>Change</th><th>Type</th><th>Reference</th><th>By</th></tr></thead><tbody>' +
+    html += '<div class="section-head"><h2>Stock history</h2>' + (all.length > mv.length ? '<span class="badge b-neutral">Newest ' + mv.length + ' of ' + all.length + '</span>' : '') + '</div><div class="table-wrap"><table><thead><tr><th>When</th><th>Part</th><th>Change</th><th>Type</th><th>Reference</th><th>By</th></tr></thead><tbody>' +
       (mv.length ? mv.map(function(m){ var pp = part(m.sku);
         return '<tr><td>' + timeLabel(m.at) + '</td><td>' + esc(pp ? pp.name : m.sku) + '</td><td class="num" style="font-weight:700;color:' + (m.qty > 0 ? 'var(--green-dark)' : 'var(--red)') + '">' + (m.qty > 0 ? '+' : '') + m.qty + '</td><td><span class="badge ' + TL[m.type][1] + '">' + TL[m.type][0] + '</span></td><td>' + esc(m.ref || m.reason || "—") + '</td><td>' + esc(staffName(m.by)) + '</td></tr>'; }).join("") :
       '<tr><td colspan="6"><div class="empty" style="border:none">No stock movements yet.</div></td></tr>') + '</tbody></table></div>';
@@ -1133,46 +1252,94 @@ function renderCustomerPanel(c){
 /* ================= reports ================= */
 var charts = {};
 function killCharts(){ Object.keys(charts).forEach(function(k){ charts[k].destroy(); }); charts = {}; }
+var RANGES = [{k:"7d", label:"7 days", days:7}, {k:"30d", label:"30 days", days:30}, {k:"6m", label:"6 months", days:182}];
+function currentRange(){ return RANGES.filter(function(r){ return r.k === state.reportRange; })[0] || RANGES[1]; }
+function buckets(range){
+  var out = [], i, d, end;
+  if(range.k === "6m"){
+    for(i = 5; i >= 0; i--){
+      d = new Date(); d.setDate(1); d.setHours(0,0,0,0); d.setMonth(d.getMonth() - i);
+      end = new Date(d); end.setMonth(end.getMonth() + 1);
+      out.push({label:d.toLocaleDateString(undefined, {month:"short"}), from:d.getTime(), to:end.getTime()});
+    }
+    return out;
+  }
+  for(i = range.days - 1; i >= 0; i--){
+    d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - i);
+    end = new Date(d); end.setDate(end.getDate() + 1);
+    out.push({label:d.toLocaleDateString(undefined, range.days > 7 ? {day:"numeric", month:"short"} : {weekday:"short"}),
+      from:d.getTime(), to:end.getTime()});
+  }
+  return out;
+}
+function paidBetween(from, to){
+  return DB.orders.filter(function(o){
+    if(o.stage !== "completed" || !o.payment) return false;
+    var t = new Date(o.payment.paidAt).getTime();
+    return t >= from && t < to;
+  });
+}
 function renderReports(){
   killCharts();
   var green = getComputedStyle(document.documentElement).getPropertyValue("--green").trim() || "#0E7C3A";
   var textColor = getComputedStyle(document.documentElement).getPropertyValue("--text-secondary").trim();
   var gridColor = getComputedStyle(document.documentElement).getPropertyValue("--border").trim();
-  var paid = paidToday();
-  var todayRev = paid.reduce(function(s,o){ return s + totals(o).total; }, 0);
-  var week = DB.history.concat([todayRev]);
-  var weekTotal = week.reduce(function(a,b){ return a+b; }, 0);
-  var completed = DB.orders.filter(function(o){ return o.stage === "completed"; });
-  var partsRev = 0, laborRev = 0;
-  completed.forEach(function(o){ o.items.forEach(function(i){ if(i.type === "part") partsRev += i.qty*i.price; else laborRev += i.qty*i.price; }); });
-  var avg = completed.length ? Math.round(completed.reduce(function(s,o){ return s + totals(o).total; }, 0) / completed.length) : 0;
-  var days = []; for(var d = 6; d >= 0; d--){ days.push(new Date(Date.now() - d*86400000).toLocaleDateString(undefined, {weekday:"short"})); }
+  var range = currentRange(), bk = buckets(range), from = bk[0].from, to = bk[bk.length-1].to;
+  var paid = paidBetween(from, to);
+
+  var revenue = 0, cost = 0, partsRev = 0, laborRev = 0;
+  paid.forEach(function(o){
+    var t = totals(o); revenue += t.total; cost += t.cost;
+    o.items.forEach(function(i){ if(i.type === "part") partsRev += i.qty*i.price; else laborRev += i.qty*i.price; });
+  });
+  var profit = revenue - cost;
+  var avg = paid.length ? Math.round(revenue / paid.length) : 0;
+  var quoted = DB.orders.filter(function(o){
+    var t = new Date(o.createdAt).getTime();
+    return t >= from && t < to && (o.quoteStatus === "approved" || o.quoteStatus === "rejected");
+  });
+  var approved = quoted.filter(function(o){ return o.quoteStatus === "approved"; }).length;
+  var convRate = quoted.length ? Math.round(approved / quoted.length * 100) : 0;
+  var mix = partsRev + laborRev, partsPct = mix ? Math.round(partsRev/mix*100) : 0;
+
+  var series = bk.map(function(b){ return paidBetween(b.from, b.to).reduce(function(s, o){ return s + totals(o).total; }, 0); });
   var techs = technicians();
-  var techJobs = techs.map(function(t){ return completed.filter(function(o){ return o.technicianId === t.id; }).length + 8 + (t.id.charCodeAt(1) % 5); });
-  var conv = DB.orders.filter(function(o){ return o.quoteStatus === "approved"; }).length, decl = DB.orders.filter(function(o){ return o.quoteStatus === "rejected"; }).length;
-  var convRate = (conv + decl) ? Math.round(conv/(conv+decl)*100) : 100;
+  var techJobs = techs.map(function(t){ return paid.filter(function(o){ return o.technicianId === t.id; }).length; });
 
   var u = me();
-  var myDone = DB.orders.filter(function(o){ return o.technicianId === u.id && o.stage === "completed"; }).length;
-  var html = '<div data-revenue><div class="kpi-grid">' +
-    '<div class="kpi hero"><p class="label">Revenue, 7 days</p><p class="value num">' + money(weekTotal) + '</p></div>' +
+  var myJobs = paid.filter(function(o){ return o.technicianId === u.id; });
+  var mySeries = bk.map(function(b){ return paidBetween(b.from, b.to).filter(function(o){ return o.technicianId === u.id; }).length; });
+
+  var chips = '<div class="chips">' + RANGES.map(function(r){
+    return '<button class="chip' + (r.k === range.k ? ' active' : '') + '" data-action="report-range" data-r="' + r.k + '">' + r.label + '</button>';
+  }).join("") + '</div>';
+
+  var html = chips + '<div data-revenue><div class="kpi-grid">' +
+    '<div class="kpi hero"><p class="label">Revenue</p><p class="value num">' + money(revenue) + '</p><p class="foot">' + paid.length + ' paid jobs</p></div>' +
+    '<div class="kpi"><p class="label">Gross profit</p><p class="value num">' + money(profit) + '</p><p class="foot">Margin ' + (revenue ? Math.round(profit/revenue*100) : 0) + '%</p></div>' +
     '<div class="kpi"><p class="label">Average ticket</p><p class="value num">' + money(avg) + '</p></div>' +
-    '<div class="kpi"><p class="label">Quote approval</p><p class="value num">' + convRate + '%</p></div>' +
-    '<div class="kpi"><p class="label">Parts vs labor</p><p class="value num">' + ((partsRev+laborRev) ? Math.round(partsRev/(partsRev+laborRev)*100) : 0) + '% / ' + ((partsRev+laborRev) ? Math.round(laborRev/(partsRev+laborRev)*100) : 0) + '%</p></div></div>' +
-    '<div class="grid-2"><div class="card"><div class="section-head"><h2>Daily revenue</h2></div><div class="chart-box"><canvas id="chRev"></canvas></div></div>' +
-    '<div class="card"><div class="section-head"><h2>Jobs by technician, this month</h2></div><div class="chart-box"><canvas id="chTech"></canvas></div></div></div></div>' +
-    '<div data-personal><div class="kpi-grid"><div class="kpi hero"><p class="label">Jobs completed</p><p class="value num">' + (myDone + 11) + '</p><p class="foot">This month</p></div><div class="kpi"><p class="label">Open now</p><p class="value num">' + DB.orders.filter(function(o){ return (o.technicianId === u.id || o.advisorId === u.id) && ["completed","declined"].indexOf(o.stage) < 0; }).length + '</p></div></div>' +
-    '<div class="card"><div class="section-head"><h2>My jobs, last 7 days</h2></div><div class="chart-box"><canvas id="chMine"></canvas></div></div></div>';
+    '<div class="kpi"><p class="label">Quote approval</p><p class="value num">' + convRate + '%</p><p class="foot">' + approved + ' of ' + quoted.length + '</p></div></div>' +
+    '<div class="grid-2"><div class="card"><div class="section-head"><h2>Revenue</h2><span class="badge b-neutral">' + range.label + '</span></div><div class="chart-box"><canvas id="chRev"></canvas></div></div>' +
+    '<div class="card"><div class="section-head"><h2>Jobs by technician</h2></div><div class="chart-box"><canvas id="chTech"></canvas></div></div></div>' +
+    '<div class="card"><div class="section-head"><h2>Parts vs labor</h2></div>' +
+      '<div class="line"><div class="l">Parts</div><div class="r"><span class="amt" data-price>' + money(partsRev) + '</span> · ' + partsPct + '%</div></div>' +
+      '<div class="line"><div class="l">Labor</div><div class="r"><span class="amt" data-price>' + money(laborRev) + '</span> · ' + (mix ? 100 - partsPct : 0) + '%</div></div>' +
+      '<div class="bar" style="margin-top:10px"><i style="width:' + (mix ? partsRev/mix*100 : 0) + '%"></i></div></div></div>' +
+    '<div data-personal><div class="kpi-grid">' +
+      '<div class="kpi hero"><p class="label">Jobs completed</p><p class="value num">' + myJobs.length + '</p><p class="foot">' + range.label + '</p></div>' +
+      '<div class="kpi"><p class="label">Open now</p><p class="value num">' + DB.orders.filter(function(o){ return (o.technicianId === u.id || o.advisorId === u.id) && ["completed","declined"].indexOf(o.stage) < 0; }).length + '</p></div></div>' +
+      '<div class="card"><div class="section-head"><h2>My completed jobs</h2><span class="badge b-neutral">' + range.label + '</span></div><div class="chart-box"><canvas id="chMine"></canvas></div></div></div>';
   $("#v-reports").innerHTML = html;
   if(typeof Chart === "undefined") return;
   try{
     Chart.defaults.color = textColor; Chart.defaults.font.family = "Inter, system-ui, sans-serif";
     var opts = {responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}}, y:{beginAtZero:true, grid:{color:gridColor}}}};
+    var labels = bk.map(function(b){ return b.label; });
     if(can("revenue")){
-      charts.rev = new Chart($("#chRev"), {type:"line", data:{labels:days, datasets:[{data:week, borderColor:green, backgroundColor:green + "22", fill:true, tension:.35, pointRadius:3, pointBackgroundColor:green}]}, options:opts});
+      charts.rev = new Chart($("#chRev"), {type:range.k === "6m" ? "bar" : "line", data:{labels:labels, datasets:[{data:series, borderColor:green, backgroundColor:range.k === "6m" ? green : green + "22", fill:true, tension:.35, pointRadius:range.days > 7 ? 0 : 3, pointBackgroundColor:green, borderRadius:6, maxBarThickness:48}]}, options:opts});
       charts.tech = new Chart($("#chTech"), {type:"bar", data:{labels:techs.map(function(t){ return t.name.split(" ")[0]; }), datasets:[{data:techJobs, backgroundColor:green, borderRadius:6, maxBarThickness:48}]}, options:opts});
     } else {
-      charts.mine = new Chart($("#chMine"), {type:"bar", data:{labels:days, datasets:[{data:[2,3,1,4,2,3,myDone], backgroundColor:green, borderRadius:6, maxBarThickness:36}]}, options:opts});
+      charts.mine = new Chart($("#chMine"), {type:"bar", data:{labels:labels, datasets:[{data:mySeries, backgroundColor:green, borderRadius:6, maxBarThickness:36}]}, options:opts});
     }
   }catch(e){}
 }
@@ -1255,7 +1422,7 @@ function modalNewOrder(pre){
     log(o, "Checked in by " + me().name);
     DB.orders.push(o);
     if(pre.oppId){ var op = DB.opportunities.filter(function(x){ return x.id === pre.oppId; })[0]; if(op) op.status = "done"; }
-    save(); state.orderFilter = "all"; goto("orders"); openPanel({type:"order", id:o.id});
+    save(); state.orderFilter = "open"; state.orderLimit = ORDER_PAGE; goto("orders"); openPanel({type:"order", id:o.id});
     toast(v.plate + " checked in as " + o.id);
   }, function(form){
     var cs = form.querySelector("#mCust"), vs = form.querySelector("#mVeh");
@@ -1461,7 +1628,8 @@ document.addEventListener("click", function(e){
     case "goto": closePanel(); goto(el.dataset.view, {filter: el.dataset.filter}); break;
     case "close-panel": closePanel(); break;
     case "close-modal": closeModal(); break;
-    case "order-filter": state.orderFilter = el.dataset.f; renderOrders(); break;
+    case "order-filter": state.orderFilter = el.dataset.f; state.orderLimit = ORDER_PAGE; renderOrders(); break;
+    case "more-orders": state.orderLimit += ORDER_PAGE; renderOrders(); break;
     case "open-order": openPanel({type:"order", id:el.dataset.id}); break;
     case "open-customer": openPanel({type:"customer", id:el.dataset.id}); break;
     case "order-tab": state.orderTab = el.dataset.tab; renderPanel(); break;
@@ -1509,6 +1677,7 @@ document.addEventListener("click", function(e){
       if(po){ po.items.forEach(function(i){ var p = part(i.sku); if(p){ p.stock += i.qty; move(p.sku, i.qty, "receive", po.id); } }); po.status = "received"; po.receivedAt = nowISO(); toast(po.id + " received. Stock updated."); refresh(); }
       break;
     case "new-supplier": modalNewSupplier(); break;
+    case "report-range": state.reportRange = el.dataset.r; renderReports(); break;
     case "sign-out": signOut(); break;
     case "toggle-pw": {
       var pf = $("#loginPass"), shown = pf.type === "text";
@@ -1546,7 +1715,7 @@ document.addEventListener("change", function(e){
 });
 document.addEventListener("input", function(e){
   var el = e.target, pos;
-  if(el.id === "orderSearch"){ state.orderQuery = el.value; pos = el.selectionStart; renderOrders(); var n = $("#orderSearch"); n.focus(); n.setSelectionRange(pos,pos); }
+  if(el.id === "orderSearch"){ state.orderQuery = el.value; state.orderLimit = ORDER_PAGE; pos = el.selectionStart; renderOrders(); var n = $("#orderSearch"); n.focus(); n.setSelectionRange(pos,pos); }
   if(el.id === "invSearch"){ state.invQuery = el.value; pos = el.selectionStart; renderInventory(); var m = $("#invSearch"); m.focus(); m.setSelectionRange(pos,pos); }
   if(el.id === "custSearch"){ state.custQuery = el.value; pos = el.selectionStart; renderCustomers(); var k = $("#custSearch"); k.focus(); k.setSelectionRange(pos,pos); }
 });

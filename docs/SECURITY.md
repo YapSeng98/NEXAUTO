@@ -139,17 +139,25 @@ lists working accounts.
 **Fix:** render the card only when `DB` is unmodified seed data, or strip it at
 build time for non-demo deploys. Tracked in §7 as a pre-production gate.
 
-### M3. Third-party scripts load without integrity checks
+### M3. Third-party scripts load without integrity checks — *Chart.js fixed in v0.6.0*
+
+Chart.js now loads with an SRI hash and `crossorigin`:
 
 ```html
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+        integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 ```
 
-No `integrity` or `crossorigin` attribute, and Google Fonts is loaded the same
-way. If the CDN is compromised or DNS is intercepted, arbitrary script runs with
-full access to the page and its storage.
+so a compromised CDN can no longer substitute the file — the browser refuses a
+script whose hash does not match. (The previous URL pointed at a version cdnjs
+does not host and returned 404, which is how this was noticed: the charts had
+never rendered.)
 
-**Fix:** add SRI hashes, or vendor both locally. One line each; worth doing now.
+**Still open:** Google Fonts is loaded the same way and cannot carry an SRI hash,
+because the stylesheet it serves varies by user agent. Vendoring the font files
+locally is the only real fix, and also removes a third-party request that sees
+every visitor.
 
 ### M4. No Content-Security-Policy
 

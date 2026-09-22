@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 162 of 162 checks passed.**
+**Result: 215 of 215 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -22,6 +22,54 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Sign-in as each role | 8 | 8 |
 | Sessions and sign-out | 12 | 12 |
 | Credential management | 12 | 12 |
+| Historical data | 19 | 19 |
+| Reports | 15 | 15 |
+| Reports by role | 5 | 5 |
+| Orders list with history | 14 | 14 |
+
+## Six months of data (added in v0.6.0)
+
+The demo now generates 182 days of closed jobs — 294 orders across 53 customers,
+with 326 stock movements — from a fixed seed, so every visitor and every test run
+sees the same history. The reports read that history instead of the hardcoded
+arrays they used before.
+
+The 53 new checks cover:
+
+- **Shape of the data:** history reaches back 165–190 days and runs up to today,
+  order numbers are unique and sit below the live jobs, `nextWO` is still free,
+  and every order points at a customer, vehicle, technician and advisor that
+  exist.
+- **Internal consistency:** every completed job's recorded payment equals its
+  computed total, declined jobs carry no payment, part prices match the price
+  list, mileage never goes backwards across a vehicle's visits, and sale
+  movements reference real jobs.
+- **Determinism:** two fresh instances produce an identical dataset.
+- **Reports arithmetic:** revenue, gross profit, average ticket and approval rate
+  are each recomputed from the orders and compared against what the KPI shows,
+  for both the 30-day and 6-month windows. Parts and labor percentages sum to
+  100.
+- **Ranges:** the 7-day, 30-day and 6-month chips change the figures in the right
+  direction and keep the selection highlighted.
+- **By role:** managers see shop revenue, advisors do not, and a technician's
+  "jobs completed" is their real count — not a padded one.
+- **Orders list:** opens on live jobs rather than six months of history, caps at
+  25 rows with a working "show more", chip counts match the data, and search
+  finds a historical job by number.
+
+### Bugs this found
+
+| # | Bug | Found by |
+|---|---|---|
+| 10 | Chart.js was loaded from a cdnjs URL that returns **404**, so every chart in Reports had silently been blank — including on the live site | Browser check; jsdom strips the tag, so no test could have caught it |
+| 11 | Two jobs on the same day could be timestamped out of order, making a vehicle's mileage appear to go backwards | `Mileage increases across each vehicle's visits` |
+| 12 | Parts and labor percentages were rounded independently and could sum to 99% or 101% | `Parts and labor split adds up to 100%` |
+
+Bug 10 is the one worth noting: the charts were broken before this change and
+nothing flagged it, because the test harness removes external scripts and the
+failure is silent by design (`if(typeof Chart === "undefined") return;`). It was
+only visible by opening the page. The fix pins a version that exists and adds the
+SRI hash that [SECURITY.md](SECURITY.md) M3 asked for.
 
 ## Login coverage (added in v0.5.0)
 
