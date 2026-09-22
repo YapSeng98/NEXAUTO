@@ -1509,8 +1509,8 @@ function orderItems(o){
     }).join("");
   }
 
-  if(o.items.length && can("price") && o.stage !== "reception" && o.stage !== "pre-inspection")
-    html += '<button class="btn" style="width:100%;margin:4px 0 12px" data-action="preview-quote">' + icon("doc") + 'Preview the customer\'s quotation</button>';
+  if(o.items.length && o.stage !== "reception" && o.stage !== "pre-inspection")
+    html += '<button class="btn" style="width:100%;margin:4px 0 12px" data-action="preview-quote">' + icon("doc") + (can("price") ? 'Preview the customer\'s quotation' : 'Open the job sheet') + '</button>';
   html += '<div class="h4">Line items' + (canAdd ? '<span style="display:flex;gap:6px"><button class="btn sm" data-action="add-part">' + icon("plus") + 'Part</button><button class="btn sm" data-action="add-labor">' + icon("plus") + 'Labor</button></span>' : '') + '</div>';
   if(!o.items.length) html += '<div class="empty">No items yet.' + (canAdd ? (can("price") ? ' Add parts from stock or labor charges.' : ' Add the parts you need \u2014 an advisor puts a price on any labour.') : '') + '</div>';
   html += o.items.map(function(it){
@@ -1566,7 +1566,7 @@ function closeDoc(){
 }
 var QUOTE_VALID_DAYS = 14;
 function quoteDocHTML(o){
-  var c = cust(o.customerId), v = veh(c, o.vehicleId), t = totals(o);
+  var c = cust(o.customerId), v = veh(c, o.vehicleId), t = totals(o), priced = can("price");
   var issued = o.quoteStatus === "draft" ? new Date() : new Date(stageStart(o));
   var expires = new Date(issued.getTime() + QUOTE_VALID_DAYS * 86400000);
   var fmt = function(d){ return d.toLocaleDateString(undefined, {day:"numeric", month:"long", year:"numeric"}); };
@@ -1575,7 +1575,7 @@ function quoteDocHTML(o){
 
   var html = '<div class="quote-doc">' +
     '<div class="qd-head"><div><p class="qd-shop">' + esc(appName()) + '</p><p class="qd-sub">Workshop operations</p></div>' +
-      '<div class="qd-meta"><p class="qd-no">Quotation ' + esc(o.id) + '</p>' +
+      '<div class="qd-meta"><p class="qd-no">' + (priced ? 'Quotation ' : 'Job sheet ') + esc(o.id) + '</p>' +
       '<p>Issued ' + fmt(issued) + '</p><p>Valid until ' + fmt(expires) + '</p></div></div>' +
     '<div class="qd-status ' + (o.quoteStatus === "approved" ? "ok" : o.quoteStatus === "rejected" ? "no" : "") + '">' + esc(statusNote) + '</div>' +
     '<div class="qd-parties">' +
@@ -1592,22 +1592,27 @@ function quoteDocHTML(o){
     }).join("") + '</ul>';
   }
 
-  html += '<h4 class="qd-h">Work quoted</h4><table class="qd-table"><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Amount</th></tr></thead><tbody>' +
+  html += '<h4 class="qd-h">' + (priced ? 'Work quoted' : 'Work to do') + '</h4><table class="qd-table"><thead><tr><th>Description</th><th class="num">Qty</th>' +
+    (priced ? '<th class="num">Unit</th><th class="num">Amount</th>' : '') + '</tr></thead><tbody>' +
     (o.items.length ? o.items.map(function(i){
       return '<tr><td>' + esc(i.name) + (i.type === "part" ? '<span class="qd-sku">' + esc(i.sku) + '</span>' : '') + '</td>' +
-        '<td class="num">' + i.qty + '</td><td class="num">' + money(i.price) + '</td><td class="num">' + money(i.price * i.qty) + '</td></tr>';
-    }).join("") : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Nothing quoted yet.</td></tr>') +
-    '</tbody></table>' +
-    '<div class="qd-totals"><div><span>Subtotal</span><span>' + money(t.sub) + '</span></div>' +
-    (o.discount ? '<div><span>Discount</span><span>− ' + money(o.discount) + '</span></div>' : '') +
-    '<div class="qd-grand"><span>Total</span><span>' + money(t.total) + '</span></div></div>' +
-    '<p class="qd-foot">Prices include parts and labour for the work listed above. Anything found once work is under way will be quoted separately and needs your approval before we proceed. This quotation is valid for ' + QUOTE_VALID_DAYS + ' days.</p>' +
-    '</div>';
+        '<td class="num">' + i.qty + '</td>' +
+        (priced ? '<td class="num">' + money(i.price) + '</td><td class="num">' + money(i.price * i.qty) + '</td>' : '') + '</tr>';
+    }).join("") : '<tr><td colspan="' + (priced ? 4 : 2) + '" style="text-align:center;color:var(--text-muted)">Nothing listed yet.</td></tr>') +
+    '</tbody></table>';
+  if(priced){
+    html += '<div class="qd-totals"><div><span>Subtotal</span><span>' + money(t.sub) + '</span></div>' +
+      (o.discount ? '<div><span>Discount</span><span>− ' + money(o.discount) + '</span></div>' : '') +
+      '<div class="qd-grand"><span>Total</span><span>' + money(t.total) + '</span></div></div>' +
+      '<p class="qd-foot">Prices include parts and labour for the work listed above. Anything found once work is under way will be quoted separately and needs your approval before we proceed. This quotation is valid for ' + QUOTE_VALID_DAYS + ' days.</p>';
+  } else {
+    html += '<p class="qd-foot">Everything the customer has agreed to, without pricing. Anything else you find needs an advisor to quote it before you carry on — add it to the job and leave a note.</p>';
+  }
+  html += '</div>';
   return html;
 }
 function previewQuote(o){
-  if(!can("price")){ toast("Only staff who can see prices can open the customer quote", true); return; }
-  openDoc("Quotation preview", quoteDocHTML(o));
+  openDoc(can("price") ? "Quotation preview" : "Job sheet", quoteDocHTML(o));
 }
 
 /* order actions */

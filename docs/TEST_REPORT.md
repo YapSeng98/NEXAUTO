@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 389 of 389 checks passed.**
+**Result: 392 of 392 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -39,7 +39,7 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Technician line items | 18 | 18 |
 | Workshop name | 11 | 11 |
 | Purchase order list | 9 | 9 |
-| Quotation preview | 16 | 16 |
+| Quotation preview | 19 | 19 |
 
 ## Quotation preview (v0.12.0)
 
@@ -56,7 +56,10 @@ never appear in it** — a check asserts the rendered text contains none of thos
 words. It prints to one page through a print stylesheet that hides the rest of
 the app, which is the closest thing to a PDF without a backend.
 
-Technicians cannot open it, since it is a priced document, and it does not appear
+Technicians open the same document as a **job sheet**: same findings, same work
+list and quantities, with every money column, the totals block and the pricing
+footnote removed rather than hidden — a check asserts the rendered text contains
+no `$` and none of Subtotal, Total, Discount, Unit or Amount. It does not appear
 at all until the inspection is finished and something has been quoted. Customer
 names go through the same escaping as everywhere else, which a check verifies by
 renaming a customer to an `<img>` tag.
