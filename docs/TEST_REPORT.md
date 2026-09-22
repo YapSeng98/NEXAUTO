@@ -1,0 +1,195 @@
+# Test report
+
+**Result: 113 of 113 checks passed.**
+
+The suite (`tests/suite.js`) loads `index.html` in a simulated browser, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
+
+## Summary
+
+| Area | Checks | Passed |
+|---|---|---|
+| Check-in | 12 | 12 |
+| Inspection | 9 | 9 |
+| Quotation | 14 | 14 |
+| Approval and stock | 8 | 8 |
+| Service and payment | 12 | 12 |
+| Inventory | 12 | 12 |
+| Customers and follow-ups | 10 | 10 |
+| Roles and permissions | 18 | 18 |
+| User management | 12 | 12 |
+| Settings and saving | 6 | 6 |
+
+## Bugs found and fixed during testing
+
+| # | Bug | Impact | Fix |
+|---|---|---|---|
+| 1 | Duplicate phone accepted at check-in | The same customer existed twice, so history was split | Blocked, and the existing customer is named |
+| 2 | Duplicate plate accepted at check-in | One car had two owners | Blocked, and the owner is shown |
+| 3 | The same car could be checked in twice | Two open jobs, so double billing | Blocked, and the open job is named |
+| 4 | Mileage could go backwards | Wrong service reminders | Must be at least the last recorded mileage |
+| 5 | A discount change didn't reset a sent quote | The customer approved an unseen price | Quote returns to Draft |
+| 6 | Duplicate "next service" follow-ups | Reminder list clutter | Older ones close automatically |
+| 7 | A new user was missing from the sign-in list | A reload was needed | Updates immediately |
+| 8 | A technician with open jobs could change role | Jobs pointed at a non-technician | Blocked until reassigned |
+| 9 | Payment was possible with no items | A job could close for $0 | Blocked |
+
+## Earlier audit fixes
+
+- Sign-in is by user rather than by role, so role edits take effect.
+- Technicians can't open other technicians' jobs or customers.
+- Parts are reserved when a quote is approved, and available = on hand − reserved.
+- Extra work added during service needs customer approval before payment.
+- Only owners and managers can change prices. Advisor discounts are capped at 10%.
+- A stock history ledger records every receive, sale and adjustment.
+- Users are deactivated, not deleted, so history is kept.
+
+## All checks
+
+### 1 Check-in
+
+- ✅ New customer + new vehicle creates order in Reception
+- ✅ Plate saved in uppercase
+- ✅ Order number increments (WO-1048)
+- ✅ Activity log records who checked in
+- ✅ Required fields enforced
+- ✅ Duplicate phone for new customer is rejected
+- ✅ Duplicate plate for new vehicle is rejected
+- ✅ Same vehicle cannot be checked in twice while a job is open
+- ✅ Mileage lower than last visit is rejected
+- ✅ Existing customer, existing vehicle, valid mileage works
+- ✅ Check in from customer page pre-selects the vehicle
+- ✅ No script errors
+
+### 2 Inspection
+
+- ✅ Checklist is locked in Reception
+- ✅ Start inspection moves to Inspection stage
+- ✅ Cannot finish with unchecked items
+- ✅ Button shows how many items are left
+- ✅ Notes are saved
+- ✅ Finish moves to Quotation with draft quote
+- ✅ Problem items appear as findings with "Add to quote"
+- ✅ Checklist locks after inspection
+- ✅ No script errors
+
+### 3 Quotation
+
+- ✅ Cannot send an empty quote
+- ✅ Add part from stock copies price and cost
+- ✅ Adding same part twice merges quantity
+- ✅ Zero quantity rejected
+- ✅ Add labor
+- ✅ Totals are correct (2x180 + 150 = 510)
+- ✅ Profit shown to owner (510 - 200 = 310, 61%)
+- ✅ Discount cannot exceed subtotal
+- ✅ Owner can give a large discount
+- ✅ Send quote sets status Sent
+- ✅ Editing items after sending returns quote to Draft
+- ✅ Changing discount after sending returns quote to Draft
+- ✅ Remove item works and logs its name
+- ✅ No script errors
+
+### 4 Approval and stock
+
+- ✅ Approve reserves parts (brake pads reserved 1)
+- ✅ Approval blocked when not enough available stock
+- ✅ Warning shown when adding more than available
+- ✅ Receiving a PO makes approval possible
+- ✅ PO receive writes stock history
+- ✅ Two jobs cannot both take the last parts
+- ✅ Decline creates follow-up and does not touch stock
+- ✅ No script errors
+
+### 5 Service and payment
+
+- ✅ Extra work added in service needs approval
+- ✅ Payment button hidden while extra work pending
+- ✅ Approve extra work unlocks payment
+- ✅ Payment closes order with correct amount (320 + 60 = 380)
+- ✅ Stock deducted and reservation released (oil 38 → 37, reserved 0)
+- ✅ Sale written to stock history
+- ✅ Next service follow-up created
+- ✅ Old open "service due" follow-up for same customer is closed (no duplicates)
+- ✅ Cannot take payment on an order with no items
+- ✅ Removing an approved part in service releases its reservation
+- ✅ Revenue today updates on dashboard
+- ✅ No script errors
+
+### 6 Inventory
+
+- ✅ Available = on hand − reserved shown
+- ✅ Add part
+- ✅ Duplicate SKU rejected
+- ✅ Adjust stock writes history with reason
+- ✅ Cannot adjust below reserved
+- ✅ Search filters parts
+- ✅ Reorder low stock pre-fills lines
+- ✅ New PO with multiple lines
+- ✅ Receive PO adds to stock
+- ✅ Received PO cannot be received again
+- ✅ Add supplier
+- ✅ No script errors
+
+### 7 Customers and follow-ups
+
+- ✅ Add customer with vehicle
+- ✅ Add second vehicle to customer
+- ✅ Duplicate plate on add vehicle rejected
+- ✅ Customer history lists their orders
+- ✅ Follow-ups sorted with overdue first
+- ✅ Book follow-up opens check-in for that customer and closes the follow-up
+- ✅ Mark follow-up done
+- ✅ Search by plate
+- ✅ Names with HTML are shown as text (no injection)
+- ✅ No script errors
+
+### 8 Roles and permissions
+
+- ✅ Owner sees revenue, cost, add user
+- ✅ Manager sees profit but cannot manage users
+- ✅ Advisor: no revenue/profit on dashboard
+- ✅ Advisor: sees selling price, not cost
+- ✅ Advisor: discount capped at 10%
+- ✅ Advisor: cannot add parts or change prices
+- ✅ Advisor: price change attempt is ignored even if forced
+- ✅ Advisor: reports hide shop revenue
+- ✅ Technician: only own jobs listed
+- ✅ Technician: cannot open another tech's job
+- ✅ Technician: no prices anywhere on own job
+- ✅ Technician: cannot edit items or send quote
+- ✅ Technician: can do inspection on own job
+- ✅ Technician: can mark work done but not take payment
+- ✅ Technician: customers limited to own jobs
+- ✅ Technician: customer history hides other techs' jobs
+- ✅ Technician: follow-ups and purchase hidden
+- ✅ No script errors
+
+### 9 User management
+
+- ✅ Add user
+- ✅ Duplicate name rejected
+- ✅ New user appears in sign-in list
+- ✅ New technician appears in check-in technician list
+- ✅ Change role takes effect
+- ✅ Cannot demote the last owner
+- ✅ Cannot change a technician with open jobs to another role
+- ✅ Cannot deactivate a user with open jobs
+- ✅ Deactivate keeps history (name still shown on old jobs)
+- ✅ Cannot deactivate yourself
+- ✅ Signing in as a demoted user uses their new permissions
+- ✅ No script errors
+
+### 10 Settings and saving
+
+- ✅ Theme colour applies
+- ✅ Data survives a page reload
+- ✅ Signed-in user survives reload
+- ✅ Order counter survives reload (no duplicate WO numbers)
+- ✅ Reset restores demo data
+- ✅ No script errors
+
+## Not covered by automated tests
+
+- Visual layout on real phones and laptops (check it by hand before a demo)
+- Chart rendering (Chart.js isn't loaded in the test browser)
+- Real multi-user use (the demo stores data per browser)

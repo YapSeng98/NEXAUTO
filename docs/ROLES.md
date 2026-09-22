@@ -1,0 +1,51 @@
+# Roles and permissions
+
+## Roles
+
+| Role | Who | Purpose |
+|---|---|---|
+| Owner | Shop owner | Full access, including user management |
+| Manager | Workshop manager | Full operations and financials, no user management |
+| Advisor | Service advisor, front desk | Customers, quotes and payments. Sees selling prices but not cost or profit |
+| Technician | Mechanic | Inspection and repair on their own jobs only, with no prices |
+
+## Permission flags
+
+Each role maps to a set of flags in the `PERMS` object in `index.html`.
+
+| Flag | Meaning | Owner | Manager | Advisor | Technician |
+|---|---|---|---|---|---|
+| `cost` | See cost prices and profit on orders and parts, change prices | ✓ | ✓ | – | – |
+| `price` | See selling prices and totals | ✓ | ✓ | ✓ | – |
+| `revenue` | See shop revenue, profit and reports | ✓ | ✓ | – | – |
+| `purchase` | Purchase orders, receiving, stock adjustments, suppliers | ✓ | ✓ | ✓ | – |
+| `staff` | Add, edit and deactivate users | ✓ | – | – | – |
+| `all` | See every order and customer | ✓ | ✓ | ✓ | – |
+| `edit` | Check in, edit quotes, discounts, follow-ups | ✓ | ✓ | ✓ | – |
+| `pay` | Take payment | ✓ | ✓ | ✓ | – |
+
+## Access rules
+
+- **Technicians** only see orders where they are the assigned technician, and only customers who have one of those orders. Opening any other order or customer is refused, even from a link.
+- **Advisors** can give a discount of up to 10% of the subtotal. A larger discount is capped with a message to ask a manager.
+- **Advisors** can count stock but cannot change cost or selling prices. A forced price change is ignored on save.
+- **Users are never deleted, only deactivated**, so their name stays on past jobs, payments and stock history.
+
+## User safeguards
+
+| Action | Rule |
+|---|---|
+| Demote or deactivate an owner | Blocked if they are the last active owner |
+| Deactivate yourself | Blocked |
+| Deactivate a user with open jobs | Blocked until the jobs are reassigned |
+| Change a technician with open jobs to another role | Blocked until the jobs are reassigned |
+| Add a user | The name must be unique among active users |
+
+## Important: production security
+
+In this demo, hidden fields are removed by the browser. In production, the server must:
+
+1. Authenticate the user (login).
+2. Filter rows, for example so technicians only get their own orders.
+3. Strip fields before sending, so cost, profit and revenue never reach advisors or technicians.
+4. Re-check every write, such as price edits, discounts over 10%, or payments by technicians.

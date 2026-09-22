@@ -1,0 +1,12 @@
+{
+  "name": "nexauto",
+  "version": "0.4.0",
+  "description": "NEXAUTO: workshop operations app for auto repair shops (demo)",
+  "private": true,
+  "scripts": {
+    "test": "node tests/suite.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
