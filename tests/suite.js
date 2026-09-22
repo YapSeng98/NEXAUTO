@@ -36,7 +36,7 @@ function app(storage,opts={}){
     go(v,f){A.click(`[data-action="goto"][data-view="${v}"]`+(f?`[data-filter="${f}"]`:''));},
     openOrder(id){A.go('orders');const f=A.$('[data-action="order-filter"][data-f="all"]');if(f)A.click(f);A.click(`[data-action="open-order"][data-id="${id}"]`);},
     tab(t){A.click(`[data-action="order-tab"][data-tab="${t}"]`);},
-    db(){return JSON.parse(w.localStorage.getItem('nexauto_demo_v5'));},
+    db(){return JSON.parse(w.localStorage.getItem('nexauto_demo_v6'));},
     part(sku){return A.db().inventory.find(p=>p.sku===sku);},
     order(id){return A.db().orders.find(o=>o.id===id);},
     checkAll(s='good'){A.$$(`[data-action="insp-set"][data-s="${s}"]`).forEach((_,i)=>A.click(A.$$(`[data-action="insp-set"][data-s="${s}"]`)[i]));},
@@ -325,7 +325,7 @@ T('The 6-month chart is bucketed by month',()=>{a.range('6m');return a.$('#v-rep
 T('6-month revenue matches the orders paid in that window',()=>{a.range('6m');const from=new Date();from.setDate(1);from.setHours(0,0,0,0);from.setMonth(from.getMonth()-5);const end=new Date();end.setDate(1);end.setHours(0,0,0,0);end.setMonth(end.getMonth()+1);const want=a.paidBetween(from.getTime(),end.getTime()).reduce((s,o)=>s+a.total(o).total,0);return a.num(a.kpi('Revenue'))===want;});
 T('The selected range stays highlighted',()=>{a.range('7d');return a.$('[data-action="report-range"][data-r="7d"]').classList.contains('active')&&!a.$('[data-action="report-range"][data-r="30d"]').classList.contains('active');});
 T('Quote approval is a percentage under 100 with a count behind it',()=>{a.range('6m');const p=a.num(a.kpi('Quote approval'));const foot=a.$$('#v-reports .kpi')[3].querySelector('.foot').textContent;return p>0&&p<100&&/\d+ of \d+/.test(foot);});
-T('Parts and labor split adds up to 100%',()=>{a.range('6m');const pct=a.$$('#v-reports .line .r').map(e=>Number(e.textContent.match(/(\d+)%/)[1]));return pct.length===2&&pct[0]+pct[1]===100;});
+T('Parts and labor split adds up to 100%',()=>{a.range('6m');const pct=a.$$('#mixCard .line .r').map(e=>Number(e.textContent.match(/(\d+)%/)[1]));return pct.length===2&&pct[0]+pct[1]===100;});
 T('Changing range does not leave stale figures',()=>{a.range('7d');const w=a.num(a.kpi('Revenue'));a.range('7d');return a.num(a.kpi('Revenue'))===w;});
 T('No script errors',()=>a.errs.length===0);}
 
@@ -413,6 +413,42 @@ T('Adjusting stock without touching the photo keeps it',()=>{const b=app();b.go(
 T('Technicians see part photos too',()=>{const b=app();b.go('inventory');b.click('[data-action="adjust-stock"][data-sku="OIL-5W30"]');b.F('image').value=PNG;b.submit();const c=app(b.storage(),{anon:true});c.login('marcus.lee','tech123');c.go('inventory');return c.$$('#v-inventory img.part-thumb').length===1;});
 T('No script errors',()=>{const b=app();b.go('inventory');return b.errs.length===0;});
 }
+
+// ============ 22. EDIT JOB DETAILS ============
+S('22 Edit job details');
+{
+const tech=()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');return b;};
+T('Technician can open Edit details on their own job',()=>{const b=tech();b.openOrder('WO-1043');return !!b.$('[data-action="edit-order"]');});
+T('Advisors and owners can too',()=>{const b=app();b.openOrder('WO-1043');return !!b.$('[data-action="edit-order"]');});
+T('A closed job cannot be edited',()=>{const b=app();b.openOrder('WO-1041');return !b.$('[data-action="edit-order"]');});
+T('Technician can reassign the job to another technician',()=>{const b=tech();b.openOrder('WO-1043');b.click('[data-action="edit-order"]');b.set('tech','s5');b.submit();return b.order('WO-1043').technicianId==='s5';});
+T('Reassigning away closes the panel and drops it from their list',()=>{const b=tech();b.openOrder('WO-1043');b.click('[data-action="edit-order"]');b.set('tech','s5');b.submit();const gone=!b.$$('#v-orders [data-action="open-order"]').some(x=>x.dataset.id==='WO-1043');return gone&&!b.$('#panel').classList.contains('open')&&b.toast().includes('Daniel Koh');});
+T('The reassignment is written to the activity log',()=>{const b=tech();b.openOrder('WO-1043');b.click('[data-action="edit-order"]');b.set('tech','s5');b.submit();const o=b.order('WO-1043');return o.log.some(l=>l.x.includes('Reassigned to Daniel Koh')&&l.x.includes('Marcus Lee'));});
+T('An advisor reassigning keeps the job open on screen',()=>{const b=app();b.openOrder('WO-1043');b.click('[data-action="edit-order"]');b.set('tech','s5');b.submit();return b.$('#panel').classList.contains('open')&&b.order('WO-1043').technicianId==='s5';});
+T('Technician can correct the mileage',()=>{const b=tech();b.openOrder('WO-1043');b.click('[data-action="edit-order"]');b.F('mileage').value='75000';b.submit();return b.order('WO-1043').mileage===75000;});
+T('Technician can update the complaint',()=>{const b=tech();b.openOrder('WO-1043');b.click('[data-action="edit-order"]');b.F('complaint').value='Grinding noise at low speed';b.submit();return b.order('WO-1043').complaint==='Grinding noise at low speed';});
+T('Mileage below the vehicle\'s last visit is rejected',()=>{const b=app();b.click('#v-dashboard [data-action="new-order"]');b.set('customer','c6');b.F('mileage').value='52000';b.submit();const id=b.db().orders.find(o=>o.customerId==='c6'&&o.stage==='reception').id;b.click('[data-action="edit-order"]');b.F('mileage').value='100';b.submit();const ok=b.modalOpen()&&b.err().includes("can't be lower");b.click('[data-action="close-modal"]');return ok&&b.order(id).mileage===52000;});
+T('A mileage typo can still be corrected downwards when there is no earlier visit',()=>{const b=app();b.openOrder('WO-1043');b.click('[data-action="edit-order"]');b.F('mileage').value='7231';b.submit();return !b.modalOpen()&&b.order('WO-1043').mileage===7231;});
+T('Saving with nothing changed is rejected',()=>{const b=app();b.openOrder('WO-1043');b.click('[data-action="edit-order"]');b.submit();const ok=b.modalOpen()&&b.err().includes('Nothing has changed');b.click('[data-action="close-modal"]');return ok;});
+T('Editing details grants no pricing rights',()=>{const b=tech();b.openOrder('WO-1043');b.click('[data-action="edit-order"]');const noPrice=!b.F('price')&&!b.F('discount');b.click('[data-action="close-modal"]');return noPrice&&b.d.documentElement.dataset.canPrice==='0';});
+T('The new technician sees the job after handover',()=>{const b=tech();b.openOrder('WO-1043');b.click('[data-action="edit-order"]');b.set('tech','s5');b.submit();const c=app(b.storage(),{anon:true});c.login('daniel.koh','tech123');c.go('orders');return c.$$('#v-orders [data-action="open-order"]').some(x=>x.dataset.id==='WO-1043');});
+T('Edits survive a reload',()=>{const b=tech();b.openOrder('WO-1043');b.click('[data-action="edit-order"]');b.F('mileage').value='80000';b.submit();const c=app(b.storage());return c.order('WO-1043').mileage===80000;});
+T('No script errors',()=>{const b=tech();b.openOrder('WO-1043');b.click('[data-action="edit-order"]');b.click('[data-action="close-modal"]');return b.errs.length===0;});
+}
+
+// ============ 23. JOBS PER TECHNICIAN ============
+S('23 Jobs completed per technician');
+{const a=app();a.go('reports');a.range('6m');
+const rows=()=>a.$$('#v-reports .card .line').filter(l=>/\d+ jobs?/.test(l.textContent));
+T('Each technician is listed with a completed job count',()=>{const names=a.db().staff.filter(s=>s.role==='technician').map(s=>s.name);return rows().length===names.length&&names.every(n=>rows().some(r=>r.textContent.includes(n)));});
+T('The counts match the orders in the range',()=>{const from=new Date();from.setDate(1);from.setHours(0,0,0,0);from.setMonth(from.getMonth()-5);const end=new Date();end.setDate(1);end.setHours(0,0,0,0);end.setMonth(end.getMonth()+1);const paid=a.paidBetween(from.getTime(),end.getTime());return a.db().staff.filter(s=>s.role==='technician').every(t=>{const want=paid.filter(o=>o.technicianId===t.id).length;const row=rows().find(r=>r.textContent.includes(t.name));return Number(row.textContent.match(/(\d+) jobs?/)[1])===want;});});
+T('Every completed job in the range is attributed to someone',()=>{const from=new Date();from.setDate(1);from.setHours(0,0,0,0);from.setMonth(from.getMonth()-5);const end=new Date();end.setDate(1);end.setHours(0,0,0,0);end.setMonth(end.getMonth()+1);const total=a.paidBetween(from.getTime(),end.getTime()).length;const sum=rows().reduce((s,r)=>s+Number(r.textContent.match(/(\d+) jobs?/)[1]),0);return sum===total;});
+T('Revenue per technician is shown',()=>rows().every(r=>/\$[\d,]+/.test(r.textContent)));
+T('Revenue per technician adds up to the shop revenue',()=>{const sum=rows().reduce((s,r)=>s+a.num(r.textContent.match(/\$[\d,]+/)[0]),0);return sum===a.num(a.kpi('Revenue'));});
+T('The busiest technician is listed first',()=>{const ns=rows().map(r=>Number(r.textContent.match(/(\d+) jobs?/)[1]));return ns.every((n,i)=>i===0||n<=ns[i-1]);});
+T('Counts follow the selected range',()=>{const six=rows().reduce((s,r)=>s+Number(r.textContent.match(/(\d+) jobs?/)[1]),0);a.range('7d');const week=rows().reduce((s,r)=>s+Number(r.textContent.match(/(\d+) jobs?/)[1]),0);return week<six;});
+T('Technicians do not see the shop-wide breakdown',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');b.go('reports');return b.d.documentElement.dataset.canRevenue==='0';});
+T('No script errors',()=>a.errs.length===0);}
 
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;

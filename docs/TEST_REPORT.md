@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 254 of 254 checks passed.**
+**Result: 279 of 279 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -29,6 +29,35 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Technician check-in | 12 | 12 |
 | Job notes | 16 | 16 |
 | Part photos | 10 | 10 |
+| Edit job details | 16 | 16 |
+| Jobs completed per technician | 9 | 9 |
+
+## Editing a job, and jobs per technician (v0.8.0)
+
+**Technicians can reassign and correct a job.** The inline technician dropdown
+was only rendered for roles with `edit`, so a technician who checked a vehicle in
+could not hand it to whoever actually picked up the work. It is replaced, for
+every role, by an **Edit details** button covering technician, mileage and
+complaint. Handing a job to someone else closes the panel and drops it from the
+sender's list, with a toast naming who has it now — the alternative is a job that
+silently vanishes. Mileage still cannot fall below the vehicle's *previous*
+visit, but may be corrected downwards when there is no earlier visit, because the
+common case is a typo at check-in.
+
+**Reports list completed jobs per technician.** The bar chart had no numbers
+against it. Each technician now has a row with their completed job count and the
+revenue behind it, sorted busiest first. Checks assert the counts match the
+orders in the selected range, that they sum to the shop's paid-job total, and
+that the per-technician revenue sums to the headline revenue figure.
+
+### The bug this release fixes
+
+The seed version stayed at `5` while the seed itself changed twice — six months
+of history in v0.6.0, job notes in v0.7.0. Because the app reseeds only when
+`DB.v` differs, **anyone who had opened the demo before those releases kept their
+old data and saw an empty report**. The version and storage key are now `6`, and
+both carry a comment saying to bump them whenever the seed gains a field. This is
+the kind of fault no test catches, because every test starts from empty storage.
 
 ## Technician check-in, job notes and part photos (v0.7.0)
 

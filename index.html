@@ -471,6 +471,7 @@ var ICON = {
   users:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M16 14.2c2.5.4 4.5 2.6 4.5 5.8"/>',
   chart:'<path d="M4 19V11M10 19V5M16 19v-6M22 19H2"/>',
   gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 14.1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  pencil:'<path d="M4 20h4L19 9a2.5 2.5 0 0 0-3.5-3.5L4.5 16.5Z"/><path d="M14.5 6.5 17.5 9.5"/>',
   camera:'<path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4Z"/><circle cx="12" cy="13" r="3.4"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   check:'<path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>',
@@ -649,7 +650,7 @@ function seed(){
     {id:"m3", sku:"OIL-5W30", qty:-1, type:"sale", ref:"WO-1042", reason:"", by:"s3", at:ago(150)},
     {id:"m4", sku:"FLT-OIL01", qty:-1, type:"sale", ref:"WO-1042", reason:"", by:"s3", at:ago(150)}
   ]);
-  return {v:5, staff:staff, suppliers:suppliers, inventory:inventory, customers:customers, orders:orders,
+  return {v:6, staff:staff, suppliers:suppliers, inventory:inventory, customers:customers, orders:orders,
     purchaseOrders:purchaseOrders, opportunities:opportunities, movements:movements, nextWO:1048, nextPO:202,
     settings:{color:null}};
 }
@@ -761,7 +762,9 @@ function buildHistory(now, baseCustomers, inventory, staff){
 }
 
 /* ================= storage ================= */
-var KEY = "nexauto_demo_v5";
+// Bump BOTH of these whenever the seed gains a field, or returning visitors keep
+// their old blob and silently miss the new data.
+var KEY = "nexauto_demo_v6";
 var SESSION_KEY = "nexauto_session";
 var LOCKOUT_KEY = "nexauto_lockouts";
 var SESSION_HOURS = 12;
@@ -769,7 +772,7 @@ var MAX_ATTEMPTS = 5;
 var LOCK_SECONDS = 60;
 var DB = null;
 try { DB = JSON.parse(localStorage.getItem(KEY)); } catch(e){ DB = null; }
-if(!DB || DB.v !== 5) DB = seed();
+if(!DB || DB.v !== 6) DB = seed();
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch(e){ toast("Browser storage is full \u2014 remove a part photo or reset the demo data.", true); } }
 
 /* ================= session ================= */
@@ -1097,10 +1100,10 @@ function orderOverview(o, c, v){
   var stepper = o.stage === "declined" ? '<div class="hint warn">Customer declined the quotation. A follow-up was added to their profile.</div>' :
     '<div class="stepper">' + STAGES.map(function(s,i){ return '<div class="step ' + (i < idx ? 'done' : i === idx ? 'now' : '') + '"><i></i><span>' + STAGE_LABEL[s] + '</span></div>'; }).join("") + '</div>';
   var closed = o.stage === "completed" || o.stage === "declined";
-  var techField = (can("edit") && !closed) ?
-    '<select data-action="reassign" data-id="' + o.id + '">' + technicians().map(function(t){ return '<option value="' + t.id + '"' + (t.id === o.technicianId ? ' selected' : '') + '>' + esc(t.name) + '</option>'; }).join("") + '</select>' :
-    esc(staffName(o.technicianId));
-  var html = stepper + '<dl class="kv">' +
+  var techField = esc(staffName(o.technicianId));
+  var html = stepper +
+    (closed ? '' : '<div class="section-head" style="margin:16px 0 4px"><h2>Job details</h2><button class="btn sm" data-action="edit-order">' + icon("pencil") + 'Edit details</button></div>') +
+    '<dl class="kv">' +
     '<dt>Customer</dt><dd><button class="link-btn" style="padding:0;font-size:13.5px" data-action="open-customer" data-id="' + c.id + '">' + esc(c.name) + '</button> <span class="badge b-amber">' + esc(c.tier) + '</span></dd>' +
     '<dt>Phone</dt><dd>' + esc(c.phone) + '</dd>' +
     '<dt>Vehicle</dt><dd>' + esc(v.model) + '</dd>' +
@@ -1354,8 +1357,11 @@ function renderReports(){
   var mix = partsRev + laborRev, partsPct = mix ? Math.round(partsRev/mix*100) : 0;
 
   var series = bk.map(function(b){ return paidBetween(b.from, b.to).reduce(function(s, o){ return s + totals(o).total; }, 0); });
-  var techs = technicians();
-  var techJobs = techs.map(function(t){ return paid.filter(function(o){ return o.technicianId === t.id; }).length; });
+  var techRows = technicians().map(function(t){
+    var jobs = paid.filter(function(o){ return o.technicianId === t.id; });
+    return {id:t.id, name:t.name, n:jobs.length, rev:jobs.reduce(function(s, o){ return s + totals(o).total; }, 0)};
+  }).sort(function(a, b){ return b.n - a.n; });
+  var techJobs = techRows.map(function(r){ return r.n; });
 
   var u = me();
   var myJobs = paid.filter(function(o){ return o.technicianId === u.id; });
@@ -1371,8 +1377,11 @@ function renderReports(){
     '<div class="kpi"><p class="label">Average ticket</p><p class="value num">' + money(avg) + '</p></div>' +
     '<div class="kpi"><p class="label">Quote approval</p><p class="value num">' + convRate + '%</p><p class="foot">' + approved + ' of ' + quoted.length + '</p></div></div>' +
     '<div class="grid-2"><div class="card"><div class="section-head"><h2>Revenue</h2><span class="badge b-neutral">' + range.label + '</span></div><div class="chart-box"><canvas id="chRev"></canvas></div></div>' +
-    '<div class="card"><div class="section-head"><h2>Jobs by technician</h2></div><div class="chart-box"><canvas id="chTech"></canvas></div></div></div>' +
-    '<div class="card"><div class="section-head"><h2>Parts vs labor</h2></div>' +
+    '<div class="card"><div class="section-head"><h2>Jobs by technician</h2><span class="badge b-neutral">' + range.label + '</span></div><div class="chart-box"><canvas id="chTech"></canvas></div>' +
+      (techRows.length ? techRows.map(function(r){
+        return '<div class="line"><div class="l">' + esc(r.name) + '</div><div class="r"><b>' + r.n + '</b> job' + (r.n === 1 ? '' : 's') + ' · <span class="amt" data-price>' + money(r.rev) + '</span></div></div>';
+      }).join("") : '<div class="empty">No completed jobs in this range.</div>') + '</div></div>' +
+    '<div class="card" id="mixCard"><div class="section-head"><h2>Parts vs labor</h2></div>' +
       '<div class="line"><div class="l">Parts</div><div class="r"><span class="amt" data-price>' + money(partsRev) + '</span> · ' + partsPct + '%</div></div>' +
       '<div class="line"><div class="l">Labor</div><div class="r"><span class="amt" data-price>' + money(laborRev) + '</span> · ' + (mix ? 100 - partsPct : 0) + '%</div></div>' +
       '<div class="bar" style="margin-top:10px"><i style="width:' + (mix ? partsRev/mix*100 : 0) + '%"></i></div></div></div>' +
@@ -1388,7 +1397,7 @@ function renderReports(){
     var labels = bk.map(function(b){ return b.label; });
     if(can("revenue")){
       charts.rev = new Chart($("#chRev"), {type:range.k === "6m" ? "bar" : "line", data:{labels:labels, datasets:[{data:series, borderColor:green, backgroundColor:range.k === "6m" ? green : green + "22", fill:true, tension:.35, pointRadius:range.days > 7 ? 0 : 3, pointBackgroundColor:green, borderRadius:6, maxBarThickness:48}]}, options:opts});
-      charts.tech = new Chart($("#chTech"), {type:"bar", data:{labels:techs.map(function(t){ return t.name.split(" ")[0]; }), datasets:[{data:techJobs, backgroundColor:green, borderRadius:6, maxBarThickness:48}]}, options:opts});
+      charts.tech = new Chart($("#chTech"), {type:"bar", data:{labels:techRows.map(function(r){ return r.name.split(" ")[0]; }), datasets:[{data:techJobs, backgroundColor:green, borderRadius:6, maxBarThickness:48}]}, options:opts});
     } else {
       charts.mine = new Chart($("#chMine"), {type:"bar", data:{labels:labels, datasets:[{data:mySeries, backgroundColor:green, borderRadius:6, maxBarThickness:36}]}, options:opts});
     }
@@ -1611,6 +1620,31 @@ function wireImagePicker(form){
     });
   });
 }
+function modalEditOrder(o){
+  var mine = !can("all");
+  var body = field("Technician", '<select name="tech">' + technicians().map(function(t){ return opt(t.id, t.name, t.id === o.technicianId); }).join("") + '</select>') +
+    field("Mileage (km)", '<input type="number" name="mileage" min="0" step="1" required value="' + Number(o.mileage || 0) + '">') +
+    field("Customer complaint", '<textarea name="complaint" rows="3" placeholder="What did the customer report?">' + esc(o.complaint || "") + '</textarea>') +
+    (mine ? '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">Hand this job to another technician and it moves to their list, so it will no longer show in yours.</p>' : '');
+  openModal("Edit job details", body, "Save changes", function(fd){
+    var km = Number(fd.get("mileage"));
+    if(isNaN(km) || km < 0) return "Enter a valid mileage.";
+    var lastKm = DB.orders.filter(function(x){ return x.vehicleId === o.vehicleId && x.id !== o.id; })
+      .reduce(function(m, x){ return Math.max(m, Number(x.mileage) || 0); }, 0);
+    if(km < lastKm) return "Mileage can't be lower than this vehicle's last visit (" + lastKm.toLocaleString() + " km).";
+    var tech = fd.get("tech"), comp = (fd.get("complaint") || "").trim(), changes = [];
+    if(tech !== o.technicianId) changes.push("reassigned to " + staffName(tech));
+    if(km !== Number(o.mileage)) changes.push("mileage set to " + km.toLocaleString() + " km");
+    if(comp !== (o.complaint || "")) changes.push("complaint updated");
+    if(!changes.length) return "Nothing has changed yet.";
+    var handedOff = tech !== o.technicianId && mine && tech !== me().id;
+    o.technicianId = tech; o.mileage = km; o.complaint = comp;
+    log(o, changes.join(", ").charAt(0).toUpperCase() + changes.join(", ").slice(1) + " by " + me().name);
+    save();
+    if(handedOff){ toast(o.id + " is now with " + staffName(tech)); closePanel(); goto("orders"); return; }
+    toast("Job details updated"); refresh();
+  });
+}
 function modalNewPart(){
   var body = field("Part name", '<input type="text" name="name" required placeholder="Spark plug, iridium">') +
     '<div class="field-row">' + field("SKU", '<input type="text" name="sku" required placeholder="SPK-IR01">') + field("Category", '<select name="category">' + ["Fluids","Filters","Brakes","Engine","Electrical","Suspension","Tyres","Accessories"].map(function(c){ return opt(c,c); }).join("") + '</select>') + '</div>' +
@@ -1786,6 +1820,7 @@ document.addEventListener("click", function(e){
     case "inv-tab": state.invTab = el.dataset.tab; renderInventory(); break;
     case "pick-image": { var fi = $("#imgFile"); if(fi) fi.click(); break; }
     case "clear-image": { var hid = $("#imgData"); if(hid) hid.value = ""; setImagePreview(""); break; }
+    case "edit-order": if(o) modalEditOrder(o); break;
     case "new-part": modalNewPart(); break;
     case "adjust-stock": modalAdjust(part(el.dataset.sku)); break;
     case "new-po": closePanel(); modalNewPO(el.dataset.low === "1"); break;
@@ -1825,7 +1860,6 @@ document.addEventListener("change", function(e){
   var el = e.target, o = currentOrder();
   if(el.id === "customColor"){ DB.settings.color = el.value; applyTheme(el.value); save(); renderSettings(); return; }
   if(!o) return;
-  if(el.dataset.action === "reassign"){ o.technicianId = el.value; log(o, "Reassigned to " + staffName(el.value)); toast("Technician updated"); refresh(); }
   if(el.dataset.action === "insp-note"){ o.inspection[+el.dataset.i].note = el.value.trim(); save(); }
   if(el.dataset.action === "discount"){ o.discount = Math.max(0, Math.round(Number(el.value)||0)); if(o.discount > totals(o).sub) o.discount = totals(o).sub;
     var capD = Math.floor(totals(o).sub * 0.1);
