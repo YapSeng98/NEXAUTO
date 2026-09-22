@@ -24,6 +24,7 @@ Each role maps to a set of flags in the `PERMS` object in `index.html`.
 | `edit` | Edit quotes, discounts, follow-ups | ✓ | ✓ | ✓ | – |
 | `checkin` | Check a vehicle in and link it to a customer | ✓ | ✓ | ✓ | ✓ |
 | `checklist` | Edit the inspection checklist | ✓ | ✓ | – | – |
+| `additems` | Add parts and work to a job's quote | ✓ | ✓ | ✓ | ✓ |
 | `pay` | Take payment | ✓ | ✓ | ✓ | – |
 
 ## Access rules
@@ -31,6 +32,7 @@ Each role maps to a set of flags in the `PERMS` object in `index.html`.
 - **Technicians** only see orders where they are the assigned technician, and only customers who have one of those orders. Opening any other order or customer is refused, even from a link.
 - **Technicians can check a vehicle in** (`checkin`), picking an existing customer or registering a new one. The job is assigned to them by default — otherwise it would disappear from their list the moment it was saved — and an advisor is recorded as the advisor of record. Check-in is the only write they have outside their own jobs' inspection and notes; it grants nothing else.
 - **Any role on a job can edit its details** — technician, mileage and complaint — while it is open. A technician handing a job to someone else loses sight of it, so the app says so before and after the change. Editing details grants nothing else: prices, discounts and payment stay behind their own flags.
+- **Technicians can add to a quote but never price it.** A part they pick up carries the price list's price and cost without showing either. Work they describe is saved unpriced and flagged, an advisor sets the price, and the quote cannot be sent while anything is still unpriced. They can delete only their own unapproved lines.
 - **Job notes are shared with everyone on the job.** Any role that can open an order can read the thread and add to it, including technicians. Notes are not price data and are never hidden by role. The thread becomes read-only once the job is completed or declined.
 - **Advisors** can give a discount of up to 10% of the subtotal. A larger discount is capped with a message to ask a manager.
 - **Advisors** can count stock but cannot change cost or selling prices. A forced price change is ignored on save.

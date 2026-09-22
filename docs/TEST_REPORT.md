@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 335 of 335 checks passed.**
+**Result: 373 of 373 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -36,6 +36,36 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Inspection checklist admin | 18 | 18 |
 | AI panel | 9 | 9 |
 | Quote stage messaging | 7 | 7 |
+| Technician line items | 18 | 18 |
+| Workshop name | 11 | 11 |
+| Purchase order list | 9 | 9 |
+
+## Technicians on the quote, renaming, and the PO list (v0.11.0)
+
+**Technicians can add line items.** The constraint is that they cannot see
+prices, so the two cases split: a **part** is picked from stock and carries the
+price list's price and cost without ever showing them, while **labour** is
+described with no price field at all and lands flagged `needsPrice`. An advisor
+sees a red "Needs pricing" badge and a Set price button, and the quote cannot be
+sent while any line is unpriced. Every line records who added it, and a
+technician can delete only their own unapproved additions. Discount, payment and
+pricing stay where they were.
+
+**The workshop can be renamed.** Owners set the name in Settings; it applies to
+the sign-in headings, the sidebar and the browser tab.
+
+**The purchase order list shows only what is outstanding**, which is what the
+tab's count had always meant — the list itself was showing received orders too.
+Received ones sit behind a "Show N received" toggle, since the stock they added
+is already in Stock history.
+
+### Bugs these found
+
+| # | Bug | Found by |
+|---|---|---|
+| 15 | "1 item still need a price" — verb did not agree | Browser check of the send-quote guard |
+| 16 | Resetting the demo left the old workshop name in the sidebar | `Resetting the demo restores the default name` |
+| 17 | The purchase order tab's badge counted outstanding orders while the list showed all of them | Reported by the user from the screen |
 
 ## Login redesign and a misleading quote label (v0.10.0)
 

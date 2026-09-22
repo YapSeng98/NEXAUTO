@@ -517,7 +517,7 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
     </svg>
     <div class="lb-body">
       <span class="lb-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9l2-4h9l3 5h2v7"/><path d="M4 17h1.6M8.8 17h6.4M18.4 17H20"/><circle cx="7.2" cy="17" r="1.6"/><circle cx="16.8" cy="17" r="1.6"/></svg></span>
-      <h2>NEXAUTO</h2>
+      <h2 id="lbName">NEXAUTO</h2>
       <p class="lb-tag">Every job, part and payment in one place — from the moment a car rolls in.</p>
       <ul class="lb-list">
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Check-in, inspection, quote and payment in one flow</li>
@@ -531,7 +531,7 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
   <div class="login-box">
     <div class="login-head">
       <span class="login-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9l2-4h9l3 5h2v7"/><path d="M4 17h1.6M8.8 17h6.4M18.4 17H20"/><circle cx="7.2" cy="17" r="1.6"/><circle cx="16.8" cy="17" r="1.6"/></svg></span>
-      <h1>NEXAUTO</h1>
+      <h1 id="loginName">NEXAUTO</h1>
       <p>Workshop operations</p>
     </div>
     <form class="login-card" id="loginForm" novalidate>
@@ -563,7 +563,7 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
   <aside class="sidebar" aria-label="Main navigation">
     <div class="brand">
       <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9l2-4h9l3 5h2v7"/><path d="M4 17h1.6M8.8 17h6.4M18.4 17H20"/><circle cx="7.2" cy="17" r="1.6"/><circle cx="16.8" cy="17" r="1.6"/></svg></span>
-      NEXAUTO
+      <span id="brandName">NEXAUTO</span>
     </div>
     <nav class="nav" id="sideNav"></nav>
     <div class="sidebar-foot">
@@ -668,12 +668,13 @@ function icon(name){ return '<svg viewBox="0 0 24 24" fill="none" stroke="curren
 var STAGES = ["reception","pre-inspection","quotation","in-service","completed"];
 var STAGE_LABEL = {"reception":"Reception","pre-inspection":"Inspection","quotation":"Quotation","in-service":"In service","completed":"Completed","declined":"Declined"};
 var STAGE_BADGE = {"reception":"b-neutral","pre-inspection":"b-amber","quotation":"b-amber","in-service":"b-green","completed":"b-muted","declined":"b-red"};
+var DEFAULT_APP_NAME = "NEXAUTO";
 var DEFAULT_INSPECTION = ["Engine oil level and condition","Brake pads and discs","Tyres and tread depth","Battery health","Lights and signals","Suspension and steering","Coolant level","Wipers and washer","Air-con performance","Underbody and leaks"];
 var PERMS = {
-  owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, pay:1, checkin:1, checklist:1},
-  manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, checklist:1},
-  advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, checklist:0},
-  technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, pay:0, checkin:1, checklist:0}
+  owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, pay:1, checkin:1, checklist:1, additems:1},
+  manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, checklist:1, additems:1},
+  advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, checklist:0, additems:1},
+  technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, pay:0, checkin:1, checklist:0, additems:1}
 };
 var ROLE_LABEL = {owner:"Owner", manager:"Manager", advisor:"Service advisor", technician:"Technician"};
 var THEMES = [
@@ -845,7 +846,7 @@ function seed(){
   seeding = false;
   return {v:6, staff:staff, suppliers:suppliers, inventory:inventory, customers:customers, orders:orders,
     purchaseOrders:purchaseOrders, opportunities:opportunities, movements:movements, nextWO:1048, nextPO:202,
-    settings:{color:null, inspection:DEFAULT_INSPECTION.slice()}};
+    settings:{color:null, inspection:DEFAULT_INSPECTION.slice(), appName:DEFAULT_APP_NAME}};
 }
 
 /* ---- six months of closed jobs, so the reports have something real to read ----
@@ -1014,7 +1015,7 @@ function clearFailures(username){
 
 /* ================= state & lookups ================= */
 var ORDER_PAGE = 25;
-var state = {role:"owner", userId:null, view:"dashboard", orderFilter:"open", orderQuery:"", orderLimit:ORDER_PAGE, invTab:"parts", invQuery:"", custQuery:"", panel:null, orderTab:"overview", reportRange:"30d"};
+var state = {role:"owner", userId:null, poShowDone:false, view:"dashboard", orderFilter:"open", orderQuery:"", orderLimit:ORDER_PAGE, invTab:"parts", invQuery:"", custQuery:"", panel:null, orderTab:"overview", reportRange:"30d"};
 
 function can(k){ return !!PERMS[state.role][k]; }
 function activeUsers(){ return DB.staff.filter(function(s){ return s.active !== false; }); }
@@ -1162,6 +1163,24 @@ function signOut(){
   showLogin("");
   if(name) toast("Signed out");
 }
+function appName(){ return (DB.settings && DB.settings.appName) || DEFAULT_APP_NAME; }
+function applyAppName(){
+  var n = appName();
+  ["brandName", "loginName", "lbName"].forEach(function(id){ var el = $("#" + id); if(el) el.textContent = n; });
+  document.title = n + " \u2014 Workshop operations";
+}
+function modalAppName(){
+  openModal("Workshop name",
+    field("Name", '<input type="text" name="name" required maxlength="24" value="' + esc(appName()) + '" placeholder="NEXAUTO">') +
+    '<p class="img-note">Shown on the sign-in page, in the sidebar and in the browser tab.</p>',
+    "Save", function(fd){
+      var n = String(fd.get("name") || "").trim();
+      if(n.length < 2) return "Give it a name of at least 2 characters.";
+      DB.settings.appName = n; save(); applyAppName(); renderSettings();
+      toast("Renamed to " + n);
+    });
+}
+
 function applyTheme(c){
   if(c) document.documentElement.style.setProperty("--green", c);
   else document.documentElement.style.removeProperty("--green");
@@ -1416,7 +1435,10 @@ function orderInspection(o, ic){
   return html;
 }
 function orderItems(o){
-  var editable = can("edit") && (o.stage === "quotation" || o.stage === "in-service");
+  var onQuote = o.stage === "quotation" || o.stage === "in-service";
+  var editable = can("edit") && onQuote;
+  var canAdd = can("additems") && onQuote;
+  var mayRemove = function(it){ return editable || (it.by === state.userId && !it.approved); };
   var t = totals(o), html = "";
   var qs = {draft:"Draft, not sent yet", sent:"Sent, waiting for customer", approved:"Approved by customer", rejected:"Declined by customer"};
   if(o.stage === "reception" || o.stage === "pre-inspection") html += '<div class="hint">Finish the inspection first. The quote opens once the checklist is complete.</div>';
@@ -1427,16 +1449,22 @@ function orderItems(o){
     html += '<div class="h4" style="margin-top:4px">Inspection findings</div>' + findings.map(function(f){
       var added = o.items.some(function(it){ return it.name.indexOf(f.name) > -1; });
       return '<div class="finding"><span><span class="badge ' + (f.status === "problem" ? "b-red" : "b-amber") + '">' + (f.status === "problem" ? "Problem" : "Attention") + '</span> ' + esc(f.name) + (f.note ? ' — ' + esc(f.note) : '') + '</span>' +
-        (editable && !added ? '<button class="btn sm" data-action="add-labor" data-prefill="' + esc("Repair: " + f.name) + '">Add to quote</button>' : (added ? '<span class="badge b-green">Quoted</span>' : '')) + '</div>';
+        (canAdd && !added ? '<button class="btn sm" data-action="add-labor" data-prefill="' + esc("Repair: " + f.name) + '">Add to quote</button>' : (added ? '<span class="badge b-green">Quoted</span>' : '')) + '</div>';
     }).join("");
   }
 
-  html += '<div class="h4">Line items' + (editable ? '<span style="display:flex;gap:6px"><button class="btn sm" data-action="add-part">' + icon("plus") + 'Part</button><button class="btn sm" data-action="add-labor">' + icon("plus") + 'Labor</button></span>' : '') + '</div>';
-  if(!o.items.length) html += '<div class="empty">No items yet.' + (editable ? ' Add parts from stock or labor charges.' : ' An advisor prices the job up here \u2014 add anything you spotted as a note instead.') + '</div>';
+  html += '<div class="h4">Line items' + (canAdd ? '<span style="display:flex;gap:6px"><button class="btn sm" data-action="add-part">' + icon("plus") + 'Part</button><button class="btn sm" data-action="add-labor">' + icon("plus") + 'Labor</button></span>' : '') + '</div>';
+  if(!o.items.length) html += '<div class="empty">No items yet.' + (canAdd ? (can("price") ? ' Add parts from stock or labor charges.' : ' Add the parts you need \u2014 an advisor puts a price on any labour.') : '') + '</div>';
   html += o.items.map(function(it){
     var pend = o.stage === "in-service" && !it.approved;
-    return '<div class="line"><div class="l">' + esc(it.name) + (pend ? ' <span class="badge b-amber">Needs approval</span>' : '') + '<small>' + (it.type === "part" ? "Part · " + esc(it.sku) : "Labor") + ' · Qty ' + it.qty + '<span data-cost> · cost ' + money(it.cost * it.qty) + '</span></small></div>' +
-      '<div class="r"><span data-price>' + money(it.price * it.qty) + '</span>' + (editable ? '<button class="icon-btn" data-action="remove-item" data-item="' + it.id + '" aria-label="Remove item">' + icon("trash") + '</button>' : '') + '</div></div>';
+    return '<div class="line"><div class="l">' + esc(it.name) +
+      (pend ? ' <span class="badge b-amber">Needs approval</span>' : '') +
+      (it.needsPrice ? ' <span class="badge b-red">Needs pricing</span>' : '') +
+      '<small>' + (it.type === "part" ? "Part · " + esc(it.sku) : "Labor") + ' · Qty ' + it.qty +
+      (it.by ? ' · added by ' + esc(staffName(it.by)) : '') +
+      '<span data-cost> · cost ' + money(it.cost * it.qty) + '</span></small></div>' +
+      '<div class="r">' + (it.needsPrice && can("price") ? '<button class="btn sm" data-action="price-item" data-item="' + it.id + '">Set price</button>' : '<span data-price>' + money(it.price * it.qty) + '</span>') +
+      (mayRemove(it) ? '<button class="icon-btn" data-action="remove-item" data-item="' + it.id + '" aria-label="Remove item">' + icon("trash") + '</button>' : '') + '</div></div>';
   }).join("");
   if(o.items.length){
     html += '<div class="totals" data-price><div><span>Subtotal</span><span>' + money(t.sub) + '</span></div>' +
@@ -1478,6 +1506,8 @@ function doFinishInsp(o){
 }
 function doSendQuote(o){
   if(!o.items.length){ toast("Add at least one item before sending", true); return; }
+  var unpriced = o.items.filter(function(i){ return i.needsPrice; });
+  if(unpriced.length){ toast(unpriced.length === 1 ? "1 item still needs a price" : unpriced.length + " items still need a price", true); state.orderTab = "items"; renderPanel(); return; }
   o.quoteStatus = "sent"; log(o, "Quotation sent to customer (" + money(totals(o).total) + ")"); toast("Quote sent"); refresh();
 }
 function doApprove(o){
@@ -1515,13 +1545,19 @@ function renderInventory(){
       }).join("") : '<tr><td colspan="9"><div class="empty" style="border:none">No parts match your search.</div></td></tr>') + '</tbody></table></div>';
   } else if(state.invTab === "po"){
     html += '<div class="section-head"><h2>Purchase orders</h2><span style="display:flex;gap:8px"><button class="btn" data-action="new-po" data-low="1" data-purchase>Reorder low stock</button><button class="btn primary" data-action="new-po" data-purchase>' + icon("plus") + 'New PO</button></span></div>';
-    var pos = DB.purchaseOrders.slice().sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); });
+    // Received orders are already in Stock history, so only outstanding ones show
+    // by default — which is also what the tab's count has always meant.
+    var allPos = DB.purchaseOrders.slice().sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); });
+    var done = allPos.filter(function(x){ return x.status === "received"; });
+    var pos = state.poShowDone ? allPos : allPos.filter(function(x){ return x.status !== "received"; });
     html += '<div class="list">' + (pos.length ? pos.map(function(po){
       var s = supplier(po.supplierId), tot = po.items.reduce(function(a,i){ return a + i.qty*i.cost; }, 0);
       var lines = po.items.map(function(i){ var p = part(i.sku); return (p ? p.name : i.sku) + " × " + i.qty; }).join(", ");
       return '<div class="row-card"><div class="row-main"><p class="title">' + po.id + ' · ' + esc(s ? s.name : "") + '</p><p class="sub">' + esc(lines) + '</p><p class="sub" style="color:var(--text-muted);font-size:11.5px">' + (po.status === "received" ? "Received " + timeLabel(po.receivedAt) : "Ordered " + timeLabel(po.createdAt)) + '</p></div>' +
         '<div class="row-end"><span class="amt" data-cost>' + money(tot) + '</span>' + (po.status === "ordered" ? '<button class="btn sm primary" data-action="receive-po" data-id="' + po.id + '" data-purchase>Receive</button>' : '<span class="badge b-green">Received</span>') + '</div></div>';
-    }).join("") : '<div class="empty">No purchase orders yet.</div>') + '</div>';
+    }).join("") : '<div class="empty">Nothing on order. Everything received is in Stock history.</div>') + '</div>';
+    if(done.length) html += '<button class="btn" style="width:100%;margin-top:12px" data-action="po-toggle-done">' +
+      (state.poShowDone ? 'Hide ' + done.length + ' received order' + (done.length > 1 ? 's' : '') : 'Show ' + done.length + ' received order' + (done.length > 1 ? 's' : '')) + '</button>';
   } else if(state.invTab === "history"){
     var all = DB.movements.slice().sort(function(a,b){ return b.at.localeCompare(a.at); });
     var mv = all.slice(0, 60);
@@ -1865,6 +1901,8 @@ function renderSettings(){
   html += '<div class="card"><div class="section-head"><h2>Users</h2><button class="btn primary" data-action="new-staff" data-staff>' + icon("plus") + 'Add user</button></div>' +
     activeUsers().map(function(s){ return '<div class="line"><div class="l" style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:30px;height:30px;flex-basis:30px;font-size:11px">' + initials(s.name) + '</span><span>' + esc(s.name) + (s.id === state.userId ? ' <span class="badge b-green">You</span>' : '') + '<span style="display:block;font-size:12px;color:var(--text-muted)">' + esc(s.username || "—") + '</span></span></div><div class="r"><span class="badge ' + (s.role === "technician" ? "b-neutral" : "b-green") + '">' + ROLE_LABEL[s.role] + '</span><button class="btn sm" data-action="edit-staff" data-id="' + s.id + '" data-staff>Edit</button></div></div>'; }).join("") +
     '<p class="sub" style="color:var(--text-muted);font-size:12px;margin:12px 0 0">Each user signs in with their own username and password. Owners see everything and manage users. Managers see profit but cannot manage users. Advisors see prices but not cost or profit. Technicians only see their own jobs, with no prices.</p></div>';
+  html += '<div class="card" data-staff><div class="section-head"><h2>Workshop name</h2><button class="btn sm" data-action="app-name">' + icon("pencil") + 'Rename</button></div>' +
+    '<p class="sub" style="color:var(--text-secondary);margin:0;font-size:13px">Currently <b style="color:var(--text-primary)">' + esc(appName()) + '</b> \u2014 shown on the sign-in page, in the sidebar and in the browser tab.</p></div>';
   html += '<div class="card" data-checklist><div class="section-head"><h2>Inspection checklist</h2>' +
     '<span style="display:flex;gap:8px"><button class="btn sm" data-action="checklist-reset">Restore default</button>' +
     '<button class="btn primary sm" data-action="checklist-add">' + icon("plus") + 'Add item</button></span></div>' +
@@ -2012,7 +2050,7 @@ function modalAddPart(o){
     var p = part(fd.get("sku")), qty = parseInt(fd.get("qty"), 10);
     if(!qty || qty < 1) return "Quantity must be at least 1.";
     var ex = o.items.filter(function(i){ return i.sku === p.sku; })[0];
-    if(ex && !ex.approved) ex.qty += qty; else o.items.push({id:uid("i"), type:"part", sku:p.sku, name:p.name, qty:qty, price:p.price, cost:p.cost, approved:false});
+    if(ex && !ex.approved) ex.qty += qty; else o.items.push({id:uid("i"), type:"part", sku:p.sku, name:p.name, qty:qty, price:p.price, cost:p.cost, approved:false, by:me().id});
     if(o.quoteStatus === "sent"){ o.quoteStatus = "draft"; }
     log(o, "Added " + p.name + " × " + qty);
     if(qty > avail(p)) toast("Only " + avail(p) + " available. Order more before approval.", true); else toast(o.stage === "in-service" ? "Added as extra work. Needs approval." : "Part added");
@@ -2020,14 +2058,30 @@ function modalAddPart(o){
   });
 }
 function modalAddLabor(o, prefill){
+  var priced = can("price");
   var body = field("Description", '<input type="text" name="name" required placeholder="Labor: wheel alignment" value="' + esc(prefill || "") + '">') +
-    '<div class="field-row">' + field("Price to customer", '<input type="number" name="price" min="0" step="1" required placeholder="80">') + '<div data-cost>' + field("Internal cost", '<input type="number" name="cost" min="0" step="1" value="0">') + '</div></div>';
-  openModal("Add labor", body, "Add to quote", function(fd){
-    var price = Number(fd.get("price"));
-    if(isNaN(price) || price < 0) return "Enter a valid price.";
-    o.items.push({id:uid("i"), type:"labor", sku:"", name:fd.get("name").trim(), qty:1, price:price, cost:Number(fd.get("cost"))||0, approved:false});
+    (priced ? '<div class="field-row">' + field("Price to customer", '<input type="number" name="price" min="0" step="1" required placeholder="80">') + '<div data-cost>' + field("Internal cost", '<input type="number" name="cost" min="0" step="1" value="0">') + '</div></div>'
+            : '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">Describe the work. An advisor puts a price on it before the quote goes to the customer.</p>');
+  openModal(priced ? "Add labor" : "Add work needed", body, "Add to quote", function(fd){
+    var price = priced ? Number(fd.get("price")) : 0;
+    if(priced && (isNaN(price) || price < 0)) return "Enter a valid price.";
+    o.items.push({id:uid("i"), type:"labor", sku:"", name:fd.get("name").trim(), qty:1, price:price,
+      cost:priced ? (Number(fd.get("cost")) || 0) : 0, approved:false, by:me().id, needsPrice:!priced});
     if(o.quoteStatus === "sent"){ o.quoteStatus = "draft"; }
-    log(o, "Added " + fd.get("name").trim()); toast("Labor added"); refresh();
+    log(o, "Added " + fd.get("name").trim() + (priced ? "" : " (needs pricing)"));
+    toast(priced ? "Labor added" : "Added for the advisor to price"); refresh();
+  });
+}
+function modalPriceItem(o, it){
+  var body = '<p style="margin:0 0 12px;font-weight:600">' + esc(it.name) + '</p>' +
+    '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">Added by ' + esc(staffName(it.by)) + '.</p>' +
+    '<div class="field-row">' + field("Price to customer", '<input type="number" name="price" min="0" step="1" required placeholder="80">') + '<div data-cost>' + field("Internal cost", '<input type="number" name="cost" min="0" step="1" value="0">') + '</div></div>';
+  openModal("Set price", body, "Save price", function(fd){
+    var price = Number(fd.get("price"));
+    if(isNaN(price) || price <= 0) return "Enter a price above zero.";
+    it.price = price; it.cost = Number(fd.get("cost")) || 0; delete it.needsPrice;
+    log(o, "Priced " + it.name + " at " + money(price) + " by " + me().name);
+    toast("Price set"); refresh();
   });
 }
 function modalPayment(o){
@@ -2307,7 +2361,15 @@ document.addEventListener("click", function(e){
     case "inv-tab": state.invTab = el.dataset.tab; renderInventory(); break;
     case "pick-image": { var fi = $("#imgFile"); if(fi) fi.click(); break; }
     case "clear-image": { var hid = $("#imgData"); if(hid) hid.value = ""; setImagePreview(""); break; }
+    case "price-item": {
+      if(!o) break;
+      var pit = o.items.filter(function(x){ return x.id === el.dataset.item; })[0];
+      if(pit) modalPriceItem(o, pit);
+      break;
+    }
     case "edit-order": if(o) modalEditOrder(o); break;
+    case "po-toggle-done": state.poShowDone = !state.poShowDone; renderInventory(); break;
+    case "app-name": modalAppName(); break;
     case "checklist-add": modalChecklistItem(); break;
     case "checklist-rename": modalChecklistItem(+el.dataset.i); break;
     case "checklist-move": {
@@ -2369,7 +2431,7 @@ document.addEventListener("click", function(e){
     case "remove-staff": removeStaff(DB.staff.filter(function(x){ return x.id === el.dataset.id; })[0]); break;
     case "theme": DB.settings.color = el.dataset.c; applyTheme(el.dataset.c); save(); renderSettings(); toast("Colour updated"); break;
     case "reset":
-      if(confirm("Reset all demo data? Your changes will be lost.")){ DB = seed(); applyTheme(null); save(); closePanel(); goto("dashboard"); toast("Demo data reset"); }
+      if(confirm("Reset all demo data? Your changes will be lost.")){ DB = seed(); applyTheme(null); applyAppName(); save(); closePanel(); goto("dashboard"); toast("Demo data reset"); }
       break;
   }
 });
@@ -2405,6 +2467,7 @@ $("#loginForm").addEventListener("input", function(){ loginError(""); });
 
 /* ================= init ================= */
 applyTheme(DB.settings.color);
+applyAppName();
 save();
 var session = readSession();
 if(session){

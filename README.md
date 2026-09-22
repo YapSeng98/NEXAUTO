@@ -17,7 +17,7 @@ Workshop operations app for auto repair shops. It covers vehicle check-in, inspe
 | Customers | Customer profiles, multiple vehicles, service history, lifetime spend, follow-ups |
 | Insights | Jobs that have stalled and why, stock to reorder with suggested quantities, customers worth calling, and an optional Ask-anything panel |
 | Reports | Revenue over 7 days, 30 days or 6 months, gross profit and margin, average ticket, quote approval rate, parts vs labor, completed jobs and revenue per technician |
-| Settings | Brand colour (Castrol green by default), user management, the inspection checklist, reset demo data |
+| Settings | Workshop name, brand colour (Castrol green by default), user management, the inspection checklist, reset demo data |
 
 ## Signing in
 
@@ -46,7 +46,8 @@ in**. Five wrong passwords lock that username for a minute.
 | Cost prices | ✓ | ✓ | – | – |
 | Orders visible | All | All | All | Own jobs |
 | Check in a vehicle | ✓ | ✓ | ✓ | ✓ |
-| Build and send quote | ✓ | ✓ | ✓ | – |
+| Add parts and work to a quote | ✓ | ✓ | ✓ | ✓ |
+| Put a price on a line, discount, send quote | ✓ | ✓ | ✓ | – |
 | Inspection, mark work done | ✓ | ✓ | ✓ | ✓ |
 | Read and write job notes | ✓ | ✓ | ✓ | ✓ |
 | Reassign job, edit mileage and complaint | ✓ | ✓ | ✓ | ✓ |
@@ -97,7 +98,7 @@ docs/
   ARCHITECTURE.md     Current demo design and production target
   SECURITY.md         Security review of the demo, with severities
   SUPABASE_PLAN.md    Migration plan: schema, RLS policies, auth, phases
-  TEST_REPORT.md      Results of the 335 automated checks
+  TEST_REPORT.md      Results of the 373 automated checks
 tests/
   suite.js            Automated end-to-end test suite
 package.json          Test script
@@ -110,7 +111,7 @@ npm install
 npm test
 ```
 
-The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 335 passed, 0 failed`.
+The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 373 passed, 0 failed`.
 
 ## Ask-anything panel (optional)
 
