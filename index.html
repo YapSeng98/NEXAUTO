@@ -84,7 +84,7 @@ img,svg{max-width:100%;}
 .view{display:none;}
 .view.active{display:block;}
 
-select,input[type=text],input[type=number],input[type=tel],input[type=search],textarea{border:1px solid var(--border-strong);background:var(--surface);border-radius:8px;padding:9px 11px;width:100%;}
+select,input[type=text],input[type=password],input[type=number],input[type=tel],input[type=search],textarea{border:1px solid var(--border-strong);background:var(--surface);border-radius:8px;padding:9px 11px;width:100%;}
 select{padding:8px 10px;}
 .role-select{width:auto;font-weight:500;font-size:13px;}
 
@@ -432,10 +432,102 @@ button.row-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);}
 /* charts get a little breathing room */
 .chart-box{padding-top:4px;}
 
+
+/* ================= login, redesigned ================= */
+html[data-authed="0"] .login-screen{display:block;padding:0;}
+.login-stage{min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:1fr;}
+@media (min-width:980px){.login-stage{grid-template-columns:1.05fr 1fr;}}
+
+/* --- brand side --- */
+.login-brandside{display:none;position:relative;overflow:hidden;color:#fff;
+  background:linear-gradient(155deg, var(--sidebar-bg) 0%, color-mix(in srgb, var(--green) 38%, var(--sidebar-bg-2)) 58%, color-mix(in srgb, var(--green) 62%, #05110a) 100%);
+  padding:56px 52px;flex-direction:column;justify-content:center;}
+@media (min-width:980px){.login-brandside{display:flex;}}
+.lb-grid{position:absolute;inset:0;opacity:.3;
+  background-image:linear-gradient(rgba(255,255,255,.075) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,.075) 1px, transparent 1px);
+  background-size:44px 44px;
+  -webkit-mask-image:radial-gradient(ellipse 80% 70% at 30% 40%, #000 30%, transparent 100%);
+  mask-image:radial-gradient(ellipse 80% 70% at 30% 40%, #000 30%, transparent 100%);}
+.lb-glow{position:absolute;width:560px;height:560px;right:-190px;top:-160px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle, color-mix(in srgb, var(--green) 55%, transparent) 0%, transparent 68%);filter:blur(10px);}
+.lb-car{position:absolute;right:-56px;bottom:26px;width:min(72%,430px);color:#fff;opacity:.085;pointer-events:none;}
+.lb-body{position:relative;max-width:440px;}
+.lb-mark{width:52px;height:52px;border-radius:15px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);
+  display:inline-flex;align-items:center;justify-content:center;margin-bottom:24px;backdrop-filter:blur(6px);}
+.lb-mark svg{width:28px;height:28px;}
+.login-brandside h2{font-size:42px;margin:0 0 14px;letter-spacing:-0.035em;line-height:1;}
+.lb-tag{font-size:16.5px;line-height:1.55;color:rgba(255,255,255,.8);margin:0 0 30px;max-width:26ch;}
+.lb-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:13px;}
+.lb-list li{display:flex;align-items:flex-start;gap:11px;font-size:14px;color:rgba(255,255,255,.88);line-height:1.5;}
+.lb-list svg{width:15px;height:15px;flex:0 0 15px;margin-top:3px;color:var(--green-bright);}
+.lb-foot{position:relative;margin:40px 0 0;font-size:12px;color:rgba(255,255,255,.42);}
+
+/* --- form side --- */
+.login-panel{display:flex;align-items:center;justify-content:center;padding:36px 20px calc(36px + env(safe-area-inset-bottom,0px));background:var(--canvas);position:relative;}
+.login-panel::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 50% at 50% -10%, color-mix(in srgb, var(--green) 9%, transparent), transparent 70%);}
+.login-box{width:100%;max-width:392px;position:relative;}
+
+.login-head{text-align:left;margin-bottom:22px;}
+.login-head .login-mark{width:46px;height:46px;border-radius:13px;box-shadow:var(--shadow-green);margin-bottom:16px;}
+.login-head h1{font-size:27px;letter-spacing:-0.03em;}
+.login-head p{font-size:14px;margin-top:5px;}
+@media (min-width:980px){
+  .login-head .login-mark{display:none;}
+  .login-head h1{font-size:25px;}
+}
+
+.login-card{border-radius:16px;padding:24px;box-shadow:var(--shadow-md);border-color:var(--border);}
+.login-card .field{margin-bottom:16px;}
+.login-card .field label{display:block;font-size:12.5px;font-weight:600;color:var(--text-secondary);margin-bottom:7px;letter-spacing:.01em;}
+.login-card input[type=text],.login-card input[type=password]{padding:12px 13px;border-radius:10px;font-size:14.5px;
+  background:var(--surface-2);border:1px solid var(--border);transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;}
+.login-card input[type=text]:focus,.login-card input[type=password]:focus{outline:none;background:var(--surface);
+  border-color:var(--green);box-shadow:0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);}
+.pw-wrap{width:100%;}
+.pw-wrap input{flex:1 1 auto;min-width:0;padding-right:46px;}
+.btn.block{padding:12.5px;border-radius:10px;font-size:15px;letter-spacing:.01em;
+  background:linear-gradient(135deg, var(--green) 0%, color-mix(in srgb, var(--green) 72%, #000) 100%);}
+.btn.block:hover{filter:brightness(1.07);}
+.login-error{border-radius:10px;border:1px solid color-mix(in srgb, var(--red) 35%, transparent);}
+
+/* --- demo accounts --- */
+.demo-card{margin-top:16px;border-radius:16px;padding:8px 18px 12px;box-shadow:var(--shadow-sm);}
+.demo-card h2{margin:12px 0 4px;}
+.demo-acc{padding:10px 0;border-color:var(--border);gap:12px;transition:opacity .14s ease;}
+.demo-acc:hover{opacity:.72;}
+.demo-acc .demo-role{font-weight:500;color:var(--text-primary);font-size:13px;}
+.demo-cred{color:var(--text-muted);background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:3px 8px;font-size:11.5px;}
+.demo-acc:hover .demo-cred{color:var(--green-dark);border-color:color-mix(in srgb, var(--green) 40%, var(--border));}
+.login-foot{margin-top:18px;max-width:34ch;margin-left:auto;margin-right:auto;}
+
 </style>
 </head>
 <body>
 <div class="login-screen" id="loginScreen">
+ <div class="login-stage">
+  <aside class="login-brandside" aria-hidden="true">
+    <div class="lb-grid"></div>
+    <div class="lb-glow"></div>
+    <svg class="lb-car" viewBox="0 0 240 110" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 78V54l22-30h96l30 30h44a12 12 0 0 1 12 12v22"/>
+      <path d="M18 78h14M66 78h74M186 78h36"/>
+      <circle cx="49" cy="78" r="16"/><circle cx="163" cy="78" r="16"/>
+      <path d="M62 24v30M112 24v30"/>
+    </svg>
+    <div class="lb-body">
+      <span class="lb-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9l2-4h9l3 5h2v7"/><path d="M4 17h1.6M8.8 17h6.4M18.4 17H20"/><circle cx="7.2" cy="17" r="1.6"/><circle cx="16.8" cy="17" r="1.6"/></svg></span>
+      <h2>NEXAUTO</h2>
+      <p class="lb-tag">Every job, part and payment in one place — from the moment a car rolls in.</p>
+      <ul class="lb-list">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Check-in, inspection, quote and payment in one flow</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Stock that reserves itself and tells you what to reorder</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Owners, advisors and technicians each see their own view</li>
+      </ul>
+    </div>
+    <p class="lb-foot">Castrol green by default — change it to your own in Settings.</p>
+  </aside>
+  <div class="login-panel">
   <div class="login-box">
     <div class="login-head">
       <span class="login-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9l2-4h9l3 5h2v7"/><path d="M4 17h1.6M8.8 17h6.4M18.4 17H20"/><circle cx="7.2" cy="17" r="1.6"/><circle cx="16.8" cy="17" r="1.6"/></svg></span>
@@ -463,6 +555,8 @@ button.row-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);}
     </div>
     <p class="login-foot">Demo only. Data is stored in this browser and permissions are enforced in the page, not on a server.</p>
   </div>
+  </div>
+ </div>
 </div>
 
 <div class="app">
@@ -1338,7 +1432,7 @@ function orderItems(o){
   }
 
   html += '<div class="h4">Line items' + (editable ? '<span style="display:flex;gap:6px"><button class="btn sm" data-action="add-part">' + icon("plus") + 'Part</button><button class="btn sm" data-action="add-labor">' + icon("plus") + 'Labor</button></span>' : '') + '</div>';
-  if(!o.items.length) html += '<div class="empty">No items yet.' + (editable ? ' Add parts from stock or labor charges.' : '') + '</div>';
+  if(!o.items.length) html += '<div class="empty">No items yet.' + (editable ? ' Add parts from stock or labor charges.' : ' An advisor prices the job up here \u2014 add anything you spotted as a note instead.') + '</div>';
   html += o.items.map(function(it){
     var pend = o.stage === "in-service" && !it.approved;
     return '<div class="line"><div class="l">' + esc(it.name) + (pend ? ' <span class="badge b-amber">Needs approval</span>' : '') + '<small>' + (it.type === "part" ? "Part · " + esc(it.sku) : "Labor") + ' · Qty ' + it.qty + '<span data-cost> · cost ' + money(it.cost * it.qty) + '</span></small></div>' +
@@ -1357,7 +1451,7 @@ function orderActions(o, ic){
   if(o.stage === "reception") b.push('<button class="btn primary" data-action="start-insp">Start inspection</button>');
   if(o.stage === "pre-inspection") b.push('<button class="btn primary" data-action="finish-insp">' + (ic.unchecked ? 'Finish inspection (' + ic.unchecked + ' left)' : 'Finish inspection') + '</button>');
   if(o.stage === "quotation"){
-    if(!can("edit")) b.push('<button class="btn" disabled style="opacity:.7">Waiting for customer approval</button>');
+    if(!can("edit")) b.push('<button class="btn" disabled style="opacity:.7">' + (o.quoteStatus === "sent" ? "Quote sent, waiting for the customer" : "Waiting for an advisor to build the quote") + '</button>');
     else if(o.quoteStatus === "draft") b.push('<button class="btn primary" data-action="send-quote">Send quote to customer</button>');
     else { b.push('<button class="btn danger" data-action="decline-quote">Declined</button>'); b.push('<button class="btn primary" data-action="approve-quote">Approved</button>'); }
   }

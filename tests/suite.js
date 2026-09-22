@@ -519,6 +519,19 @@ T('The key is never written into the page',()=>{const b=app();b.go('insights');b
 T('No script errors',()=>{const b=app();b.go('insights');return b.errs.length===0;});
 }
 
+// ============ 28. QUOTE STAGE MESSAGING ============
+S('28 Quote stage messaging');
+{
+const tech=()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');return b;};
+T('A technician sees who the draft quote is waiting on',()=>{const b=tech();b.openOrder('WO-1047');b.click('[data-action="start-insp"]');b.checkAll();b.click('[data-action="finish-insp"]');return b.$('#panelFoot').textContent.includes('Waiting for an advisor');});
+T('It does not claim the customer is deciding',()=>{const b=tech();b.openOrder('WO-1047');b.click('[data-action="start-insp"]');b.checkAll();b.click('[data-action="finish-insp"]');return !b.$('#panelFoot').textContent.includes('Waiting for customer approval');});
+T('Once sent, the technician sees it is with the customer',()=>{const b=tech();b.openOrder('WO-1043');return b.$('#panelFoot').textContent.includes('waiting for the customer');});
+T('The empty item list tells a technician what to do instead',()=>{const b=tech();b.openOrder('WO-1047');b.click('[data-action="start-insp"]');b.checkAll();b.click('[data-action="finish-insp"]');b.tab('items');return b.$('#panelBody').textContent.includes('add anything you spotted as a note');});
+T('An advisor gets the buttons that actually move it on',()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123');b.openOrder('WO-1047');b.click('[data-action="start-insp"]');b.checkAll();b.click('[data-action="finish-insp"]');b.tab('items');return !!b.$('[data-action="add-part"]')&&!!b.$('[data-action="add-labor"]')&&!!b.$('[data-action="send-quote"]');});
+T('A finding can be turned into a quote line',()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123');b.openOrder('WO-1047');b.click('[data-action="start-insp"]');b.checkAll();b.click(b.$$('[data-action="insp-set"][data-s="problem"]')[2]);b.click('[data-action="finish-insp"]');b.tab('items');b.click('[data-action="add-labor"][data-prefill]');b.F('price').value='120';b.submit();return b.order('WO-1047').items.length===1;});
+T('No script errors',()=>{const b=tech();b.openOrder('WO-1043');return b.errs.length===0;});
+}
+
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;
 for(const [s,n,r,e] of results){ if(s!==cur){console.log('\n'+s);cur=s;} console.log(`  ${r==='PASS'?'✓':'✗'} ${n}${e?'  ['+e+']':''}`); r==='PASS'?pass++:fail++; }

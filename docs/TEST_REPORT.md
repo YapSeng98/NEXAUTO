@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 328 of 328 checks passed.**
+**Result: 335 of 335 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -35,6 +35,25 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Reorder suggestions | 10 | 10 |
 | Inspection checklist admin | 18 | 18 |
 | AI panel | 9 | 9 |
+| Quote stage messaging | 7 | 7 |
+
+## Login redesign and a misleading quote label (v0.10.0)
+
+The sign-in page is now a split layout: a brand panel with a blueprint grid and
+a ghosted vehicle on the left, the form on the right, collapsing to the form
+alone below 980px. Two real defects surfaced while building it:
+
+| # | Bug | Impact |
+|---|---|---|
+| 13 | `input[type=password]` was missing from the base input rule, so every password field fell back to the browser's `2px inset` border | The sign-in and API-key fields did not match any other input in the app |
+| 14 | A technician looking at a **draft** quote was told "Waiting for customer approval" | Nothing had been sent to anyone. The job was waiting on an advisor to price it, and the label said the opposite |
+
+Bug 14 came from a user asking why a job would not move on. The footer now
+distinguishes the two states — "Waiting for an advisor to build the quote" while
+the quote is a draft, "Quote sent, waiting for the customer" once it has gone out
+— and the empty line-item list tells a technician to leave a note instead. Seven
+checks cover both labels, the advisor's buttons, and turning an inspection
+finding into a quote line.
 
 ## Insights, reminders and the AI panel (v0.9.0)
 
