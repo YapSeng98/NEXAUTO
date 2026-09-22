@@ -94,6 +94,7 @@ erDiagram
 | approved | boolean | False until the customer approves. Extra work added in service starts as false |
 | by | FK → User | Who added the line |
 | needsPrice | boolean | Set when a technician adds work they cannot price. Blocks sending the quote until an advisor sets a price |
+| finding | int | The index of the inspection point this line answers, stamped when the line is raised from a finding. Explicit rather than matched on wording, so renaming the line does not break the link |
 
 ### Payment
 | Field | Type | Notes |
@@ -180,6 +181,8 @@ erDiagram
 6. **Sequential IDs.** Work order and PO numbers come from counters that survive reloads.
 7. **Checklist snapshot.** A job copies the inspection checklist when it is created, for the same reason item prices are copied: editing the template must not rewrite history.
 8. **Unpriced lines block the quote.** Anything flagged `needsPrice` stops `doSendQuote`, so a customer never receives a quote with a zero line in it.
+9. **A finding is answered by a link, not by wording.** `answersFinding()` checks the `finding` index first and falls back to a name match, so a line renamed beyond recognition still counts and the follow-up is not raised.
+10. **A new workshop is a different shape of the same object.** `blankShop()` builds one with a single owner, no jobs or customers, counters from 1001, and optionally the sample catalogue at zero stock.
 
 ### Settings
 

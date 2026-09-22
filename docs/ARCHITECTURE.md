@@ -21,7 +21,11 @@ flowchart LR
   `data-edit`, `data-checkin` and `data-config`. **This hides, it does not
   withhold** — see [SECURITY.md](SECURITY.md) C1.
 - Everything a shop can configure lives in `DB.settings`, so the same code drives
-  a different workshop's lists, timings and name.
+  a different workshop's lists, timings, permissions and name.
+- **Layer order matters and is not obvious.** The sign-in screen is `z-index:60`,
+  modals `70`, toasts `80`, the job panel `31`. A modal below the sign-in screen
+  is open, focusable and invisible — which happened, and which no jsdom test can
+  see, because jsdom does not paint.
 
 ### Why it is built this way
 
@@ -43,8 +47,9 @@ see the same data. The backend that fixes that is in
 | `seed()` / `buildHistory()` | Demo data, including six months of deterministic history |
 | Storage | `save()`, versioned load, `KEY` / `DB.v` |
 | Session | `readSession()`, `writeSession()`, lockout counters |
+| First run | `blankShop()`, `modalSetupShop()` — a workshop that is not the demo, created from the sign-in page |
 | Settings | `listOf()`, `timing()`, `appName()`, `checklist()`, `perms()` — every shop-configurable value, including the role matrix |
-| Helpers | `can()`, `me()`, `totals()`, `avail()`, `reserve()`, `move()`, `log()` |
+| Helpers | `can()`, `me()`, `isMine()`, `totals()`, `avail()`, `reserve()`, `move()`, `log()`, `answersFinding()` |
 | Insights engine | `jobStatus()`, `attentionList()`, `reorderPlan()`, `customerStats()` |
 | Views | `renderDashboard`, `renderOrders`, `renderInventory`, `renderCustomers`, `renderReports`, `renderInsights`, `renderSettings` |
 | Order panel | `renderOrderPanel`, `orderOverview`, `orderInspection`, `orderItems`, `orderNotes`, `orderActions` |

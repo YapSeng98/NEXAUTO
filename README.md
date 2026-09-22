@@ -111,7 +111,7 @@ index.html            The whole app: HTML, CSS and JavaScript in one file
 docs/
   DATA_MODEL.md       Tables, fields, relationships and data rules
   PROCESS.md          Work order lifecycle, stage gates, stock flow, follow-ups
-  ROLES.md            Permission matrix and access rules
+  ROLES.md            The permission matrix, and how an owner changes it
   ARCHITECTURE.md     Current demo design and production target
   SECURITY.md         Security review of the demo, with severities
   SUPABASE_PLAN.md    Migration plan: schema, RLS policies, auth, phases

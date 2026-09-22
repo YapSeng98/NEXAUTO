@@ -114,7 +114,9 @@ create table order_items (
   cost_cents  integer not null,          -- restricted column
   approved    boolean not null default false,
   added_by    uuid references profiles(id),
-  needs_price boolean not null default false
+  needs_price boolean not null default false,
+  -- which inspection point this line answers, so a renamed line keeps the link
+  answers_finding integer
 );
 
 -- The shared note thread on a job. Readable by anyone who can read the job.
@@ -167,6 +169,16 @@ Two constraints the demo enforces in JavaScript become database constraints here
 a quote cannot be sent while any of its lines has `needs_price`, and an order's
 inspection is a snapshot of the checklist rather than a reference to it, so
 editing `shop_settings.lists` never rewrites history.
+
+`shop_settings` also carries the permission matrix. Policies should read the
+shop's own matrix rather than hardcoding role names, so that ticking a box in
+Settings changes what the database allows and not merely what the UI shows —
+which is the whole point of moving the rules server-side.
+
+**Creating a shop** is the one unauthenticated write, and the demo's first-run
+setup becomes a `create_shop` RPC: it makes the `shops` row, the owner's
+`auth.users` entry and their `profiles` row in one transaction, and it is the
+endpoint that needs rate limiting and, for anything public, an invite token.
 
 **Money is integer cents.** Floats lose money at the third decimal and the loss
 compounds through discount → subtotal → margin.
@@ -433,7 +445,7 @@ The migration should not touch:
 - the validation rules (duplicate plate, mileage regression, empty quote), which
   become `check` constraints and trigger raises,
 - the stage machine and its gates,
-- the test suite's *intent*. The 162 browser tests become the UI contract; add a
+- the test suite's *intent*. The 480 browser tests become the UI contract; add a
   parallel SQL-level suite that asserts the same rules against the database with
   each role's token. **A rule tested only in the browser is not tested.**
 

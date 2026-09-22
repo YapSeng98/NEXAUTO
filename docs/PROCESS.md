@@ -37,6 +37,7 @@ flowchart TD
 | Inspection → Quotation | Every checklist point is marked | "Check all N remaining items first" |
 | Quotation → Sent | At least 1 line item | "Add at least one item before sending" |
 | Quotation → Sent | No line is still waiting on a price | "N items still need a price" |
+| Sent → Approved or Declined | The person has the `approve` flag | Buttons hidden; forcing one is refused |
 | Sent → In service | Enough available stock for every part | "Only N available for part. Raise a purchase order first." |
 | In service → Payment | Work is marked done, there's no unapproved extra work, and the order has at least 1 item | Payment button hidden or blocked |
 
@@ -46,6 +47,8 @@ flowchart TD
 - The discount can't exceed the subtotal. Advisors are capped at 10%.
 - Prices and costs are **copied onto the line** when it's added, so later price changes don't alter existing quotes or invoices.
 - Totals, profit and margin are always **calculated from the lines**, never stored.
+- **Raising a line from a finding links the two.** Use *Add to quote* on the finding rather than typing a line fresh: the line records which inspection point it answers, so renaming it changes nothing and the shop is never reminded to chase work it has already done.
+- **Recording the customer's answer is separate from building the quote.** They are two permissions, so a shop can let one person price and another close the loop.
 - A technician may add lines but never price them. A part carries the price list's price and cost without showing either; work they describe is saved unpriced and flagged until an advisor sets a price.
 
 ### The quotation document

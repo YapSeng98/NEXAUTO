@@ -245,6 +245,25 @@ here they do not:
   carries only their own jobs and no money fields at all. That is the one place
   in the app where a permission actually withholds data rather than hiding it.
 
+### Two gates that were missing, now closed
+
+Found while writing the permission model down for a presentation, not by a test:
+
+- **The brand colour card** was open to every role. Now owner-or-manager.
+- **The reset card** was open to every role, so any signed-in user could wipe
+  every job, customer and part. Now owner-only.
+
+Both handlers refuse the action rather than relying on the card being hidden,
+which is the pattern the rest of the app should follow and mostly does not (C1).
+
+### First-run setup
+
+`Create your workshop` on the sign-in page builds an empty shop with a single
+owner. It is not an account-creation endpoint in any meaningful sense — it writes
+to this browser's storage, like everything else here — so it neither adds nor
+removes risk. With a backend it becomes the one place that needs rate limiting
+and an invite token, because it is the only unauthenticated write.
+
 ### One note on the editable permission matrix
 
 An owner can now grant or revoke permissions per role in Settings → Roles. This
