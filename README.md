@@ -13,6 +13,7 @@ Workshop operations app for auto repair shops. It covers vehicle check-in, inspe
 | Sign in | Each user has their own username and password, with a lockout after five failed attempts and a session that can be remembered or not |
 | Dashboard | Revenue and profit today, workshop pipeline, follow-ups due, low stock alerts, quick actions |
 | Orders | Check in vehicles, inspection, build and send quotes, a printable customer quotation, approve or decline, extra-work approval, payment, shared job notes |
+| Money owed | Jobs closed on a promise to pay — what is outstanding, for how long, and a button to confirm it arrived |
 | Inventory | Parts with photos, on-hand, reserved and available stock, stock adjustments, purchase orders, receiving, suppliers, stock history |
 | Customers | Customer profiles, multiple vehicles, service history, lifetime spend, follow-ups |
 | Insights | Jobs that have stalled and why, stock to reorder with suggested quantities, customers worth calling, and an optional Ask-anything panel |
@@ -87,7 +88,8 @@ flowchart TD
   D -- Declined --> X[Closed, follow-up in 14 days]
   D -- Approved --> E[Parts reserved]
   E --> F[In service]
-  F --> G[Payment and close]
+  F --> W[Awaiting payment]
+  W --> G[Payment and close]
   G --> H[Follow-ups created]
 ```
 
@@ -115,7 +117,7 @@ docs/
   ARCHITECTURE.md     Current demo design and production target
   SECURITY.md         Security review of the demo, with severities
   SUPABASE_PLAN.md    Migration plan: schema, RLS policies, auth, phases
-  TEST_REPORT.md      Results of the 480 automated checks
+  TEST_REPORT.md      Results of the 506 automated checks
 tests/
   suite.js            Automated end-to-end test suite
 package.json          Test script
@@ -128,7 +130,7 @@ npm install
 npm test
 ```
 
-The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 480 passed, 0 failed`.
+The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 506 passed, 0 failed`.
 
 ## Making it your own
 

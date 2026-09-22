@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 480 of 480 checks passed.**
+**Result: 506 of 506 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -43,6 +43,42 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Shop-configurable settings | 19 | 19 |
 | Locked settings | 9 | 9 |
 | Role permissions | 25 | 25 |
+
+## Awaiting payment, and money that arrives later (v0.21.0)
+
+Two gaps a user asked about, and both were real.
+
+**“Mark work done” set a flag and left the job in *In service*.** A finished car
+waiting to be collected is a different thing from a car on the ramp, and the
+pipeline could not tell them apart. There is now a sixth stage,
+**Awaiting payment**, between In service and Completed. Payment is taken from
+there, the stalled-job reason distinguishes the two ("work not marked done" vs
+"waiting to be collected and paid"), and the dashboard can show how many cars are
+finished and waiting.
+
+**Revenue counted money that had not arrived.** `paidToday()` counted any
+completed job with a payment date, so a bank transfer that had not cleared showed
+up in today's takings. Payment now records whether the money actually arrived.
+The job closes either way — the work is done and the car has gone — but anything
+marked awaiting funds is excluded from the dashboard and every report until it is
+confirmed, and appears under **Insights → Money owed** with its age and a
+Received button.
+
+26 checks cover both, including that the stock still moves and the follow-ups are
+still created when the money is outstanding, that settling is logged with a name,
+that someone without the payment permission cannot settle, and that records
+created before `settled` existed still count as paid.
+
+### The bug this found
+
+| # | Bug | Found by |
+|---|---|---|
+| 24 | The dashboard pipeline was hardcoded to `STAGES.slice(0,4)`, so the new stage was invisible on it | `The pipeline counts it separately from work in progress` |
+
+Verified end to end in a browser as well: a job driven from check-in through
+inspection, quoting, approval, work done, closed on a bank transfer with the
+money outstanding, confirmed absent from revenue, then settled from the Insights
+list and confirmed present.
 
 ## Two Settings cards had no permission gate (v0.20.0)
 

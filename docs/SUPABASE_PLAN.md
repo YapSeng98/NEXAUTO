@@ -89,7 +89,8 @@ create table orders (
   customer_id   uuid not null references customers(id),
   vehicle_id    uuid not null references vehicles(id),
   stage         text not null check (stage in
-                  ('reception','pre-inspection','quotation','in-service','completed','declined')),
+                  ('reception','pre-inspection','quotation','in-service',
+                   'awaiting-payment','completed','declined')),
   advisor_id    uuid references profiles(id),
   technician_id uuid references profiles(id),
   mileage       integer not null,
@@ -182,6 +183,12 @@ endpoint that needs rate limiting and, for anything public, an invite token.
 
 **Money is integer cents.** Floats lose money at the third decimal and the loss
 compounds through discount → subtotal → margin.
+
+**Payment carries `settled` and `settled_at`.** A job closes when the work is
+done and the car has gone; whether the money has landed is a separate fact.
+Revenue views filter on `settled`, so unconfirmed money never reaches a report.
+A real billing module would replace this with an invoice and an allocations
+table — the flag is the smallest thing that keeps the numbers honest today.
 
 ---
 
@@ -376,7 +383,8 @@ tablets, that sequence is a race. Each becomes one `security definer` RPC:
 | RPC | Why it must be atomic |
 |---|---|
 | `approve_quote(order_id)` | Reserve every part, or reserve none. A partial reserve oversells stock |
-| `take_payment(order_id, method, amount)` | Deduct stock, write movements, close the job, create follow-ups — all or nothing |
+| `take_payment(order_id, method, amount, settled)` | Deduct stock, write movements, close the job, create follow-ups — all or nothing. `settled` records whether the money actually arrived |
+| `settle_payment(order_id)` | Confirm money that arrived later, and stamp who confirmed it |
 | `receive_po(po_id)` | Increment stock and mark received together |
 | `adjust_stock(part_id, qty, reason)` | Write the movement in the same transaction as the level change |
 

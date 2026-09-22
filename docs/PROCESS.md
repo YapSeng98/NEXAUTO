@@ -12,7 +12,8 @@ flowchart TD
   E --> F["In service"]
   F -- "extra work added" --> F2["Needs approval"]
   F2 -- approved --> F
-  F --> G["Payment and close"]
+  F --> W["Awaiting payment<br/>finished, waiting to be collected"]
+  W --> G["Payment and close"]
   G --> H["Follow-ups created"]
 ```
 
@@ -24,6 +25,7 @@ flowchart TD
 | Inspection | Technician | Each point on the checklist is marked Good, Attention or Problem, with an optional note. The checklist is whatever the shop configured when the job was created |
 | Quotation | Advisor, with the technician | Anyone on the job adds parts and work; only an advisor prices it, discounts it and sends it |
 | In service | Technician | Work is done. Any extra work needs customer approval |
+| Awaiting payment | Advisor | Work is finished and the car is parked waiting to be collected and paid for |
 | Completed | Advisor | Payment taken, stock deducted, follow-ups created |
 | Declined | — | Customer said no. A follow-up is created, and no stock is used |
 
@@ -39,7 +41,8 @@ flowchart TD
 | Quotation → Sent | No line is still waiting on a price | "N items still need a price" |
 | Sent → Approved or Declined | The person has the `approve` flag | Buttons hidden; forcing one is refused |
 | Sent → In service | Enough available stock for every part | "Only N available for part. Raise a purchase order first." |
-| In service → Payment | Work is marked done, there's no unapproved extra work, and the order has at least 1 item | Payment button hidden or blocked |
+| In service → Awaiting payment | The technician marks the work done | — |
+| Awaiting payment → Completed | No unapproved extra work, and the order has at least 1 item | Payment button hidden or blocked |
 
 ### Quote rules
 
@@ -115,6 +118,28 @@ Days of cover is available stock divided by that rate. A part is suggested when
 it is at or below its reorder point, or has less than three weeks of cover, and
 the quantity tops it up to about 45 days. Both windows are set in
 **Settings → Timing**.
+
+## 3b. Money that arrives later
+
+Some customers pay on the spot; some pay by transfer, cheque or on account. The
+job does not wait for the money, because the work is finished and the car has
+gone — what is outstanding is cash, not work.
+
+So payment records **whether the money arrived**:
+
+| | The job | Stock | Revenue | Follow-ups |
+|---|---|---|---|---|
+| Received now | Closes | Deducted | Counted | Created |
+| Awaiting funds | Closes | Deducted | **Not counted** | Created |
+
+Anything still owed appears under **Insights → Money owed** with the amount, the
+method and how many days it has been outstanding, and a **Received** button that
+settles it. Settling is written to the job's activity log with the name of
+whoever confirmed it. Until then the money stays out of the dashboard's revenue
+and out of every report.
+
+A job with no `settled` field at all — anything created before this existed —
+counts as paid, so history is unaffected.
 
 ## 4. Follow-ups
 

@@ -768,9 +768,9 @@ var ICON = {
 function icon(name){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[name] + '</svg>'; }
 
 /* ================= constants ================= */
-var STAGES = ["reception","pre-inspection","quotation","in-service","completed"];
-var STAGE_LABEL = {"reception":"Reception","pre-inspection":"Inspection","quotation":"Quotation","in-service":"In service","completed":"Completed","declined":"Declined"};
-var STAGE_BADGE = {"reception":"b-neutral","pre-inspection":"b-amber","quotation":"b-amber","in-service":"b-green","completed":"b-muted","declined":"b-red"};
+var STAGES = ["reception","pre-inspection","quotation","in-service","awaiting-payment","completed"];
+var STAGE_LABEL = {"reception":"Reception","pre-inspection":"Inspection","quotation":"Quotation","in-service":"In service","awaiting-payment":"Awaiting payment","completed":"Completed","declined":"Declined"};
+var STAGE_BADGE = {"reception":"b-neutral","pre-inspection":"b-amber","quotation":"b-amber","in-service":"b-green","awaiting-payment":"b-amber","completed":"b-muted","declined":"b-red"};
 var DEFAULT_APP_NAME = "NEXAUTO";
 /* Shop-configurable lists. Anything here can be edited in Settings; the defaults
    are what a fresh demo starts with and what "Restore default" puts back. */
@@ -973,7 +973,7 @@ function seed(){
       inspection:allGood({8:["problem","Low refrigerant"]}), quoteStatus:"approved", workDone:false, discount:0,
       items:[item("part","OIL-5W30","5W-30 synthetic oil, 4L",1,60,34), item("part","FLT-OIL01","Oil filter, universal",1,20,8), item("labor","","Labor: oil change",1,40,15), item("labor","","Repair: Air-con performance",1,200,83)],
       payment:null, log:[{t:ago(5760), x:"Checked in by Priya Nair"},{t:ago(4320), x:"Customer approved quotation"}]},
-    {id:"WO-1045", customerId:"c7", vehicleId:"v7", stage:"in-service", advisorId:"s3", technicianId:"s5", mileage:28400, complaint:"General service", createdAt:ago(7200), stageSince:ago(2880),
+    {id:"WO-1045", customerId:"c7", vehicleId:"v7", stage:"awaiting-payment", advisorId:"s3", technicianId:"s5", mileage:28400, complaint:"General service", createdAt:ago(7200), stageSince:ago(2880),
       inspection:allGood(), quoteStatus:"approved", workDone:true, discount:0,
       items:[item("part","WPR-STD01","Wiper blade set",1,35,12), item("part","FLT-CAB01","Cabin air filter",1,45,18), item("labor","","Labor: general service",1,200,90)],
       payment:null, log:[{t:ago(7200), x:"Checked in by Priya Nair"},{t:ago(5760), x:"Customer approved quotation"},{t:ago(2880), x:"Work marked done by Daniel Koh"}]},
@@ -1010,9 +1010,9 @@ function seed(){
   staff.forEach(function(x){ x.active = true; });
   inventory.forEach(function(x){ x.reserved = 0; });
   orders.forEach(function(o){
-    var ok = o.stage === "in-service" || o.stage === "completed";
+    var ok = o.stage === "in-service" || o.stage === "awaiting-payment" || o.stage === "completed";
     o.items.forEach(function(i){ i.approved = ok; });
-    if(o.stage === "in-service") o.items.forEach(function(i){ if(i.type === "part"){ var pp = inventory.filter(function(x){ return x.sku === i.sku; })[0]; if(pp) pp.reserved += i.qty; } });
+    if(o.stage === "in-service" || o.stage === "awaiting-payment") o.items.forEach(function(i){ if(i.type === "part"){ var pp = inventory.filter(function(x){ return x.sku === i.sku; })[0]; if(pp) pp.reserved += i.qty; } });
     o.log.forEach(function(l){ l.by = "s3"; });
   });
   var movements = past.movements.concat([
@@ -1237,7 +1237,13 @@ function reserve(o, onlyNew){
 }
 function dueLabel(iso){ if(!iso) return ""; var d = Math.round((new Date(iso) - Date.now())/86400000); return d < 0 ? "Overdue " + (-d) + "d" : d === 0 ? "Due today" : "Due in " + d + "d"; }
 function openOpps(){ return DB.opportunities.filter(function(o){ return o.status === "open"; }).sort(function(a,b){ return (a.dueAt||"").localeCompare(b.dueAt||""); }); }
-function paidToday(){ return DB.orders.filter(function(o){ return o.stage === "completed" && o.payment && isToday(o.payment.paidAt); }); }
+function isSettled(o){ return !!o.payment && o.payment.settled !== false; }
+function owedOrders(){
+  return DB.orders.filter(function(o){ return o.stage === "completed" && o.payment && o.payment.settled === false; })
+    .sort(function(a, b){ return a.payment.paidAt.localeCompare(b.payment.paidAt); });
+}
+function owedTotal(){ return owedOrders().reduce(function(s, o){ return s + o.payment.amount; }, 0); }
+function paidToday(){ return DB.orders.filter(function(o){ return o.stage === "completed" && isSettled(o) && isToday(o.payment.paidAt); }); }
 function log(o, text){ o.log.push({t:nowISO(), x:text, by:me().id}); }
 
 /* ================= toast ================= */
@@ -1420,7 +1426,8 @@ var AGE_RULES = {
   "reception":      function(){ return "Checked in, inspection not started"; },
   "pre-inspection": function(o){ var ic = inspCounts(o); return "Inspection started, " + ic.unchecked + " item" + (ic.unchecked === 1 ? "" : "s") + " still unchecked"; },
   "quotation":      function(o){ return o.quoteStatus === "sent" ? "Quote sent, waiting on the customer" : o.items.length ? "Quote built but never sent" : "No quote started yet"; },
-  "in-service":     function(o){ return o.workDone ? "Work finished, payment not taken" : "In service, work not marked done"; }
+  "in-service":     function(){ return "In service, work not marked done"; },
+  "awaiting-payment": function(o){ return o.items.some(function(i){ return !i.approved; }) ? "Extra work waiting on the customer" : "Work finished, waiting to be collected and paid"; }
 };
 function daysSince(iso){ return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)); }
 function stageStart(o){
@@ -1497,7 +1504,7 @@ function renderDashboard(){
   var u = me();
   var mine = DB.orders.filter(function(o){ return o.technicianId === u.id || o.advisorId === u.id; });
   var mineOpen = mine.filter(function(o){ return o.stage !== "completed" && o.stage !== "declined"; }).length;
-  var mineDone = mine.filter(function(o){ return o.stage === "completed" && o.payment && isToday(o.payment.paidAt); }).length;
+  var mineDone = mine.filter(function(o){ return o.stage === "completed" && isSettled(o) && isToday(o.payment.paidAt); }).length;
   var low = lowStock(), opps = openOpps();
 
   var html = '<div class="quick-actions">' +
@@ -1520,7 +1527,8 @@ function renderDashboard(){
   // pipeline
   var src = can("all") ? DB.orders : DB.orders.filter(function(o){ return o.technicianId === u.id; });
   var maxC = 1;
-  var counts = STAGES.slice(0,4).map(function(st){ var c = src.filter(function(o){ return o.stage === st; }).length; if(c > maxC) maxC = c; return {st:st, c:c}; });
+  // every stage except the last one, which is Completed
+  var counts = STAGES.slice(0, -1).map(function(st){ var c = src.filter(function(o){ return o.stage === st; }).length; if(c > maxC) maxC = c; return {st:st, c:c}; });
   var pipe = counts.map(function(x){
     return '<button class="pipe-row" data-action="goto" data-view="orders" data-filter="' + x.st + '"><div style="flex:1;padding-right:16px"><span>' + STAGE_LABEL[x.st] + '</span><div class="bar"><i style="width:' + Math.round(x.c/maxC*100) + '%"></i></div></div><span class="count">' + x.c + '</span></button>';
   }).join("");
@@ -1627,7 +1635,8 @@ function orderOverview(o, c, v){
     '<dt>Advisor</dt><dd>' + esc(staffName(o.advisorId)) + '</dd>' +
     '<dt>Technician</dt><dd>' + techField + '</dd>' +
     '<dt>Checked in</dt><dd>' + new Date(o.createdAt).toLocaleString([], {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}) + '</dd>' +
-    (o.payment ? '<dt>Payment</dt><dd><span data-price>' + money(o.payment.amount) + ' · </span>' + esc(o.payment.method) + '</dd>' : '') +
+    (o.payment ? '<dt>Payment</dt><dd><span data-price>' + money(o.payment.amount) + ' · </span>' + esc(o.payment.method) +
+      (o.payment.settled === false ? ' <span class="badge b-amber">Awaiting funds</span>' : '') + '</dd>' : '') +
   '</dl>';
   html += '<div class="h4">Activity</div><div class="log">' + o.log.slice().reverse().map(function(l){ return '<p><b>' + esc(l.x) + '</b><br>' + new Date(l.t).toLocaleString([], {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}) + '</p>'; }).join("") + '</div>';
   return html;
@@ -1671,14 +1680,14 @@ function answersFinding(o, finding, idx){
   });
 }
 function orderItems(o){
-  var onQuote = o.stage === "quotation" || o.stage === "in-service";
+  var onQuote = o.stage === "quotation" || o.stage === "in-service" || o.stage === "awaiting-payment";
   var editable = can("edit") && onQuote;
   var canAdd = can("additems") && onQuote;
   var mayRemove = function(it){ return editable || (it.by === state.userId && !it.approved); };
   var t = totals(o), html = "";
   var qs = {draft:"Draft, not sent yet", sent:"Sent, waiting for customer", approved:"Approved by customer", rejected:"Declined by customer"};
   if(o.stage === "reception" || o.stage === "pre-inspection") html += '<div class="hint">Finish the inspection first. The quote opens once the checklist is complete.</div>';
-  else html += '<div class="hint">Quote status: <b style="color:var(--text-primary)">' + qs[o.quoteStatus] + '</b>' + (o.stage === "in-service" && editable ? '. Anything added now is extra work and needs the customer\'s approval.' : '') + '</div>';
+  else html += '<div class="hint">Quote status: <b style="color:var(--text-primary)">' + qs[o.quoteStatus] + '</b>' + ((o.stage === "in-service" || o.stage === "awaiting-payment") && editable ? '. Anything added now is extra work and needs the customer\'s approval.' : '') + '</div>';
 
   // Keep each finding's place in the checklist: it is the id a quote line links to.
   var findings = [];
@@ -1696,7 +1705,7 @@ function orderItems(o){
   html += '<div class="h4">Line items' + (canAdd ? '<span style="display:flex;gap:6px"><button class="btn sm" data-action="add-part">' + icon("plus") + 'Part</button><button class="btn sm" data-action="add-labor">' + icon("plus") + 'Labor</button></span>' : '') + '</div>';
   if(!o.items.length) html += '<div class="empty">No items yet.' + (canAdd ? (can("price") ? ' Add parts from stock or labor charges.' : ' Add the parts you need \u2014 an advisor puts a price on any labour.') : '') + '</div>';
   html += o.items.map(function(it){
-    var pend = o.stage === "in-service" && !it.approved;
+    var pend = (o.stage === "in-service" || o.stage === "awaiting-payment") && !it.approved;
     return '<div class="line"><div class="l">' + esc(it.name) +
       (pend ? ' <span class="badge b-amber">Needs approval</span>' : '') +
       (it.needsPrice ? ' <span class="badge b-red">Needs pricing</span>' : '') +
@@ -1716,6 +1725,8 @@ function orderItems(o){
 }
 function orderActions(o, ic){
   var b = [];
+  if(o.stage === "completed" && o.payment && o.payment.settled === false && can("pay"))
+    b.push('<button class="btn primary" data-action="settle-payment">Money received</button>');
   if(o.stage === "reception") b.push('<button class="btn primary" data-action="start-insp">Start inspection</button>');
   if(o.stage === "pre-inspection") b.push('<button class="btn primary" data-action="finish-insp">' + (ic.unchecked ? 'Finish inspection (' + ic.unchecked + ' left)' : 'Finish inspection') + '</button>');
   if(o.stage === "quotation"){
@@ -1729,13 +1740,13 @@ function orderActions(o, ic){
       b.push('<button class="btn" disabled style="opacity:.7">Quote sent, waiting for the customer</button>');
     }
   }
-  if(o.stage === "in-service"){
+  if(o.stage === "in-service" || o.stage === "awaiting-payment"){
     var pendN = o.items.filter(function(i){ return !i.approved; }).length;
     if(pendN && can("edit")) b.push('<button class="btn" data-action="approve-extra">Approve extra work (' + pendN + ')</button>');
-    if(!o.workDone) b.push('<button class="btn primary" data-action="work-done">Mark work done</button>');
+    if(o.stage === "in-service") b.push('<button class="btn primary" data-action="work-done">Mark work done</button>');
     else if(pendN) b.push('<button class="btn" disabled style="opacity:.7">Extra work waiting for approval</button>');
     else if(can("pay")) b.push('<button class="btn primary" data-action="take-payment">Take payment and close</button>');
-    else b.push('<button class="btn" disabled style="opacity:.7">Done, waiting for payment</button>');
+    else b.push('<button class="btn" disabled style="opacity:.7">Waiting for the front desk to take payment</button>');
   }
   return b.join("");
 }
@@ -1836,7 +1847,7 @@ function doDecline(o){
   DB.opportunities.push({id:uid("o"), customerId:o.customerId, type:"declined-quote", text:"Declined quote " + money(totals(o).total) + " on " + o.id, dueAt:new Date(Date.now()+timing("followDeclined")*86400000).toISOString(), sourceOrderId:o.id, status:"open", createdAt:nowISO()});
   toast("Marked declined. Follow-up added."); state.orderTab = "overview"; refresh();
 }
-function doWorkDone(o){ o.workDone = true; log(o, "Work marked done by " + me().name); toast("Work marked done"); refresh(); }
+function doWorkDone(o){ o.workDone = true; o.stage = "awaiting-payment"; o.stageSince = nowISO(); log(o, "Work marked done by " + me().name); toast("Work marked done"); refresh(); }
 
 /* ================= inventory ================= */
 function renderInventory(){
@@ -1943,7 +1954,7 @@ function buckets(range){
 }
 function paidBetween(from, to){
   return DB.orders.filter(function(o){
-    if(o.stage !== "completed" || !o.payment) return false;
+    if(o.stage !== "completed" || !isSettled(o)) return false;
     var t = new Date(o.payment.paidAt).getTime();
     return t >= from && t < to;
   });
@@ -2067,8 +2078,26 @@ function customerCardHTML(){
     }).join("") : '<div class="empty">Every regular has been in recently.</div>');
   return html + '</div>';
 }
+function owedCardHTML(){
+  var list = owedOrders();
+  var html = '<div class="card" data-revenue><div class="section-head"><h2>Money owed</h2>' +
+    (list.length ? '<span class="badge b-amber">' + money(owedTotal()) + ' outstanding</span>'
+                 : '<span class="badge b-green">All settled</span>') + '</div>';
+  if(!list.length) return html + '<div class="empty">Every closed job has been paid for.</div></div>';
+  html += '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Jobs that closed on a promise to pay. This money is not counted as revenue until you mark it received.</p>';
+  html += list.map(function(o){
+    var c = cust(o.customerId), v = veh(c, o.vehicleId), d = daysSince(o.payment.paidAt);
+    return '<div class="line"><div class="l"><span class="plate">' + esc(v ? v.plate : "") + '</span>' + esc(c ? c.name : "") +
+      '<span style="display:block;font-size:12px;color:var(--text-muted)">' + esc(o.id) + ' \u00b7 ' + esc(o.payment.method) +
+      ' \u00b7 ' + (d === 0 ? "today" : d + " day" + (d === 1 ? "" : "s") + " ago") + '</span></div>' +
+      '<div class="r"><span class="amt">' + money(o.payment.amount) + '</span>' +
+      (can("pay") ? '<button class="btn sm primary" data-action="settle-payment" data-id="' + esc(o.id) + '">Received</button>' : '') +
+      '</div></div>';
+  }).join("");
+  return html + '</div>';
+}
 function renderInsights(){
-  $("#v-insights").innerHTML = attentionCardHTML() + reorderCardHTML() + customerCardHTML() + aiCardHTML();
+  $("#v-insights").innerHTML = attentionCardHTML() + owedCardHTML() + reorderCardHTML() + customerCardHTML() + aiCardHTML();
 }
 
 /* ================= optional AI assistant =================
@@ -2462,7 +2491,7 @@ function modalAddPart(o){
     if(ex && !ex.approved) ex.qty += qty; else o.items.push({id:uid("i"), type:"part", sku:p.sku, name:p.name, qty:qty, price:p.price, cost:p.cost, approved:false, by:me().id});
     if(o.quoteStatus === "sent"){ o.quoteStatus = "draft"; }
     log(o, "Added " + p.name + " × " + qty);
-    if(qty > avail(p)) toast("Only " + avail(p) + " available. Order more before approval.", true); else toast(o.stage === "in-service" ? "Added as extra work. Needs approval." : "Part added");
+    if(qty > avail(p)) toast("Only " + avail(p) + " available. Order more before approval.", true); else toast((o.stage === "in-service" || o.stage === "awaiting-payment") ? "Added as extra work. Needs approval." : "Part added");
     refresh();
   });
 }
@@ -2499,19 +2528,22 @@ function modalPayment(o){
   var t = totals(o);
   var body = '<div class="kpi hero" style="margin-bottom:14px"><p class="label">Amount due</p><p class="value num">' + money(t.total) + '</p><p class="foot">' + o.items.length + ' items' + (o.discount ? ' · ' + money(o.discount) + ' discount' : '') + '</p></div>' +
     field("Payment method", '<select name="method">' + listOf("payment").map(function(m){ return opt(m,m); }).join("") + '</select>') +
-    '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0">Closing deducts parts from stock and schedules the next service follow-up.</p>';
+    field("Has the money arrived?", '<select name="settled">' + opt("yes", "Yes, received now") + opt("no", "Not yet, awaiting funds") + '</select>') +
+    '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0">The job closes either way, because the car has gone and the work is done. Money marked as awaiting funds stays out of your revenue until you confirm it arrived.</p>';
   openModal("Take payment", body, "Confirm payment", function(fd){
     o.items.forEach(function(i){ if(i.type === "part"){ var p = part(i.sku); if(p){ p.stock = Math.max(0, p.stock - i.qty); p.reserved = Math.max(0, (p.reserved||0) - i.qty); move(p.sku, -i.qty, "sale", o.id); } } });
-    o.payment = {method:fd.get("method"), amount:t.total, paidAt:nowISO()};
+    var settled = fd.get("settled") !== "no";
+    o.payment = {method:fd.get("method"), amount:t.total, paidAt:nowISO(), settled:settled};
+    if(settled) o.payment.settledAt = nowISO();
     o.stage = "completed"; o.stageSince = nowISO();
-    log(o, "Paid " + money(t.total) + " by " + fd.get("method").toLowerCase());
+    log(o, (settled ? "Paid " : "Invoiced ") + money(t.total) + " by " + fd.get("method").toLowerCase() + (settled ? "" : ", awaiting funds"));
     o.inspection.forEach(function(i, idx){
       var quoted = answersFinding(o, i, idx);
       if((i.status === "attention" || (i.status === "problem" && !quoted))) DB.opportunities.push({id:uid("o"), customerId:o.customerId, type:"inspection-finding", text:i.name + (i.note ? ": " + i.note : ""), dueAt:new Date(Date.now()+timing("followFinding")*86400000).toISOString(), sourceOrderId:o.id, status:"open", createdAt:nowISO()});
     });
     DB.opportunities.forEach(function(x){ if(x.customerId === o.customerId && x.type === "service-due" && x.status === "open") x.status = "done"; });
     DB.opportunities.push({id:uid("o"), customerId:o.customerId, type:"service-due", text:"Next service at " + (Number(o.mileage) + timing("serviceKm")).toLocaleString() + " km", dueAt:new Date(Date.now()+timing("followService")*86400000).toISOString(), sourceOrderId:o.id, status:"open", createdAt:nowISO()});
-    state.orderTab = "overview"; toast("Payment recorded. " + o.id + " closed."); refresh();
+    state.orderTab = "overview"; toast(settled ? "Payment recorded. " + o.id + " closed." : o.id + " closed, money still owed."); refresh();
   });
 }
 
@@ -2749,6 +2781,15 @@ document.addEventListener("click", function(e){
     case "approve-extra": doApproveExtra(o); break;
     case "decline-quote": if(confirm("Mark this quotation as declined by the customer?")) doDecline(o); break;
     case "work-done": doWorkDone(o); break;
+    case "settle-payment": {
+      var so = el.dataset.id ? order(el.dataset.id) : o;
+      if(!so || !so.payment || so.payment.settled !== false) break;
+      if(!can("pay")){ toast("You cannot record payments", true); break; }
+      so.payment.settled = true; so.payment.settledAt = nowISO();
+      log(so, money(so.payment.amount) + " received, confirmed by " + me().name);
+      toast("Marked received"); refresh();
+      break;
+    }
     case "take-payment":
       if(o.items.some(function(i){ return !i.approved; })){ toast("Approve or remove the extra work before payment", true); break; }
       if(!o.items.length){ toast("This order has no items to charge", true); break; }

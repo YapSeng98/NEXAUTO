@@ -49,8 +49,8 @@ see the same data. The backend that fixes that is in
 | Session | `readSession()`, `writeSession()`, lockout counters |
 | First run | `blankShop()`, `modalSetupShop()` — a workshop that is not the demo, created from the sign-in page |
 | Settings | `listOf()`, `timing()`, `appName()`, `checklist()`, `perms()` — every shop-configurable value, including the role matrix |
-| Helpers | `can()`, `me()`, `isMine()`, `totals()`, `avail()`, `reserve()`, `move()`, `log()`, `answersFinding()` |
-| Insights engine | `jobStatus()`, `attentionList()`, `reorderPlan()`, `customerStats()` |
+| Helpers | `can()`, `me()`, `isMine()`, `totals()`, `avail()`, `reserve()`, `move()`, `log()`, `answersFinding()`, `isSettled()`, `owedOrders()` |
+| Insights engine | `jobStatus()`, `attentionList()`, `owedCardHTML()`, `reorderPlan()`, `customerStats()` |
 | Views | `renderDashboard`, `renderOrders`, `renderInventory`, `renderCustomers`, `renderReports`, `renderInsights`, `renderSettings` |
 | Order panel | `renderOrderPanel`, `orderOverview`, `orderInspection`, `orderItems`, `orderNotes`, `orderActions` |
 | Quote document | `quoteDocHTML()`, `previewQuote()`, `openDoc()` — priced for advisors, a job sheet for technicians |
@@ -107,7 +107,9 @@ flowchart TD
 2. **Transactional stock reservation.** Wrap approval in a database transaction
    with row locks on parts.
 3. **Data model changes.** A separate Vehicle table, `shop_id`, and Invoice with
-   multiple payments.
+   multiple payments — the `settled` flag on a single payment is the demo-sized
+   version of accounts receivable, and a real one needs part-payments and an
+   allocation table.
 4. **Billing.** Invoice numbering, GST, deposits, partial payments and PDFs.
 5. **An API key that is not in the browser.** An Edge Function holding one key
    replaces the bring-your-own-key AI panel.

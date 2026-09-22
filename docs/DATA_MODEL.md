@@ -60,12 +60,12 @@ erDiagram
 | vehicle_id | FK → Vehicle | |
 | advisor_id | FK → User | |
 | technician_id | FK → User | Must be an active technician |
-| stage | enum | `reception`, `pre-inspection`, `quotation`, `in-service`, `completed`, `declined` |
+| stage | enum | `reception`, `pre-inspection`, `quotation`, `in-service`, `awaiting-payment`, `completed`, `declined` |
 | quote_status | enum | `draft`, `sent`, `approved`, `rejected` |
 | mileage | int | Can't be lower than the vehicle's last recorded mileage |
 | complaint | string | |
 | discount | money | ≤ subtotal. Advisors ≤ 10% |
-| work_done | boolean | |
+| work_done | boolean | Kept for history; the stage is what moves |
 | created_at | datetime | |
 | stage_since | datetime | When it entered the current stage. Drives the stalled-job warnings |
 | inspection | InspectionItem[] | A copy of the checklist as it stood at check-in |
@@ -101,6 +101,8 @@ erDiagram
 |---|---|---|
 | amount | money | Total at the time of payment |
 | method | string | One of `settings.lists.payment` |
+| settled | boolean | Whether the money has actually arrived. Absent on records created before this existed, which count as settled |
+| settled_at | datetime | When it was confirmed received |
 | paid_at | datetime | |
 
 ### Activity log
@@ -182,7 +184,8 @@ erDiagram
 7. **Checklist snapshot.** A job copies the inspection checklist when it is created, for the same reason item prices are copied: editing the template must not rewrite history.
 8. **Unpriced lines block the quote.** Anything flagged `needsPrice` stops `doSendQuote`, so a customer never receives a quote with a zero line in it.
 9. **A finding is answered by a link, not by wording.** `answersFinding()` checks the `finding` index first and falls back to a name match, so a line renamed beyond recognition still counts and the follow-up is not raised.
-10. **A new workshop is a different shape of the same object.** `blankShop()` builds one with a single owner, no jobs or customers, counters from 1001, and optionally the sample catalogue at zero stock.
+10. **Revenue means money received.** Anything with `payment.settled === false` is excluded from the dashboard and every report until it is confirmed. A missing `settled` counts as settled.
+11. **A new workshop is a different shape of the same object.** `blankShop()` builds one with a single owner, no jobs or customers, counters from 1001, and optionally the sample catalogue at zero stock.
 
 ### Settings
 

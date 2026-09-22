@@ -130,7 +130,7 @@ T('Old open "service due" follow-up for same customer is closed (no duplicates)'
   return b.db().opportunities.filter(o=>o.customerId==='c7'&&o.type==='service-due'&&o.status==='open').length===1;});
 T('Cannot take payment on an order with no items',()=>{const b=app();b.openOrder('WO-1045');
   b.tab('items'); const ids=b.order('WO-1045').items.map(i=>i.id); ids.forEach(id=>b.click(`[data-action="remove-item"][data-item="${id}"]`));
-  b.click('[data-action="take-payment"]');return !b.modalOpen()&&b.order('WO-1045').stage==='in-service';});
+  b.click('[data-action="take-payment"]');return !b.modalOpen()&&b.order('WO-1045').stage==='awaiting-payment';});
 T('Removing an approved part in service releases its reservation',()=>{const b=app();const r0=b.part('WPR-STD01').reserved;b.openOrder('WO-1045');b.tab('items');const it=b.order('WO-1045').items.find(i=>i.sku==='WPR-STD01');b.click(`[data-action="remove-item"][data-item="${it.id}"]`);return r0===1&&b.part('WPR-STD01').reserved===0;});
 T('Revenue today updates on dashboard',()=>{a.click('[data-action="close-panel"]');a.go('dashboard');return a.$('#v-dashboard .kpi.hero .value').textContent==='$1,140';});
 T('No script errors',()=>a.errs.length===0);}
@@ -185,7 +185,7 @@ T('Technician: cannot open another tech\'s job',()=>{const before=a.$('#panel').
 T('Technician: no prices anywhere on own job',()=>{a.openOrder('WO-1043');a.tab('items');return a.$$('#panelBody [data-price]').every(x=>!vis(x));});
 T('Technician: can add items but cannot send the quote or discount it',()=>!!a.$('[data-action="add-part"]')&&!a.$('[data-action="send-quote"]')&&!a.$('[data-action="discount"]'));
 T('Technician: can do inspection on own job',()=>{a.click('[data-action="close-panel"]');a.openOrder('WO-1047');a.click('[data-action="start-insp"]');a.checkAll();a.click('[data-action="finish-insp"]');return a.order('WO-1047').stage==='quotation';});
-T('Technician: can mark work done but not take payment',()=>{const b=app();b.signIn('s5');b.openOrder('WO-1045');return !b.$('[data-action="take-payment"]')&&b.$('#panelFoot').textContent.includes('waiting for payment');});
+T('Technician: can mark work done but not take payment',()=>{const b=app();b.signIn('s5');b.openOrder('WO-1045');return !b.$('[data-action="take-payment"]')&&b.$('#panelFoot').textContent.includes('front desk to take payment');});
 T('Technician: customers limited to own jobs',()=>{a.click('[data-action="close-panel"]');a.go('customers');const n=a.$$('#v-customers .row-card').map(r=>r.dataset.id);return n.every(id=>a.db().orders.some(o=>o.customerId===id&&o.technicianId==='s4'));});
 T('Technician: customer history hides other techs\' jobs',()=>{a.click('[data-action="open-customer"][data-id="c1"]');return a.$$('#panelBody [data-action="open-order"]').every(b=>a.order(b.dataset.id).technicianId==='s4');});
 T('Technician: follow-ups and purchase hidden',()=>{a.click('[data-action="close-panel"]');a.go('dashboard');return !vis(a.$('#v-dashboard .card[data-edit]'))&&!vis(a.$('[data-action="new-po"]'));});
@@ -457,11 +457,11 @@ S('24 Job ageing and reminders');
 T('Stuck jobs are listed on the dashboard',()=>{a.go('dashboard');return a.$$('#v-dashboard [data-action="open-order"]').length>0;});
 T('Insights lists the same jobs with a reason',()=>{a.go('insights');const rows=a.$$('#v-insights [data-action="open-order"]');return rows.length>0&&rows.every(r=>r.textContent.trim().length>0);});
 T('A quote sent days ago is flagged as waiting on the customer',()=>{a.go('insights');const row=a.$$('#v-insights [data-action="open-order"]').find(r=>r.dataset.id==='WO-1043');return !!row&&row.textContent.includes('waiting on the customer');});
-T('Finished work that has not been paid is flagged',()=>{a.go('insights');const row=a.$$('#v-insights [data-action="open-order"]').find(r=>r.dataset.id==='WO-1045');return !!row&&row.textContent.includes('payment not taken');});
+T('Finished work that has not been paid is flagged',()=>{a.go('insights');const row=a.$$('#v-insights [data-action="open-order"]').find(r=>r.dataset.id==='WO-1045');return !!row&&row.textContent.includes('waiting to be collected and paid');});
 T('An unfinished inspection is flagged with the number left',()=>{a.go('insights');const row=a.$$('#v-insights [data-action="open-order"]').find(r=>r.dataset.id==='WO-1046');return !!row&&/\d+ items? still unchecked/.test(row.textContent);});
 T('A job checked in today is not flagged',()=>{a.go('insights');return !a.$$('#v-insights [data-action="open-order"]').some(r=>r.dataset.id==='WO-1047');});
 T('Completed jobs are never flagged',()=>{a.go('insights');const ids=a.$$('#v-insights [data-action="open-order"]').map(r=>r.dataset.id);return ids.every(id=>{const o=a.order(id);return o.stage!=='completed'&&o.stage!=='declined';});});
-T('Days shown are days in the stage, not days since check-in',()=>{a.go('insights');const row=a.$$('#v-insights [data-action="open-order"]').find(r=>r.dataset.id==='WO-1045');return row.textContent.includes('2 days in in service')&&row.textContent.includes('open 5 days');});
+T('Days shown are days in the stage, not days since check-in',()=>{a.go('insights');const row=a.$$('#v-insights [data-action="open-order"]').find(r=>r.dataset.id==='WO-1045');return row.textContent.includes('2 days in awaiting payment')&&row.textContent.includes('open 5 days');});
 T('The list is sorted by how long each job has been stuck',()=>{a.go('insights');const ds=a.$$('#v-insights [data-action="open-order"]').map(r=>Number(r.textContent.match(/(\d+) days? in/)[1]));return ds.every((d,i)=>i===0||d<=ds[i-1]);});
 T('Clearing the hold-up removes the job from the list',()=>{const b=app();b.openOrder('WO-1045');b.click('[data-action="take-payment"]');b.submit();b.go('insights');return !b.$$('#v-insights [data-action="open-order"]').some(r=>r.dataset.id==='WO-1045');});
 T('A technician only sees their own stuck jobs',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');b.go('insights');const ids=b.$$('#v-insights [data-action="open-order"]').map(r=>r.dataset.id);return ids.length>0&&ids.every(id=>b.order(id).technicianId==='s4');});
@@ -756,6 +756,43 @@ T('Only an owner sees the reset card',()=>{const b=as('joanne.lim','manager123')
 T('A technician forcing a reset is refused, and the data survives',()=>{const b=as('marcus.lee','tech123');b.setTab('general');const before=b.db().orders.length;const e=b.d.createElement('button');e.dataset.action='reset';b.d.body.appendChild(e);b.click(e);return b.db().orders.length===before&&b.toast().includes('Only an owner');});
 T('The owner can still reset',()=>{const b=app();b.setTab('general');b.click('[data-action="reset"]');return b.order('WO-1047').stage==='reception';});
 T('No script errors',()=>{const b=as('marcus.lee','tech123');b.setTab('general');return b.errs.length===0;});
+}
+
+// ============ 39. AWAITING PAYMENT STAGE ============
+S('39 Awaiting payment stage');
+{
+T('Marking work done moves the job on, it is no longer a flag in place',()=>{const b=app();b.openOrder('WO-1044');b.click('[data-action="work-done"]');const o=b.order('WO-1044');return o.stage==='awaiting-payment'&&o.workDone===true;});
+T('The stage clock restarts when it gets there',()=>{const b=app();b.openOrder('WO-1044');b.click('[data-action="work-done"]');const since=new Date(b.order('WO-1044').stageSince).getTime();return Date.now()-since<5000;});
+T('The pipeline counts it separately from work in progress',()=>{const b=app();b.go('dashboard');const t=b.$('#v-dashboard').textContent;return t.includes('Awaiting payment')&&t.includes('In service');});
+T('It has its own filter chip with a count',()=>{const b=app();b.go('orders');const chip=b.$('[data-action="order-filter"][data-f="awaiting-payment"]');return !!chip&&Number(chip.querySelector('.n').textContent)===b.db().orders.filter(o=>o.stage==='awaiting-payment').length;});
+T('It still counts as an open job',()=>{const b=app();b.go('orders');return b.$$('#v-orders [data-action="open-order"]').some(r=>b.order(r.dataset.id).stage==='awaiting-payment');});
+T('Payment is taken from this stage and closes the job',()=>{const b=app();b.openOrder('WO-1045');b.click('[data-action="take-payment"]');b.submit();return b.order('WO-1045').stage==='completed';});
+T('The stalled-job reason distinguishes the two states',()=>{const b=app();b.go('insights');const rows=b.$$('#v-insights [data-action="open-order"]');const svc=rows.find(r=>r.dataset.id==='WO-1044');const wait=rows.find(r=>r.dataset.id==='WO-1045');return svc.textContent.includes('work not marked done')&&wait.textContent.includes('waiting to be collected and paid');});
+T('Extra work added after the work is done still blocks payment',()=>{const b=app();b.openOrder('WO-1045');b.tab('items');b.click('[data-action="add-part"]');b.F('sku').value='WPR-STD01';b.submit();return !b.$('[data-action="take-payment"]')&&b.$('#panelFoot').textContent.includes('Extra work');});
+T('A technician is told who takes the payment',()=>{const b=app(null,{anon:true});b.login('daniel.koh','tech123');b.openOrder('WO-1045');return b.$('#panelFoot').textContent.includes('front desk');});
+T('No script errors',()=>{const b=app();b.openOrder('WO-1044');b.click('[data-action="work-done"]');return b.errs.length===0;});
+}
+
+// ============ 40. MONEY THAT ARRIVES LATER ============
+S('40 Money that arrives later');
+{
+const payOff=(b,id,settled)=>{b.openOrder(id);b.click('[data-action="take-payment"]');if(settled===false)b.set('settled','no');b.submit();};
+T('Payment asks whether the money has arrived',()=>{const b=app();b.openOrder('WO-1045');b.click('[data-action="take-payment"]');const ok=!!b.F('settled');b.click('[data-action="close-modal"]');return ok;});
+T('Received now closes the job and counts as revenue',()=>{const b=app();const before=b.num(b.$('#v-dashboard .kpi .value').textContent);payOff(b,'WO-1045');b.go('dashboard');const o=b.order('WO-1045');return o.payment.settled===true&&!!o.payment.settledAt&&b.num(b.$('#v-dashboard .kpi .value').textContent)>before;});
+T('Awaiting funds still closes the job',()=>{const b=app();payOff(b,'WO-1045',false);return b.order('WO-1045').stage==='completed';});
+T('But it is kept out of revenue today',()=>{const b=app();const before=b.num(b.$('#v-dashboard .kpi .value').textContent);payOff(b,'WO-1045',false);b.go('dashboard');return b.num(b.$('#v-dashboard .kpi .value').textContent)===before;});
+T('And out of the reports',()=>{const b=app();b.go('reports');const before=b.num(b.kpi('Revenue'));payOff(b,'WO-1045',false);b.go('reports');return b.num(b.kpi('Revenue'))===before;});
+T('The stock still moves, because the car has gone',()=>{const b=app();const before=b.part('WPR-STD01').stock;payOff(b,'WO-1045',false);return b.part('WPR-STD01').stock<before;});
+T('The follow-ups are still created',()=>{const b=app();payOff(b,'WO-1045',false);return b.db().opportunities.some(o=>o.sourceOrderId==='WO-1045'&&o.type==='service-due');});
+T('The job panel says the money is outstanding',()=>{const b=app();payOff(b,'WO-1045',false);return b.$('#panelBody').textContent.includes('Awaiting funds');});
+T('Insights lists it with the amount and how long it has been owed',()=>{const b=app();payOff(b,'WO-1045',false);b.go('insights');const t=b.$('#v-insights').textContent;return t.includes('Money owed')&&t.includes('outstanding')&&t.includes('WO-1045');});
+T('Marking it received puts it into revenue',()=>{const b=app();b.go('reports');const before=b.num(b.kpi('Revenue'));payOff(b,'WO-1045',false);b.click('[data-action="settle-payment"]');b.go('reports');return b.order('WO-1045').payment.settled===true&&b.num(b.kpi('Revenue'))>before;});
+T('It can be settled from the Insights list too',()=>{const b=app();payOff(b,'WO-1045',false);b.click('[data-action="close-panel"]');b.go('insights');b.click('[data-action="settle-payment"][data-id="WO-1045"]');return b.order('WO-1045').payment.settled===true;});
+T('Settling is recorded in the activity log with a name',()=>{const b=app();payOff(b,'WO-1045',false);b.click('[data-action="settle-payment"]');return b.order('WO-1045').log.some(l=>l.x.includes('received, confirmed by Alex Tan'));});
+T('Someone who cannot take payment cannot settle either',()=>{const b=app();payOff(b,'WO-1045',false);const c=app(b.storage(),{anon:true});c.login('marcus.lee','tech123');const e=c.d.createElement('button');e.dataset.action='settle-payment';e.dataset.id='WO-1045';c.d.body.appendChild(e);c.click(e);return c.order('WO-1045').payment.settled===false;});
+T('With nothing owed the card says so',()=>{const b=app();b.go('insights');return b.$('#v-insights').textContent.includes('All settled');});
+T('Older jobs with no settled field still count as paid',()=>{const b=app();b.go('reports');return b.num(b.kpi('Revenue'))>0&&b.db().orders.filter(o=>o.payment).every(o=>o.payment.settled===undefined||typeof o.payment.settled==='boolean');});
+T('No script errors',()=>{const b=app();payOff(b,'WO-1045',false);b.go('insights');return b.errs.length===0;});
 }
 
 // ============ REPORT ============
