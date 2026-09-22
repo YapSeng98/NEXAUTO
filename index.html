@@ -219,6 +219,27 @@ html[data-authed="0"] .app,html[data-authed="0"] .bottom-nav{display:none;}
 .user-chip .u-role{display:block;font-size:11px;color:var(--text-secondary);}
 @media (max-width:520px){.user-chip .u-meta{display:none;}}
 
+/* job notes */
+.note-form{margin-bottom:16px;}
+.note-form textarea{width:100%;resize:vertical;margin-bottom:8px;}
+.note{border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;margin-bottom:8px;background:var(--surface-2);}
+.note-head{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.note-head .avatar{width:24px;height:24px;flex-basis:24px;font-size:10px;}
+.note-head b{font-size:13px;font-weight:600;}
+.note-when{margin-left:auto;font-size:12px;color:var(--text-muted);}
+.note p{margin:0;font-size:13.5px;white-space:pre-wrap;overflow-wrap:anywhere;}
+.note .mine{color:var(--green-dark);}
+
+/* part photos */
+.part-thumb{width:38px;height:38px;border-radius:8px;object-fit:cover;background:var(--surface-2);border:1px solid var(--border);flex:0 0 38px;}
+.part-thumb.ph{display:flex;align-items:center;justify-content:center;color:var(--text-muted);}
+.part-thumb.ph svg{width:18px;height:18px;}
+.img-picker{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.img-preview{width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid var(--border-strong);background:var(--surface-2);flex:0 0 64px;}
+.img-preview.ph{display:flex;align-items:center;justify-content:center;color:var(--text-muted);}
+.img-picker .acts{display:flex;flex-direction:column;gap:6px;align-items:flex-start;}
+.img-note{font-size:12px;color:var(--text-muted);margin:0;}
+
 /* role gating */
 html[data-can-cost="0"] [data-cost],
 html[data-can-price="0"] [data-price],
@@ -226,6 +247,7 @@ html[data-can-revenue="0"] [data-revenue],
 html[data-can-purchase="0"] [data-purchase],
 html[data-can-staff="0"] [data-staff],
 html[data-can-edit="0"] [data-edit],
+html[data-can-checkin="0"] [data-checkin],
 html[data-can-revenue="1"] [data-personal]{display:none !important;}
 
 /* panels */
@@ -449,6 +471,7 @@ var ICON = {
   users:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M16 14.2c2.5.4 4.5 2.6 4.5 5.8"/>',
   chart:'<path d="M4 19V11M10 19V5M16 19v-6M22 19H2"/>',
   gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 14.1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  camera:'<path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4Z"/><circle cx="12" cy="13" r="3.4"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   check:'<path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>',
   cart:'<circle cx="9" cy="20" r="1.3"/><circle cx="18" cy="20" r="1.3"/><path d="M2 3h3l2.6 12.4a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 2-1.5L22 7H6"/>',
@@ -463,10 +486,10 @@ var STAGE_LABEL = {"reception":"Reception","pre-inspection":"Inspection","quotat
 var STAGE_BADGE = {"reception":"b-neutral","pre-inspection":"b-amber","quotation":"b-amber","in-service":"b-green","completed":"b-muted","declined":"b-red"};
 var INSPECTION_TEMPLATE = ["Engine oil level and condition","Brake pads and discs","Tyres and tread depth","Battery health","Lights and signals","Suspension and steering","Coolant level","Wipers and washer","Air-con performance","Underbody and leaks"];
 var PERMS = {
-  owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, pay:1},
-  manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, pay:1},
-  advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, pay:1},
-  technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, pay:0}
+  owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, pay:1, checkin:1},
+  manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1},
+  advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1},
+  technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, pay:0, checkin:1}
 };
 var ROLE_LABEL = {owner:"Owner", manager:"Manager", advisor:"Service advisor", technician:"Technician"};
 var THEMES = [
@@ -598,6 +621,16 @@ function seed(){
     {id:"o2", customerId:"c3", type:"road-tax", text:"Road tax renewal", dueAt:ahead(20), sourceOrderId:null, status:"open", createdAt:ago(2600)},
     {id:"o3", customerId:"c4", type:"service-due", text:"Last service 9 months ago", dueAt:ahead(-3), sourceOrderId:null, status:"open", createdAt:ago(3000)}
   ];
+  var noteSeed = {
+    "WO-1043":[["s4",118,"Front pads measured 2mm and the discs are scored. Photos are on the tablet."],
+               ["s3",96,"Customer asked us to call before starting anything over $300."]],
+    "WO-1044":[["s4",104,"Aircon regassed and holding pressure. Will recheck in an hour before I sign it off."]],
+    "WO-1046":[["s5",32,"Warning light is an O2 sensor code. Need approval before I strip any further."]]
+  };
+  orders.forEach(function(o){
+    o.remarks = (noteSeed[o.id] || []).map(function(r){ return {id:uid("r"), by:r[0], at:ago(r[1]), text:r[2]}; });
+  });
+
   var past = buildHistory(now, customers, inventory, staff);
   customers = customers.concat(past.customers);
   orders = past.orders.concat(orders);
@@ -737,7 +770,7 @@ var LOCK_SECONDS = 60;
 var DB = null;
 try { DB = JSON.parse(localStorage.getItem(KEY)); } catch(e){ DB = null; }
 if(!DB || DB.v !== 5) DB = seed();
-function save(){ try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch(e){} }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch(e){ toast("Browser storage is full \u2014 remove a part photo or reset the demo data.", true); } }
 
 /* ================= session ================= */
 function sessionStore(remember){ return remember ? localStorage : sessionStorage; }
@@ -865,6 +898,7 @@ function setRole(){
   var root = document.documentElement, p = PERMS[role];
   root.dataset.canCost = p.cost; root.dataset.canPrice = p.price; root.dataset.canRevenue = p.revenue;
   root.dataset.canPurchase = p.purchase; root.dataset.canStaff = p.staff; root.dataset.canEdit = p.edit;
+  root.dataset.canCheckin = p.checkin;
   var u = me();
   $("#sideAvatar").textContent = initials(u.name); $("#sideName").textContent = u.name; $("#sideRole").textContent = ROLE_LABEL[role];
   $("#topAvatar").textContent = initials(u.name); $("#userName").textContent = u.name; $("#userRole").textContent = ROLE_LABEL[role];
@@ -950,7 +984,7 @@ function renderDashboard(){
   var low = lowStock(), opps = openOpps();
 
   var html = '<div class="quick-actions">' +
-    '<button class="qa-btn primary" data-action="new-order" data-edit><span class="ico">' + icon("plus") + '</span>New order</button>' +
+    '<button class="qa-btn primary" data-action="new-order" data-checkin><span class="ico">' + icon("plus") + '</span>New order</button>' +
     '<button class="qa-btn" data-action="goto" data-view="orders" data-filter="pre-inspection"><span class="ico">' + icon("check") + '</span>Inspections</button>' +
     '<button class="qa-btn" data-action="new-customer" data-edit><span class="ico">' + icon("userplus") + '</span>Add customer</button>' +
     '<button class="qa-btn" data-action="new-po" data-purchase><span class="ico">' + icon("cart") + '</span>Purchase order</button>' +
@@ -1014,7 +1048,7 @@ function renderOrders(){
   // Six months of closed jobs live in here, so only the newest are drawn at once.
   var shown = list.slice(0, state.orderLimit);
   var more = list.length - shown.length;
-  var html = '<div class="toolbar"><input type="search" id="orderSearch" placeholder="Search plate, customer, technician or order no." value="' + esc(state.orderQuery) + '"><button class="btn primary" data-action="new-order" data-edit>' + icon("plus") + '<span>New order</span></button></div>' +
+  var html = '<div class="toolbar"><input type="search" id="orderSearch" placeholder="Search plate, customer, technician or order no." value="' + esc(state.orderQuery) + '"><button class="btn primary" data-action="new-order" data-checkin>' + icon("plus") + '<span>New order</span></button></div>' +
     '<div class="chips">' + chips + '</div>' +
     '<div class="list">' + (shown.length ? shown.map(orderRowHTML).join("") : '<div class="empty">No orders here. Check a vehicle in with New order.</div>') + '</div>' +
     (more > 0 ? '<button class="btn" style="width:100%;margin-top:12px" data-action="more-orders">Show ' + Math.min(more, ORDER_PAGE) + ' more · ' + more + ' older job' + (more > 1 ? 's' : '') + '</button>' : '');
@@ -1047,12 +1081,13 @@ function renderOrderPanel(o){
   var c = cust(o.customerId), v = veh(c, o.vehicleId), ic = inspCounts(o);
   $("#panelTitle").innerHTML = '<span class="plate">' + esc(v ? v.plate : "") + '</span>' + esc(v ? v.model : "");
   $("#panelSub").innerHTML = o.id + ' · <span class="badge ' + STAGE_BADGE[o.stage] + '">' + STAGE_LABEL[o.stage] + '</span>';
-  var tabs = [["overview","Overview",""],["inspection","Inspection", (INSPECTION_TEMPLATE.length - ic.unchecked) + "/" + INSPECTION_TEMPLATE.length],["items","Quote and items", o.items.length]];
+  var tabs = [["overview","Overview",""],["inspection","Inspection", (INSPECTION_TEMPLATE.length - ic.unchecked) + "/" + INSPECTION_TEMPLATE.length],["items","Quote and items", o.items.length],["notes","Notes", notesOf(o).length || ""]];
   $("#panelTabs").style.display = "flex";
   $("#panelTabs").innerHTML = tabs.map(function(t){ return '<button class="tab' + (state.orderTab === t[0] ? ' active' : '') + '" data-action="order-tab" data-tab="' + t[0] + '">' + t[1] + (t[2] !== "" ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join("");
   var body = "";
   if(state.orderTab === "overview") body = orderOverview(o, c, v);
   else if(state.orderTab === "inspection") body = orderInspection(o, ic);
+  else if(state.orderTab === "notes") body = orderNotes(o);
   else body = orderItems(o);
   $("#panelBody").innerHTML = body;
   $("#panelFoot").innerHTML = orderActions(o, ic);
@@ -1077,6 +1112,22 @@ function orderOverview(o, c, v){
     (o.payment ? '<dt>Payment</dt><dd><span data-price>' + money(o.payment.amount) + ' · </span>' + esc(o.payment.method) + '</dd>' : '') +
   '</dl>';
   html += '<div class="h4">Activity</div><div class="log">' + o.log.slice().reverse().map(function(l){ return '<p><b>' + esc(l.x) + '</b><br>' + new Date(l.t).toLocaleString([], {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}) + '</p>'; }).join("") + '</div>';
+  return html;
+}
+function notesOf(o){ return o.remarks || []; }
+function orderNotes(o){
+  var list = notesOf(o).slice().reverse();
+  var closed = o.stage === "completed" || o.stage === "declined";
+  var html = '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Notes are shared with everyone working this job \u2014 advisors, technicians and managers all see the same thread.</p>';
+  html += closed ? '<div class="hint">This job is closed, so the note thread is read-only.</div>' :
+    '<div class="note-form"><label class="sr-only" for="noteText">New note</label>' +
+    '<textarea id="noteText" rows="3" maxlength="500" placeholder="What should the team know? e.g. rear shock is leaking, customer wants a call before extra work"></textarea>' +
+    '<button class="btn primary" data-action="add-note">' + icon("plus") + 'Add note</button></div>';
+  html += list.length ? list.map(function(r){
+    var mine = r.by === state.userId;
+    return '<div class="note"><div class="note-head"><span class="avatar">' + esc(initials(staffName(r.by))) + '</span><b' + (mine ? ' class="mine"' : '') + '>' + esc(staffName(r.by)) + (mine ? ' (you)' : '') + '</b>' +
+      '<span class="note-when">' + timeLabel(r.at) + '</span></div><p>' + esc(r.text) + '</p></div>';
+  }).join("") : '<div class="empty">No notes yet. Anyone on this job can add one.</div>';
   return html;
 }
 function orderInspection(o, ic){
@@ -1186,7 +1237,7 @@ function renderInventory(){
     html += '<div class="table-wrap"><table><thead><tr><th>Part</th><th>Category</th><th>On hand</th><th>Reserved</th><th>Available</th><th data-cost>Cost</th><th data-price>Price</th><th>Status</th><th data-purchase></th></tr></thead><tbody>' +
       (rows.length ? rows.map(function(p){
         var low = avail(p) <= p.reorder;
-        return '<tr><td><b style="font-weight:600">' + esc(p.name) + '</b><br><span style="font-size:12px;color:var(--text-muted)">' + esc(p.sku) + '</span></td><td>' + esc(p.category) + '</td><td class="num">' + p.stock + '</td><td class="num" style="color:var(--text-secondary)">' + (p.reserved||0) + '</td><td class="num" style="font-weight:700">' + avail(p) + '</td>' +
+        return '<tr><td><div style="display:flex;align-items:center;gap:10px">' + partThumb(p) + '<span><b style="font-weight:600">' + esc(p.name) + '</b><br><span style="font-size:12px;color:var(--text-muted)">' + esc(p.sku) + '</span></span></div></td><td>' + esc(p.category) + '</td><td class="num">' + p.stock + '</td><td class="num" style="color:var(--text-secondary)">' + (p.reserved||0) + '</td><td class="num" style="font-weight:700">' + avail(p) + '</td>' +
           '<td data-cost>' + money(p.cost) + '</td><td data-price>' + money(p.price) + '</td>' +
           '<td><span class="badge ' + (low ? 'b-red' : 'b-green') + '">' + (low ? 'Reorder' : 'In stock') + '</span></td>' +
           '<td data-purchase style="text-align:right"><button class="btn sm" data-action="adjust-stock" data-sku="' + esc(p.sku) + '">Adjust</button></td></tr>';
@@ -1242,11 +1293,11 @@ function renderCustomerPanel(c){
   var opps = DB.opportunities.filter(function(o){ return o.customerId === c.id && o.status === "open"; });
   var html = '<div class="kpi-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="kpi"><p class="label">Visits</p><p class="value num">' + orders.length + '</p></div><div class="kpi" data-price><p class="label">Lifetime spend</p><p class="value num">' + money(spend) + '</p></div></div>';
   html += '<div class="h4">Vehicles<button class="btn sm" data-action="add-vehicle" data-edit>' + icon("plus") + 'Vehicle</button></div>' +
-    c.vehicles.map(function(v){ return '<div class="line"><div class="l"><span class="plate">' + esc(v.plate) + '</span>' + esc(v.model) + '</div><div class="r"><button class="btn sm" data-action="new-order" data-cust="' + c.id + '" data-veh="' + v.id + '" data-edit>Check in</button></div></div>'; }).join("");
+    c.vehicles.map(function(v){ return '<div class="line"><div class="l"><span class="plate">' + esc(v.plate) + '</span>' + esc(v.model) + '</div><div class="r"><button class="btn sm" data-action="new-order" data-cust="' + c.id + '" data-veh="' + v.id + '" data-checkin>Check in</button></div></div>'; }).join("");
   html += '<div class="h4">Follow-ups</div>' + (opps.length ? opps.map(oppRowHTML).join("") : '<div class="empty">No open follow-ups.</div>');
   html += '<div class="h4">Service history</div>' + (orders.length ? '<div class="list">' + orders.map(orderRowHTML).join("") + '</div>' : '<div class="empty">No visits yet.</div>');
   $("#panelBody").innerHTML = html;
-  $("#panelFoot").innerHTML = '<button class="btn primary" data-action="new-order" data-cust="' + c.id + '" data-edit>New order for ' + esc(c.name.split(" ")[0]) + '</button>';
+  $("#panelFoot").innerHTML = '<button class="btn primary" data-action="new-order" data-cust="' + c.id + '" data-checkin>New order for ' + esc(c.name.split(" ")[0]) + '</button>';
 }
 
 /* ================= reports ================= */
@@ -1391,7 +1442,7 @@ function modalNewOrder(pre){
     '<div class="group-box" id="mNewCust"><div class="field-row">' + field("Name", '<input type="text" name="cname" required placeholder="Tan Wei Ling">') + field("Phone", '<input type="tel" name="cphone" required placeholder="9123 4567">') + '</div></div>' +
     field("Vehicle", '<select name="vehicle" id="mVeh"></select>') +
     '<div class="group-box" id="mNewVeh"><div class="field-row">' + field("Plate number", '<input type="text" name="plate" required placeholder="SGP 1234 A">') + field("Make and model", '<input type="text" name="model" required placeholder="Toyota Corolla 2021">') + '</div></div>' +
-    '<div class="field-row">' + field("Mileage (km)", '<input type="number" name="mileage" min="0" step="1" required placeholder="65000">') + field("Technician", '<select name="tech">' + technicians().map(function(t){ return opt(t.id, t.name); }).join("") + '</select>') + '</div>' +
+    '<div class="field-row">' + field("Mileage (km)", '<input type="number" name="mileage" min="0" step="1" required placeholder="65000">') + field("Technician", '<select name="tech">' + technicians().map(function(t){ return opt(t.id, t.name, t.id === me().id); }).join("") + '</select>') + '</div>' +
     field("Customer complaint", '<textarea name="complaint" rows="2" placeholder="Noise from front wheel when braking"></textarea>');
   openModal("Check in vehicle", body, "Check in", function(fd){
     var cid = fd.get("customer"), vid = fd.get("vehicle"), c, v;
@@ -1418,7 +1469,7 @@ function modalNewOrder(pre){
     if(newVeh){ v = {id:uid("v"), plate:fd.get("plate").trim().toUpperCase(), model:fd.get("model").trim()}; c.vehicles.push(v); }
     else v = veh(c, vid);
     var o = {id:"WO-" + (DB.nextWO++), customerId:c.id, vehicleId:v.id, stage:"reception", advisorId: me().role === "technician" ? advisors()[0].id : me().id, technicianId:fd.get("tech"),
-      mileage:mileage, complaint:(fd.get("complaint")||"").trim(), createdAt:nowISO(), inspection:freshInspection(), quoteStatus:"draft", workDone:false, discount:0, items:[], payment:null, log:[]};
+      mileage:mileage, complaint:(fd.get("complaint")||"").trim(), createdAt:nowISO(), inspection:freshInspection(), quoteStatus:"draft", workDone:false, discount:0, items:[], payment:null, log:[], remarks:[]};
     log(o, "Checked in by " + me().name);
     DB.orders.push(o);
     if(pre.oppId){ var op = DB.opportunities.filter(function(x){ return x.id === pre.oppId; })[0]; if(op) op.status = "done"; }
@@ -1506,32 +1557,89 @@ function modalPayment(o){
 }
 
 /* --- inventory --- */
+/* Photos live in localStorage with everything else, so they are shrunk hard
+   before saving: 200px, JPEG, which lands around 8-12KB each. */
+function shrinkImage(file, cb){
+  var fr = new FileReader();
+  fr.onerror = function(){ cb(null, true); };
+  fr.onload = function(){
+    var img = new Image();
+    img.onerror = function(){ cb(null, true); };
+    img.onload = function(){
+      var max = 200, sc = Math.min(1, max / Math.max(img.width, img.height));
+      var cv = document.createElement("canvas");
+      cv.width = Math.max(1, Math.round(img.width * sc));
+      cv.height = Math.max(1, Math.round(img.height * sc));
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      try { cb(cv.toDataURL("image/jpeg", 0.72)); } catch(e){ cb(null, true); }
+    };
+    img.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+function partThumb(p){
+  return p.image ? '<img class="part-thumb" src="' + esc(p.image) + '" alt="">' : '<span class="part-thumb ph">' + icon("camera") + '</span>';
+}
+function imageField(current){
+  return '<div class="field"><label>Photo</label><div class="img-picker">' +
+    (current ? '<img class="img-preview" id="imgPreview" src="' + esc(current) + '" alt="">' : '<span class="img-preview ph" id="imgPreview">' + icon("camera") + '</span>') +
+    '<div class="acts"><input type="file" id="imgFile" accept="image/*" class="sr-only">' +
+    '<button type="button" class="btn sm" data-action="pick-image">Choose photo</button>' +
+    '<button type="button" class="btn sm danger" data-action="clear-image">Remove</button></div></div>' +
+    '<p class="img-note">Shown beside the part so it is easy to grab the right one off the shelf.</p>' +
+    '<input type="hidden" name="image" id="imgData" value="' + esc(current || "") + '"></div>';
+}
+function setImagePreview(url){
+  var prev = $("#imgPreview"); if(!prev) return;
+  var node;
+  if(url){ node = document.createElement("img"); node.className = "img-preview"; node.src = url; node.alt = ""; }
+  else { node = document.createElement("span"); node.className = "img-preview ph"; node.innerHTML = icon("camera"); }
+  node.id = "imgPreview";
+  prev.parentNode.replaceChild(node, prev);
+}
+function wireImagePicker(form){
+  var file = form.querySelector("#imgFile");
+  if(!file) return;
+  file.addEventListener("change", function(){
+    var f = file.files && file.files[0];
+    if(!f) return;
+    if(f.type.indexOf("image/") !== 0){ toast("That is not an image file", true); return; }
+    shrinkImage(f, function(url, err){
+      if(err || !url){ toast("Could not read that image", true); return; }
+      form.querySelector("#imgData").value = url;
+      setImagePreview(url);
+    });
+  });
+}
 function modalNewPart(){
   var body = field("Part name", '<input type="text" name="name" required placeholder="Spark plug, iridium">') +
     '<div class="field-row">' + field("SKU", '<input type="text" name="sku" required placeholder="SPK-IR01">') + field("Category", '<select name="category">' + ["Fluids","Filters","Brakes","Engine","Electrical","Suspension","Tyres","Accessories"].map(function(c){ return opt(c,c); }).join("") + '</select>') + '</div>' +
     '<div class="field-row">' + field("Opening stock", '<input type="number" name="stock" min="0" step="1" value="0" required>') + field("Reorder at", '<input type="number" name="reorder" min="0" step="1" value="5" required>') + '</div>' +
     '<div class="field-row"><div data-cost>' + field("Cost price", '<input type="number" name="cost" min="0" step="1" value="0">') + '</div>' + field("Selling price", '<input type="number" name="price" min="0" step="1" required placeholder="25">') + '</div>' +
-    field("Supplier", '<select name="supplier">' + DB.suppliers.map(function(s){ return opt(s.id, s.name); }).join("") + '</select>');
+    field("Supplier", '<select name="supplier">' + DB.suppliers.map(function(s){ return opt(s.id, s.name); }).join("") + '</select>') +
+    imageField("");
   openModal("Add part", body, "Add part", function(fd){
     var sku = fd.get("sku").trim().toUpperCase();
     if(part(sku)) return "That SKU already exists.";
-    DB.inventory.push({sku:sku, name:fd.get("name").trim(), category:fd.get("category"), stock:parseInt(fd.get("stock"),10)||0, reorder:parseInt(fd.get("reorder"),10)||0, cost:Number(fd.get("cost"))||0, price:Number(fd.get("price"))||0, supplier:fd.get("supplier")});
+    DB.inventory.push({sku:sku, name:fd.get("name").trim(), category:fd.get("category"), stock:parseInt(fd.get("stock"),10)||0, reorder:parseInt(fd.get("reorder"),10)||0, cost:Number(fd.get("cost"))||0, price:Number(fd.get("price"))||0, supplier:fd.get("supplier"), image:fd.get("image") || ""});
     toast("Part added"); refresh();
-  });
+  }, wireImagePicker);
 }
 function modalAdjust(p){
   var body = '<p style="margin:0 0 12px;font-weight:600">' + esc(p.name) + ' <span style="color:var(--text-muted);font-weight:400">· ' + p.stock + ' in stock now</span></p>' +
     '<div class="field-row">' + field("New stock count", '<input type="number" name="stock" min="0" step="1" value="' + p.stock + '" required>') + field("Reorder at", '<input type="number" name="reorder" min="0" step="1" value="' + p.reorder + '" required>') + '</div>' +
     '<div class="field-row"><div data-cost>' + field("Cost price", '<input type="number" name="cost" min="0" step="1" value="' + p.cost + '">') + '</div>' + field("Selling price", '<input type="number" name="price" min="0" step="1" value="' + p.price + '"' + (can("cost") ? '' : ' disabled title="Only owners and managers can change prices"') + '>') + '</div>' +
-    field("Reason", '<select name="reason">' + ["Stock count","Damaged","Returned","Other"].map(function(r){ return opt(r,r); }).join("") + '</select>');
+    field("Reason", '<select name="reason">' + ["Stock count","Damaged","Returned","Other"].map(function(r){ return opt(r,r); }).join("") + '</select>') +
+    imageField(p.image || "");
   openModal("Adjust stock", body, "Save changes", function(fd){
     var ns = parseInt(fd.get("stock"),10) || 0;
     if(ns < (p.reserved||0)) return "Stock can't go below the " + p.reserved + " reserved for open jobs.";
     if(ns !== p.stock) move(p.sku, ns - p.stock, "adjust", "", fd.get("reason"));
     p.stock = ns; p.reorder = parseInt(fd.get("reorder"),10) || 0;
     if(can("cost")){ p.cost = Number(fd.get("cost")) || 0; p.price = Number(fd.get("price")) || 0; }
+    p.image = fd.get("image") || "";
     toast("Stock updated"); refresh();
-  });
+  }, wireImagePicker);
 }
 function poLine(sku, qty){
   return '<div class="po-line"><select name="part">' + DB.inventory.map(function(p){ return opt(p.sku, p.name + " (" + avail(p) + " avail.)", p.sku === sku); }).join("") + '</select><input type="number" name="qty" min="1" step="1" value="' + (qty||1) + '" aria-label="Quantity"><button type="button" class="icon-btn" data-action="po-remove-line" aria-label="Remove line">' + icon("trash") + '</button></div>';
@@ -1633,6 +1741,15 @@ document.addEventListener("click", function(e){
     case "open-order": openPanel({type:"order", id:el.dataset.id}); break;
     case "open-customer": openPanel({type:"customer", id:el.dataset.id}); break;
     case "order-tab": state.orderTab = el.dataset.tab; renderPanel(); break;
+    case "add-note": {
+      if(!o) break;
+      if(o.stage === "completed" || o.stage === "declined"){ toast("This job is closed", true); break; }
+      var nf = $("#noteText"), txt = nf ? nf.value.trim() : "";
+      if(!txt){ toast("Write a note first", true); if(nf) nf.focus(); break; }
+      o.remarks = notesOf(o).concat([{id:uid("r"), by:me().id, at:nowISO(), text:txt.slice(0, 500)}]);
+      toast("Note added"); refresh();
+      break;
+    }
     case "new-order": modalNewOrder({customerId:el.dataset.cust, vehicleId:el.dataset.veh}); break;
     case "new-customer": modalNewCustomer(); break;
     case "add-vehicle": modalAddVehicle(cust(state.panel.id)); break;
@@ -1667,6 +1784,8 @@ document.addEventListener("click", function(e){
       if(op2){ op2.status = "done"; toast("Follow-up closed"); refresh(); }
       break;
     case "inv-tab": state.invTab = el.dataset.tab; renderInventory(); break;
+    case "pick-image": { var fi = $("#imgFile"); if(fi) fi.click(); break; }
+    case "clear-image": { var hid = $("#imgData"); if(hid) hid.value = ""; setImagePreview(""); break; }
     case "new-part": modalNewPart(); break;
     case "adjust-stock": modalAdjust(part(el.dataset.sku)); break;
     case "new-po": closePanel(); modalNewPO(el.dataset.low === "1"); break;

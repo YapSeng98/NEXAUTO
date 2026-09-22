@@ -21,12 +21,15 @@ Each role maps to a set of flags in the `PERMS` object in `index.html`.
 | `purchase` | Purchase orders, receiving, stock adjustments, suppliers | ✓ | ✓ | ✓ | – |
 | `staff` | Add, edit and deactivate users | ✓ | – | – | – |
 | `all` | See every order and customer | ✓ | ✓ | ✓ | – |
-| `edit` | Check in, edit quotes, discounts, follow-ups | ✓ | ✓ | ✓ | – |
+| `edit` | Edit quotes, discounts, follow-ups | ✓ | ✓ | ✓ | – |
+| `checkin` | Check a vehicle in and link it to a customer | ✓ | ✓ | ✓ | ✓ |
 | `pay` | Take payment | ✓ | ✓ | ✓ | – |
 
 ## Access rules
 
 - **Technicians** only see orders where they are the assigned technician, and only customers who have one of those orders. Opening any other order or customer is refused, even from a link.
+- **Technicians can check a vehicle in** (`checkin`), picking an existing customer or registering a new one. The job is assigned to them by default — otherwise it would disappear from their list the moment it was saved — and an advisor is recorded as the advisor of record. Check-in is the only write they have outside their own jobs' inspection and notes; it grants nothing else.
+- **Job notes are shared with everyone on the job.** Any role that can open an order can read the thread and add to it, including technicians. Notes are not price data and are never hidden by role. The thread becomes read-only once the job is completed or declined.
 - **Advisors** can give a discount of up to 10% of the subtotal. A larger discount is capped with a message to ask a manager.
 - **Advisors** can count stock but cannot change cost or selling prices. A forced price change is ignored on save.
 - **Users are never deleted, only deactivated**, so their name stays on past jobs, payments and stock history.

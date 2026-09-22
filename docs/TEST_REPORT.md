@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 215 of 215 checks passed.**
+**Result: 254 of 254 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -26,6 +26,36 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Reports | 15 | 15 |
 | Reports by role | 5 | 5 |
 | Orders list with history | 14 | 14 |
+| Technician check-in | 12 | 12 |
+| Job notes | 16 | 16 |
+| Part photos | 10 | 10 |
+
+## Technician check-in, job notes and part photos (v0.7.0)
+
+Three changes, 38 new checks:
+
+**Technicians can check a vehicle in.** Previously the New order button was
+hidden behind the broad `edit` flag, which also covers quotes, discounts and
+follow-ups. Check-in now sits behind its own `checkin` flag, so technicians get
+exactly that one capability and nothing else — a check asserts their other five
+flags are unchanged. The job defaults to the technician who checked it in,
+because assigning it elsewhere would make it vanish from their own list. All the
+existing check-in validation (duplicate phone and plate, open job on the vehicle,
+mileage regression) still applies to them.
+
+**Job notes are a shared thread.** Any role that can open an order can read and
+write notes; a note written by a technician is checked to be visible to the
+advisor and to the owner. Notes are escaped (a check stores
+`<img src=x onerror=...>` and asserts no element is created), capped at 500
+characters, rejected when blank, and the thread goes read-only once the job
+closes.
+
+**Parts can carry a photo.** Images are resized in the browser before saving —
+verified in Chrome, where a 1200×900 PNG became a 2.9KB JPEG data URL — because
+they share the same localStorage budget as everything else. `save()` now reports
+a full-storage failure instead of swallowing it. The jsdom checks cover the data
+path (save, render, pre-fill, clear, persist); the resize itself needs a real
+canvas and was checked in the browser.
 
 ## Six months of data (added in v0.6.0)
 

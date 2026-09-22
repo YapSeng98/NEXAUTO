@@ -34,7 +34,7 @@ function app(storage,opts={}){
     signOut(){A.click('[data-action="sign-out"]');},
     signIn(id,pw){const u=A.db().staff.find(s=>s.id===id);if(A.authed())A.signOut();A.login(u.username,pw||PW[id]);},
     go(v,f){A.click(`[data-action="goto"][data-view="${v}"]`+(f?`[data-filter="${f}"]`:''));},
-    openOrder(id){A.go('orders');A.click(`[data-action="open-order"][data-id="${id}"]`);},
+    openOrder(id){A.go('orders');const f=A.$('[data-action="order-filter"][data-f="all"]');if(f)A.click(f);A.click(`[data-action="open-order"][data-id="${id}"]`);},
     tab(t){A.click(`[data-action="order-tab"][data-tab="${t}"]`);},
     db(){return JSON.parse(w.localStorage.getItem('nexauto_demo_v5'));},
     part(sku){return A.db().inventory.find(p=>p.sku===sku);},
@@ -356,6 +356,63 @@ T('A historical job opens and shows its payment',()=>{const id=a.$$('#v-orders [
 T('Stock history is capped and says so',()=>{a.click('[data-action="close-panel"]');a.go('inventory');a.click('[data-action="inv-tab"][data-tab="history"]');const rows=a.$$('#v-inventory tbody tr').length;return rows<=60&&a.$('#v-inventory .badge').textContent.includes('of '+a.db().movements.length);});
 T('A customer with history shows past visits',()=>{a.go('customers');const db=a.db();const n={};db.orders.filter(o=>o.stage==='completed').forEach(o=>n[o.customerId]=(n[o.customerId]||0)+1);const busiest=Object.keys(n).sort((x,y)=>n[y]-n[x])[0];a.click(`[data-action="open-customer"][data-id="${busiest}"]`);return a.$$('#panelBody [data-action="open-order"]').length>=4;});
 T('No script errors',()=>a.errs.length===0);}
+
+// ============ 19. TECHNICIAN CHECK-IN ============
+S('19 Technician check-in');
+{
+const tech=()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');return b;};
+T('Technician sees the New order button',()=>{const b=tech();return b.d.documentElement.dataset.canCheckin==='1'&&!!b.$('#v-dashboard [data-action="new-order"]');});
+T('Technician can check in a vehicle for an existing customer',()=>{const b=tech();b.click('#v-dashboard [data-action="new-order"]');b.set('customer','c6');b.F('mileage').value='52000';b.submit();const o=b.db().orders.find(x=>x.customerId==='c6'&&x.stage==='reception');return !b.modalOpen()&&!!o;});
+T('The job is linked back to that customer and vehicle',()=>{const b=tech();b.click('#v-dashboard [data-action="new-order"]');b.set('customer','c6');b.F('mileage').value='52000';b.submit();const o=b.db().orders.find(x=>x.customerId==='c6'&&x.stage==='reception');const c=b.db().customers.find(x=>x.id==='c6');return c.vehicles.some(v=>v.id===o.vehicleId);});
+T('The job is assigned to the technician who checked it in',()=>{const b=tech();b.click('#v-dashboard [data-action="new-order"]');b.set('customer','c6');b.F('mileage').value='52000';b.submit();const o=b.db().orders.find(x=>x.customerId==='c6'&&x.stage==='reception');return o.technicianId==='s4';});
+T('It appears in the technician\'s own job list',()=>{const b=tech();b.click('#v-dashboard [data-action="new-order"]');b.set('customer','c6');b.F('mileage').value='52000';b.submit();const o=b.db().orders.find(x=>x.customerId==='c6'&&x.stage==='reception');b.click('[data-action="close-panel"]');b.go('orders');return b.$$('#v-orders [data-action="open-order"]').some(x=>x.dataset.id===o.id);});
+T('An advisor is still recorded on the job',()=>{const b=tech();b.click('#v-dashboard [data-action="new-order"]');b.set('customer','c6');b.F('mileage').value='52000';b.submit();const o=b.db().orders.find(x=>x.customerId==='c6'&&x.stage==='reception');return !!o.advisorId&&b.db().staff.find(s=>s.id===o.advisorId).role!=='technician';});
+T('The log records the technician checked it in',()=>{const b=tech();b.click('#v-dashboard [data-action="new-order"]');b.set('customer','c6');b.F('mileage').value='52000';b.submit();return b.$('#panelBody').textContent.includes('Checked in by Marcus Lee');});
+T('Technician can register a brand new customer at check-in',()=>{const b=tech();b.click('#v-dashboard [data-action="new-order"]');b.F('cname').value='Walk In';b.F('cphone').value='9444 3210';b.F('plate').value='sgp 99 z';b.F('model').value='Perodua Myvi';b.F('mileage').value='12000';b.submit();const c=b.db().customers.find(x=>x.name==='Walk In');return !b.modalOpen()&&!!c&&b.db().orders.some(o=>o.customerId===c.id);});
+T('Check-in validation still applies to technicians',()=>{const b=tech();b.click('#v-dashboard [data-action="new-order"]');b.F('cname').value='Dup Phone';b.F('cphone').value='9123 4567';b.F('plate').value='SGP 1 Z';b.F('model').value='X';b.F('mileage').value='1';b.submit();const ok=b.modalOpen();b.click('[data-action="close-modal"]');return ok;});
+T('Checking in did not grant any other permission',()=>{const b=tech();const r=b.d.documentElement.dataset;return r.canEdit==='0'&&r.canPrice==='0'&&r.canCost==='0'&&r.canPurchase==='0'&&r.canStaff==='0';});
+T('Technician still cannot take payment or edit the quote',()=>{const b=tech();b.openOrder('WO-1044');return !b.$('[data-action="take-payment"]')&&!b.$('[data-action="add-part"]');});
+T('Advisors and owners can still check in',()=>{const b=app();return b.d.documentElement.dataset.canCheckin==='1'&&!!b.$('#v-dashboard [data-action="new-order"]');});
+T('No script errors',()=>{const b=tech();return b.errs.length===0;});
+}
+
+// ============ 20. JOB NOTES ============
+S('20 Job notes');
+{
+const openNotes=(b,id)=>{b.openOrder(id);b.tab('notes');};
+T('Every role sees a Notes tab',()=>{const roles=[['alex.tan','owner123'],['joanne.lim','manager123'],['priya.nair','advisor123'],['marcus.lee','tech123']];return roles.every(([u,p])=>{const b=app(null,{anon:true});b.login(u,p);b.openOrder('WO-1043');return !!b.$('[data-action="order-tab"][data-tab="notes"]');});});
+T('Technician can add a note mid-job',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');openNotes(b,'WO-1043');b.$('#noteText').value='Rear shock is leaking, needs a look';b.click('[data-action="add-note"]');return b.order('WO-1043').remarks.some(r=>r.text.includes('Rear shock'));});
+T('The note records who wrote it and when',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');openNotes(b,'WO-1043');b.$('#noteText').value='Checked the brakes';b.click('[data-action="add-note"]');const r=b.order('WO-1043').remarks.slice(-1)[0];return r.by==='s4'&&!!r.at&&!isNaN(new Date(r.at));});
+T('The author\'s name is shown on the note',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');openNotes(b,'WO-1043');b.$('#noteText').value='Visible author test';b.click('[data-action="add-note"]');return b.$('#panelBody').textContent.includes('Marcus Lee');});
+T('A note written by the technician is visible to the advisor',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');openNotes(b,'WO-1043');b.$('#noteText').value='Shared with the team';b.click('[data-action="add-note"]');const store=b.storage();const c=app(store,{anon:true});c.login('priya.nair','advisor123');openNotes(c,'WO-1043');return c.$('#panelBody').textContent.includes('Shared with the team');});
+T('And to the owner',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');openNotes(b,'WO-1043');b.$('#noteText').value='Owner can read this';b.click('[data-action="add-note"]');const c=app(b.storage(),{anon:true});c.login('alex.tan','owner123');openNotes(c,'WO-1043');return c.$('#panelBody').textContent.includes('Owner can read this');});
+T('Advisors can add notes too',()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123');openNotes(b,'WO-1043');b.$('#noteText').value='Called the customer, no answer';b.click('[data-action="add-note"]');return b.order('WO-1043').remarks.slice(-1)[0].by==='s3';});
+T('An empty note is rejected',()=>{const b=app();openNotes(b,'WO-1043');const before=b.order('WO-1043').remarks.length;b.$('#noteText').value='   ';b.click('[data-action="add-note"]');return b.order('WO-1043').remarks.length===before&&b.toast().includes('Write a note');});
+T('Notes survive a reload',()=>{const b=app();openNotes(b,'WO-1043');b.$('#noteText').value='Still here after reload';b.click('[data-action="add-note"]');const c=app(b.storage());openNotes(c,'WO-1043');return c.$('#panelBody').textContent.includes('Still here after reload');});
+T('The tab shows how many notes there are',()=>{const b=app();b.openOrder('WO-1043');const n=b.order('WO-1043').remarks.length;return b.$('[data-action="order-tab"][data-tab="notes"] .n').textContent===String(n);});
+T('A closed job has a read-only thread',()=>{const b=app();openNotes(b,'WO-1041');return !b.$('#noteText')&&!b.$('[data-action="add-note"]')&&b.$('#panelBody').textContent.includes('read-only');});
+T('Note text is escaped, not rendered as markup',()=>{const b=app();openNotes(b,'WO-1043');b.$('#noteText').value='<img src=x onerror=alert(1)>';b.click('[data-action="add-note"]');return !b.$('#panelBody').querySelector('img')&&b.$('#panelBody').textContent.includes('<img src=x');});
+T('Long notes are capped rather than rejected',()=>{const b=app();openNotes(b,'WO-1043');b.$('#noteText').value='x'.repeat(900);b.click('[data-action="add-note"]');return b.order('WO-1043').remarks.slice(-1)[0].text.length===500;});
+T('The demo ships with notes on the live jobs',()=>{const b=app();const o=b.order('WO-1043');return o.remarks.length>=2&&o.remarks.some(r=>r.by==='s4')&&o.remarks.some(r=>r.by==='s3');});
+T('Notes do not appear on jobs that have none',()=>{const b=app();b.openOrder('WO-1047');b.tab('notes');return b.$('#panelBody').textContent.includes('No notes yet');});
+T('No script errors',()=>{const b=app();openNotes(b,'WO-1043');return b.errs.length===0;});
+}
+
+// ============ 21. PART PHOTOS ============
+S('21 Part photos');
+const PNG='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AKAA/9k=';
+{
+T('Parts without a photo show a placeholder',()=>{const b=app();b.go('inventory');const ph=b.$$('#v-inventory .part-thumb.ph');return ph.length===b.db().inventory.length;});
+T('A photo can be saved against a new part',()=>{const b=app();b.go('inventory');b.click('[data-action="new-part"]');b.F('name').value='Spark plug, iridium';b.F('sku').value='SPK-IR01';b.F('price').value='25';b.F('image').value=PNG;b.submit();const p=b.db().inventory.find(x=>x.sku==='SPK-IR01');return !!p&&p.image===PNG;});
+T('The photo is shown in the parts list',()=>{const b=app();b.go('inventory');b.click('[data-action="new-part"]');b.F('name').value='Spark plug';b.F('sku').value='SPK-IR02';b.F('price').value='25';b.F('image').value=PNG;b.submit();const img=b.$$('#v-inventory img.part-thumb');return img.length===1&&img[0].getAttribute('src')===PNG;});
+T('An existing part can have a photo added',()=>{const b=app();b.go('inventory');b.click('[data-action="adjust-stock"][data-sku="OIL-5W30"]');b.F('image').value=PNG;b.submit();return b.part('OIL-5W30').image===PNG;});
+T('The adjust form pre-fills the current photo',()=>{const b=app();b.go('inventory');b.click('[data-action="adjust-stock"][data-sku="OIL-5W30"]');b.F('image').value=PNG;b.submit();b.click('[data-action="adjust-stock"][data-sku="OIL-5W30"]');const ok=b.F('image').value===PNG&&b.$('#imgPreview').tagName==='IMG';b.click('[data-action="close-modal"]');return ok;});
+T('Remove clears the photo',()=>{const b=app();b.go('inventory');b.click('[data-action="adjust-stock"][data-sku="OIL-5W30"]');b.F('image').value=PNG;b.submit();b.click('[data-action="adjust-stock"][data-sku="OIL-5W30"]');b.click('[data-action="clear-image"]');b.submit();return !b.part('OIL-5W30').image;});
+T('Photos survive a reload',()=>{const b=app();b.go('inventory');b.click('[data-action="adjust-stock"][data-sku="BRK-PADF1"]');b.F('image').value=PNG;b.submit();const c=app(b.storage());c.go('inventory');return c.part('BRK-PADF1').image===PNG;});
+T('Adjusting stock without touching the photo keeps it',()=>{const b=app();b.go('inventory');b.click('[data-action="adjust-stock"][data-sku="BAT-55B24"]');b.F('image').value=PNG;b.submit();b.click('[data-action="adjust-stock"][data-sku="BAT-55B24"]');b.F('stock').value='9';b.submit();const p=b.part('BAT-55B24');return p.image===PNG&&p.stock===9;});
+T('Technicians see part photos too',()=>{const b=app();b.go('inventory');b.click('[data-action="adjust-stock"][data-sku="OIL-5W30"]');b.F('image').value=PNG;b.submit();const c=app(b.storage(),{anon:true});c.login('marcus.lee','tech123');c.go('inventory');return c.$$('#v-inventory img.part-thumb').length===1;});
+T('No script errors',()=>{const b=app();b.go('inventory');return b.errs.length===0;});
+}
 
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;
