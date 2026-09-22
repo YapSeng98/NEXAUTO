@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 437 of 437 checks passed.**
+**Result: 440 of 440 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -42,7 +42,7 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Quotation preview | 19 | 19 |
 | Shop-configurable settings | 19 | 19 |
 | Locked settings | 9 | 9 |
-| Role permissions | 17 | 17 |
+| Role permissions | 20 | 20 |
 
 ## The permission matrix is editable (v0.15.0)
 
@@ -62,11 +62,16 @@ granting `config` opens the Lists tab that was showing them a locked card;
 revoking `pay` from an advisor removes the payment button while leaving prices
 visible.
 
-### The bug this found
+### The bugs this found
 
 | # | Bug | Found by |
 |---|---|---|
 | 18 | "Own jobs" was defined as `technicianId === me()`, so any non-technician role with `all` revoked saw **nothing** — the app had no concept of an advisor's own jobs | `Revoking "see every job" limits a manager to their own` |
+| 19 | The locked card told a **manager** that "only an owner or manager can change this" on the owner-only Roles tab, and read "What each role is allowed to do **are** set" | Reported by the user from the screen |
+
+Bug 19 got through because the existing checks asserted a locked card was
+*present*, never what it said. `settingsLocked()` now takes who may change it and
+a full sentence, and three checks read the rendered wording.
 
 That assumption was invisible while `all` was hardcoded on for everyone except
 technicians. Making the flag editable is what exposed it. `visibleOrders()`,

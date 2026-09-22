@@ -2125,10 +2125,10 @@ function rolesCardHTML(){
     }).join("") + '</tbody></table></div></div>';
   return html;
 }
-function settingsLocked(what){
+function settingsLocked(who, sentence){
   return '<div class="card locked-note">' + icon("lock") +
-    '<p class="lock-title">Only an owner or manager can change this</p>' +
-    '<p class="lock-body">' + esc(what) + ' are set for the whole workshop. Ask an owner or manager if something here needs changing.</p></div>';
+    '<p class="lock-title">Only ' + esc(who) + ' can change this</p>' +
+    '<p class="lock-body">' + esc(sentence) + ' Ask ' + esc(who) + ' if something here needs changing.</p></div>';
 }
 var SET_TABS = [["general","General"],["users","Users"],["roles","Roles"],["lists","Lists"],["timing","Timing"]];
 function renderSettings(){
@@ -2149,9 +2149,9 @@ function renderSettings(){
   users += timingCardsHTML("staff");
   html += tab === "general" ? general
     : tab === "users" ? users
-    : tab === "roles" ? (can("staff") ? rolesCardHTML() : settingsLocked("What each role is allowed to do"))
-    : tab === "lists" ? (can("config") ? LIST_DEFS.map(listCardHTML).join("") : settingsLocked("The shop's lists"))
-    : (can("config") ? timingCardsHTML("config") : settingsLocked("Follow-up, warning and stock timings"));
+    : tab === "roles" ? (can("staff") ? rolesCardHTML() : settingsLocked("an owner", "What each role is allowed to do is set for the whole workshop."))
+    : tab === "lists" ? (can("config") ? LIST_DEFS.map(listCardHTML).join("") : settingsLocked("an owner or manager", "The shop's lists are set for the whole workshop."))
+    : (can("config") ? timingCardsHTML("config") : settingsLocked("an owner or manager", "Follow-up, warning and stock timings are set for the whole workshop."));
   $("#v-settings").innerHTML = html;
 }
 
