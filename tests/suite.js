@@ -588,6 +588,30 @@ T('The stock it added is still in the history',()=>{const b=app();b.go('inventor
 T('With nothing outstanding the empty state points at the history',()=>{const b=app();b.go('inventory');b.click('[data-action="inv-tab"][data-tab="po"]');while(b.$('[data-action="receive-po"]'))b.click('[data-action="receive-po"]');return b.$('#v-inventory .empty').textContent.includes('Stock history');});
 T('No script errors',()=>a.errs.length===0);}
 
+// ============ 32. QUOTATION PREVIEW ============
+S('32 Quotation preview');
+{
+const adv=()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123');return b;};
+const openPreview=(b,id)=>{b.openOrder(id);b.tab('items');b.click('[data-action="preview-quote"]');};
+const doc=b=>b.$('#docBody').textContent;
+T('A draft quote can be previewed before sending',()=>{const b=adv();openPreview(b,'WO-1043');return b.$('#docWrap').classList.contains('open');});
+T('A quote that has not gone out is marked as a draft',()=>{const b=adv();b.openOrder('WO-1047');b.click('[data-action="start-insp"]');b.checkAll();b.click('[data-action="finish-insp"]');b.tab('items');b.click('[data-action="add-part"]');b.F('sku').value='BRK-PADF1';b.submit();b.click('[data-action="preview-quote"]');return doc(b).includes('not yet sent to the customer');});
+T('A sent quote can still be reviewed afterwards',()=>{const b=adv();openPreview(b,'WO-1043');return b.$('#docWrap').classList.contains('open')&&doc(b).includes('Quotation WO-1043')&&doc(b).includes('Sent to the customer');});
+T('An approved quote says so',()=>{const b=adv();b.openOrder('WO-1043');b.click('[data-action="approve-quote"]');b.tab('items');b.click('[data-action="preview-quote"]');return doc(b).includes('Approved by the customer');});
+T('It carries the workshop name, so renaming flows through',()=>{const b=app();b.go('settings');b.click('[data-action="app-name"]');b.F('name').value='Ah Seng Motors';b.submit();openPreview(b,'WO-1043');return doc(b).includes('Ah Seng Motors');});
+T('It shows the customer, vehicle and mileage',()=>{const b=adv();openPreview(b,'WO-1043');const o=b.order('WO-1043');const c=b.db().customers.find(x=>x.id===o.customerId);return doc(b).includes(c.name)&&doc(b).includes(c.phone)&&doc(b).includes('SGP 4021 A');});
+T('It lists every quoted line with its amount',()=>{const b=adv();openPreview(b,'WO-1043');const o=b.order('WO-1043');return o.items.every(i=>doc(b).includes(i.name));});
+T('It shows the total the customer would pay',()=>{const b=adv();openPreview(b,'WO-1043');const o=b.order('WO-1043');const t=b.total(o);return doc(b).includes('$'+t.total.toLocaleString());});
+T('The discount is shown when there is one',()=>{const b=adv();openPreview(b,'WO-1043');return b.order('WO-1043').discount>0&&doc(b).includes('Discount');});
+T('It never shows cost or margin',()=>{const b=adv();openPreview(b,'WO-1043');const t=doc(b).toLowerCase();return !t.includes('cost')&&!t.includes('profit')&&!t.includes('margin');});
+T('Inspection findings are explained to the customer',()=>{const b=adv();openPreview(b,'WO-1043');return doc(b).includes('What we found')&&doc(b).includes('Brake pads and discs');});
+T('A technician cannot open the customer quote',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');b.openOrder('WO-1043');b.tab('items');return !b.$('[data-action="preview-quote"]');});
+T('There is nothing to preview before the inspection is done',()=>{const b=adv();b.openOrder('WO-1047');b.tab('items');return !b.$('[data-action="preview-quote"]');});
+T('Closing the preview leaves the job open behind it',()=>{const b=adv();openPreview(b,'WO-1043');b.click('[data-action="close-doc"]');return !b.$('#docWrap').classList.contains('open')&&b.$('#panel').classList.contains('open');});
+T('The customer name is escaped, not rendered as markup',()=>{const b=adv();const o=b.order('WO-1043');const db=b.db();const c=db.customers.find(x=>x.id===o.customerId);b.w.localStorage.setItem('nexauto_demo_v6',JSON.stringify(Object.assign(db,{customers:db.customers.map(x=>x.id===c.id?Object.assign({},x,{name:'<img src=x>'}):x)})));const c2=app(b.storage(),{anon:true});c2.login('priya.nair','advisor123');openPreview(c2,'WO-1043');return !c2.$('#docBody').querySelector('img');});
+T('No script errors',()=>{const b=adv();openPreview(b,'WO-1043');return b.errs.length===0;});
+}
+
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;
 for(const [s,n,r,e] of results){ if(s!==cur){console.log('\n'+s);cur=s;} console.log(`  ${r==='PASS'?'✓':'✗'} ${n}${e?'  ['+e+']':''}`); r==='PASS'?pass++:fail++; }

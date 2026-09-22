@@ -12,7 +12,7 @@ Workshop operations app for auto repair shops. It covers vehicle check-in, inspe
 |---|---|
 | Sign in | Each user has their own username and password, with a lockout after five failed attempts and a session that can be remembered or not |
 | Dashboard | Revenue and profit today, workshop pipeline, follow-ups due, low stock alerts, quick actions |
-| Orders | Check in vehicles, 10-point inspection, build and send quotes, approve or decline, extra-work approval, payment, shared job notes |
+| Orders | Check in vehicles, inspection, build and send quotes, a printable customer quotation, approve or decline, extra-work approval, payment, shared job notes |
 | Inventory | Parts with photos, on-hand, reserved and available stock, stock adjustments, purchase orders, receiving, suppliers, stock history |
 | Customers | Customer profiles, multiple vehicles, service history, lifetime spend, follow-ups |
 | Insights | Jobs that have stalled and why, stock to reorder with suggested quantities, customers worth calling, and an optional Ask-anything panel |
@@ -98,7 +98,7 @@ docs/
   ARCHITECTURE.md     Current demo design and production target
   SECURITY.md         Security review of the demo, with severities
   SUPABASE_PLAN.md    Migration plan: schema, RLS policies, auth, phases
-  TEST_REPORT.md      Results of the 373 automated checks
+  TEST_REPORT.md      Results of the 389 automated checks
 tests/
   suite.js            Automated end-to-end test suite
 package.json          Test script
@@ -111,7 +111,7 @@ npm install
 npm test
 ```
 
-The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 373 passed, 0 failed`.
+The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 389 passed, 0 failed`.
 
 ## Ask-anything panel (optional)
 
