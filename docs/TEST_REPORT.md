@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 473 of 473 checks passed.**
+**Result: 480 of 480 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -43,6 +43,26 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Shop-configurable settings | 19 | 19 |
 | Locked settings | 9 | 9 |
 | Role permissions | 25 | 25 |
+
+## Two Settings cards had no permission gate (v0.20.0)
+
+Writing the presentation slide that lists who may change what sent me back to
+check the claim, and two cards in **Settings → General** turned out to have no
+`data-*` gate on them at all:
+
+| # | Bug | Impact |
+|---|---|---|
+| 22 | The brand colour card was open to every role | A technician could restyle the shop |
+| 23 | **The reset card was open to every role** | A technician could wipe every job, customer and part |
+
+Colour is now owner-or-manager, reset is owner-only, and both handlers refuse the
+action outright rather than relying on the card being hidden — checks force a
+`theme` and a `reset` button into the page as a technician and assert the colour
+and the order count are unchanged.
+
+Worth noting how this surfaced: not from a test, and not from using the app, but
+from having to write down the permission model precisely enough to put it in
+front of someone.
 
 ## Setting up a new workshop (v0.19.0)
 

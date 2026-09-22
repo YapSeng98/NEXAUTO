@@ -745,6 +745,19 @@ T('A brand-new workshop has nothing flagged as stalled',()=>{const b=fresh();mak
 T('No script errors',()=>{const b=fresh();make(b);return b.errs.length===0;});
 }
 
+// ============ 38. SETTINGS THAT WERE NOT GATED ============
+S('38 Settings gating');
+{
+const as=(u,p)=>{const b=app(null,{anon:true});b.login(u,p);return b;};
+T('A technician cannot reach the brand colour',()=>{const b=as('marcus.lee','tech123');b.setTab('general');return !b.$('[data-action="theme"]')||b.d.documentElement.dataset.canConfig==='0';});
+T('Forcing a colour change is refused',()=>{const b=as('marcus.lee','tech123');b.setTab('general');const before=b.db().settings.color;const e=b.d.createElement('button');e.dataset.action='theme';e.dataset.c='#C0271D';b.d.body.appendChild(e);b.click(e);return b.db().settings.color===before;});
+T('A manager can still change it',()=>{const b=as('joanne.lim','manager123');b.setTab('general');b.click('[data-action="theme"][data-c="#1D5FD1"]');return b.db().settings.color==='#1D5FD1';});
+T('Only an owner sees the reset card',()=>{const b=as('joanne.lim','manager123');b.setTab('general');const mgr=!b.$('[data-action="reset"]')||b.d.documentElement.dataset.canStaff==='0';const o=app();o.setTab('general');return mgr&&!!o.$('[data-action="reset"]')&&o.d.documentElement.dataset.canStaff==='1';});
+T('A technician forcing a reset is refused, and the data survives',()=>{const b=as('marcus.lee','tech123');b.setTab('general');const before=b.db().orders.length;const e=b.d.createElement('button');e.dataset.action='reset';b.d.body.appendChild(e);b.click(e);return b.db().orders.length===before&&b.toast().includes('Only an owner');});
+T('The owner can still reset',()=>{const b=app();b.setTab('general');b.click('[data-action="reset"]');return b.order('WO-1047').stage==='reception';});
+T('No script errors',()=>{const b=as('marcus.lee','tech123');b.setTab('general');return b.errs.length===0;});
+}
+
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;
 for(const [s,n,r,e] of results){ if(s!==cur){console.log('\n'+s);cur=s;} console.log(`  ${r==='PASS'?'✓':'✗'} ${n}${e?'  ['+e+']':''}`); r==='PASS'?pass++:fail++; }

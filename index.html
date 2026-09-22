@@ -2238,7 +2238,7 @@ function renderSettings(){
   var html = '<div class="chips">' + SET_TABS.map(function(t){
     return '<button class="chip' + (tab === t[0] ? ' active' : '') + '" data-action="set-tab" data-t="' + t[0] + '">' + t[1] + '</button>';
   }).join("") + '</div>';
-  var general = '<div class="card"><div class="section-head"><h2>App colour</h2></div><p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Pick the brand colour for buttons, highlights and charts. It applies across the app instantly.</p>' +
+  var general = '<div class="card" data-config><div class="section-head"><h2>App colour</h2></div><p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Pick the brand colour for buttons, highlights and charts. It applies across the app instantly.</p>' +
     '<div class="swatches">' + THEMES.map(function(t){ return '<button class="swatch' + (cur.toLowerCase() === t.c.toLowerCase() ? ' active' : '') + '" style="background:' + t.c + '" data-action="theme" data-c="' + t.c + '" aria-label="' + t.name + '" title="' + t.name + '"></button>'; }).join("") +
     '<label class="sr-only" for="customColor">Custom colour</label><input type="color" id="customColor" value="' + cur + '" title="Custom colour"></div></div>';
   var users = '<div class="card"><div class="section-head"><h2>Users</h2><button class="btn primary" data-action="new-staff" data-staff>' + icon("plus") + 'Add user</button></div>' +
@@ -2246,7 +2246,7 @@ function renderSettings(){
     '<p class="sub" style="color:var(--text-muted);font-size:12px;margin:12px 0 0">Each user signs in with their own username and password. Owners see everything and manage users. Managers see profit but cannot manage users. Advisors see prices but not cost or profit. Technicians only see their own jobs, with no prices.</p></div>';
   general += '<div class="card" data-staff><div class="section-head"><h2>Workshop name</h2><button class="btn sm" data-action="app-name">' + icon("pencil") + 'Rename</button></div>' +
     '<p class="sub" style="color:var(--text-secondary);margin:0;font-size:13px">Currently <b style="color:var(--text-primary)">' + esc(appName()) + '</b> \u2014 shown on the sign-in page, in the sidebar and in the browser tab.</p></div>';
-  general += '<div class="card"><div class="section-head"><h2>Demo data</h2></div><p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Your changes are saved in this browser. Reset to start the demo fresh.</p><button class="btn danger" data-action="reset">Reset demo data</button></div>';
+  general += '<div class="card" data-staff><div class="section-head"><h2>Demo data</h2></div><p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Your changes are saved in this browser. Reset to start the demo fresh.</p><button class="btn danger" data-action="reset">Reset demo data</button></div>';
   users += timingCardsHTML("staff");
   html += tab === "general" ? general
     : tab === "users" ? users
@@ -2851,8 +2851,9 @@ document.addEventListener("click", function(e){
     case "new-staff": modalNewStaff(); break;
     case "edit-staff": modalEditStaff(DB.staff.filter(function(x){ return x.id === el.dataset.id; })[0]); break;
     case "remove-staff": removeStaff(DB.staff.filter(function(x){ return x.id === el.dataset.id; })[0]); break;
-    case "theme": DB.settings.color = el.dataset.c; applyTheme(el.dataset.c); save(); renderSettings(); toast("Colour updated"); break;
+    case "theme": if(!can("config")) break; DB.settings.color = el.dataset.c; applyTheme(el.dataset.c); save(); renderSettings(); toast("Colour updated"); break;
     case "reset":
+      if(!can("staff")){ toast("Only an owner can reset the data", true); break; }
       if(confirm("Reset all demo data? Your changes will be lost.")){ DB = seed(); applyTheme(null); applyAppName(); save(); closePanel(); goto("dashboard"); toast("Demo data reset"); }
       break;
   }
@@ -2860,7 +2861,7 @@ document.addEventListener("click", function(e){
 document.addEventListener("change", function(e){
   var el = e.target, o = currentOrder();
   if(el.dataset.action === "perm-toggle"){ setPerm(el.dataset.role, el.dataset.k, el.checked); return; }
-  if(el.id === "customColor"){ DB.settings.color = el.value; applyTheme(el.value); save(); renderSettings(); return; }
+  if(el.id === "customColor"){ if(!can("config")) return; DB.settings.color = el.value; applyTheme(el.value); save(); renderSettings(); return; }
   if(!o) return;
   if(el.dataset.action === "insp-note"){ o.inspection[+el.dataset.i].note = el.value.trim(); save(); }
   if(el.dataset.action === "discount"){ o.discount = Math.max(0, Math.round(Number(el.value)||0)); if(o.discount > totals(o).sub) o.discount = totals(o).sub;

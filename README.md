@@ -66,7 +66,8 @@ in**. Five wrong passwords lock that username for a minute.
 | Add parts, change prices | ✓ | ✓ | – | – |
 | Manage users | ✓ | – | – | – |
 | Edit the shop's lists and timings | ✓ | ✓ | – | – |
-| Rename the workshop, sign-in policy | ✓ | – | – | – |
+| Rename the workshop, sign-in policy, reset data | ✓ | – | – | – |
+| Change the brand colour | ✓ | ✓ | – | – |
 | Open the quotation document | ✓ | ✓ | ✓ | As a job sheet, no prices |
 
 **This table is the default, not a rule.** An owner changes any of it in
@@ -114,7 +115,7 @@ docs/
   ARCHITECTURE.md     Current demo design and production target
   SECURITY.md         Security review of the demo, with severities
   SUPABASE_PLAN.md    Migration plan: schema, RLS policies, auth, phases
-  TEST_REPORT.md      Results of the 473 automated checks
+  TEST_REPORT.md      Results of the 480 automated checks
 tests/
   suite.js            Automated end-to-end test suite
 package.json          Test script
@@ -127,7 +128,7 @@ npm install
 npm test
 ```
 
-The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 473 passed, 0 failed`.
+The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 480 passed, 0 failed`.
 
 ## Making it your own
 
