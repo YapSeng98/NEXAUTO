@@ -245,6 +245,17 @@ here they do not:
   carries only their own jobs and no money fields at all. That is the one place
   in the app where a permission actually withholds data rather than hiding it.
 
+### One note on the editable permission matrix
+
+An owner can now grant or revoke permissions per role in Settings → Roles. This
+does not change the app's security posture in either direction: the rules were
+already advisory (C1, C2), and an editable rule that is not enforced is no weaker
+than a hardcoded rule that is not enforced. The owner row is forced on in code so
+that an owner cannot remove the last permission capable of restoring the others.
+
+When the backend lands, this matrix is exactly what RLS policies should read
+from, rather than each policy hardcoding role names.
+
 ### One note on the configurable settings
 
 Sign-in policy (session length, lockout attempts and duration) is now editable by

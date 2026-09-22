@@ -548,6 +548,14 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
 .locked-note svg{width:26px;height:26px;color:var(--text-muted);margin-bottom:10px;}
 .lock-title{margin:0;font-weight:600;font-size:14.5px;}
 .lock-body{margin:6px auto 0;font-size:13px;color:var(--text-secondary);max-width:42ch;line-height:1.55;}
+
+.perm-table th:first-child,.perm-table td:first-child{min-width:230px;}
+.perm-table th.num,.perm-table td.num{text-align:center;width:104px;}
+.perm-hint{display:block;font-size:12px;color:var(--text-muted);margin-top:2px;font-weight:400;}
+.perm-box{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:4px;}
+.perm-box input{width:18px;height:18px;accent-color:var(--green);margin:0;cursor:pointer;}
+.perm-box.locked{cursor:default;opacity:.55;}
+.perm-box.locked input{cursor:default;}
 </style>
 </head>
 <body>
@@ -768,13 +776,50 @@ function timing(k){
   return (typeof v === "number" && !isNaN(v)) ? v : DEFAULT_TIMINGS[k];
 }
 var DEFAULT_INSPECTION = ["Engine oil level and condition","Brake pads and discs","Tyres and tread depth","Battery health","Lights and signals","Suspension and steering","Coolant level","Wipers and washer","Air-con performance","Underbody and leaks"];
-var PERMS = {
+var BASE_PERMS = {
   owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, pay:1, checkin:1, config:1, additems:1},
   manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, config:1, additems:1},
   advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, config:0, additems:1},
   technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, pay:0, checkin:1, config:0, additems:1}
 };
 var ROLE_LABEL = {owner:"Owner", manager:"Manager", advisor:"Service advisor", technician:"Technician"};
+/* What each flag actually lets someone do, in the order the matrix shows them. */
+var PERM_DEFS = [
+  ["all",      "See every job and customer", "Off means they only see jobs assigned to them"],
+  ["checkin",  "Check a vehicle in", "Book a car in and link it to a customer"],
+  ["additems", "Add parts and work to a quote", "Adding is not pricing \u2014 that needs the flag below"],
+  ["edit",     "Price lines, discount and send quotes", "The advisor's job: set prices, apply a discount, send the quote"],
+  ["price",    "See selling prices", "Prices on jobs, parts and the customer quotation"],
+  ["cost",     "See cost prices and profit", "What the shop paid, and the margin"],
+  ["revenue",  "See shop revenue and reports", "Takings, profit and the whole Reports page"],
+  ["pay",      "Take payment and close a job", ""],
+  ["purchase", "Purchase orders and stock adjustments", "Raise POs, receive stock, correct counts"],
+  ["config",   "Edit the shop's lists and timings", "Settings \u2192 Lists and Timing"],
+  ["staff",    "Manage users and shop settings", "Add and edit staff, rename the workshop, sign-in policy"]
+];
+var EDITABLE_ROLES = ["manager", "advisor", "technician"];
+/* The owner keeps everything, always. Anything else and an owner could lock the
+   last person capable of unlocking it out of their own workshop. */
+function perms(){
+  var saved = DB && DB.settings && DB.settings.perms;
+  var out = {};
+  Object.keys(BASE_PERMS).forEach(function(role){
+    out[role] = {};
+    Object.keys(BASE_PERMS[role]).forEach(function(k){
+      var v = (role !== "owner" && saved && saved[role] && typeof saved[role][k] === "boolean")
+        ? (saved[role][k] ? 1 : 0) : BASE_PERMS[role][k];
+      out[role][k] = role === "owner" ? 1 : v;
+    });
+  });
+  return out;
+}
+function setPerm(role, key, on){
+  if(role === "owner") return;
+  DB.settings.perms = DB.settings.perms || {};
+  DB.settings.perms[role] = DB.settings.perms[role] || {};
+  DB.settings.perms[role][key] = !!on;
+  save(); setRole(); renderSettings();
+}
 var THEMES = [
   {name:"Castrol green", c:"#0E7C3A"}, {name:"Ocean blue", c:"#1D5FD1"}, {name:"Racing red", c:"#C0271D"},
   {name:"Sunset orange", c:"#C9580F"}, {name:"Royal purple", c:"#6A3DC4"}, {name:"Graphite", c:"#3A4450"}
@@ -1115,7 +1160,7 @@ function clearFailures(username){
 var ORDER_PAGE = 25;
 var state = {role:"owner", userId:null, poShowDone:false, setTab:"general", view:"dashboard", orderFilter:"open", orderQuery:"", orderLimit:ORDER_PAGE, invTab:"parts", invQuery:"", custQuery:"", panel:null, orderTab:"overview", reportRange:"30d"};
 
-function can(k){ return !!PERMS[state.role][k]; }
+function can(k){ return !!perms()[state.role][k]; }
 function activeUsers(){ return DB.staff.filter(function(s){ return s.active !== false; }); }
 function me(){ return activeUsers().filter(function(s){ return s.id === state.userId; })[0] || activeUsers().filter(function(s){ return s.role === "owner"; })[0]; }
 function cust(id){ return DB.customers.filter(function(c){ return c.id === id; })[0]; }
@@ -1138,9 +1183,10 @@ function inspCounts(o){
   o.inspection.forEach(function(i){ c[i.status]++; });
   return c;
 }
+function isMine(o){ var id = me().id; return o.technicianId === id || o.advisorId === id; }
 function visibleOrders(){
   var list = DB.orders.slice();
-  if(!can("all")) list = list.filter(function(o){ return o.technicianId === me().id; });
+  if(!can("all")) list = list.filter(isMine);
   return list.sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); });
 }
 function avail(p){ return p.stock - (p.reserved || 0); }
@@ -1190,7 +1236,7 @@ function refresh(){
 }
 function setRole(){
   var u0 = me(); state.userId = u0.id; state.role = u0.role; var role = u0.role;
-  var root = document.documentElement, p = PERMS[role];
+  var root = document.documentElement, p = perms()[role];
   root.dataset.canCost = p.cost; root.dataset.canPrice = p.price; root.dataset.canRevenue = p.revenue;
   root.dataset.canPurchase = p.purchase; root.dataset.canStaff = p.staff; root.dataset.canEdit = p.edit;
   root.dataset.canCheckin = p.checkin; root.dataset.canConfig = p.config;
@@ -1454,8 +1500,8 @@ function orderRowHTML(o){
 }
 
 /* ================= order panel ================= */
-function allowedOrder(o){ return o && (can("all") || o.technicianId === me().id); }
-function allowedCustomer(c){ return c && (can("all") || DB.orders.some(function(o){ return o.customerId === c.id && o.technicianId === me().id; })); }
+function allowedOrder(o){ return o && (can("all") || isMine(o)); }
+function allowedCustomer(c){ return c && (can("all") || DB.orders.some(function(o){ return o.customerId === c.id && isMine(o); })); }
 function openPanel(p){
   if(p.type === "order" && !allowedOrder(order(p.id))){ toast("This job isn't assigned to you", true); return; }
   if(p.type === "customer" && !allowedCustomer(cust(p.id))){ toast("You can only view customers on your jobs", true); return; } state.panel = p; if(p.type === "order" && !p.keepTab) state.orderTab = "overview"; renderPanel(); $("#panel").classList.add("open"); $("#backdrop").classList.add("open"); }
@@ -2057,12 +2103,34 @@ function askClaude(question){
 }
 
 /* ================= settings ================= */
+function rolesCardHTML(){
+  var P = perms();
+  var cols = ["owner"].concat(EDITABLE_ROLES);
+  var html = '<div class="card"><div class="section-head"><h2>What each role can do</h2>' +
+    '<button class="btn sm" data-action="perms-reset">Restore defaults</button></div>' +
+    '<p class="sub" style="color:var(--text-secondary);margin:0 0 14px;font-size:13px">Tick what each role is allowed to do. Changes apply the moment you tick them, including to anyone already signed in on this device. The owner keeps everything — otherwise you could lock yourself out of your own workshop.</p>' +
+    '<div class="table-wrap"><table class="perm-table"><thead><tr><th>Allowed to</th>' +
+    cols.map(function(r){ return '<th class="num">' + esc(ROLE_LABEL[r]) + '</th>'; }).join("") +
+    '</tr></thead><tbody>' +
+    PERM_DEFS.map(function(d){
+      return '<tr><td><b style="font-weight:600">' + esc(d[1]) + '</b>' +
+        (d[2] ? '<span class="perm-hint">' + esc(d[2]) + '</span>' : '') + '</td>' +
+        cols.map(function(role){
+          var on = !!P[role][d[0]], locked = role === "owner";
+          return '<td class="num"><label class="perm-box' + (locked ? ' locked' : '') + '">' +
+            '<input type="checkbox" data-action="perm-toggle" data-role="' + role + '" data-k="' + d[0] + '"' +
+            (on ? ' checked' : '') + (locked ? ' disabled' : '') +
+            ' aria-label="' + esc(ROLE_LABEL[role] + ": " + d[1]) + '"></label></td>';
+        }).join("") + '</tr>';
+    }).join("") + '</tbody></table></div></div>';
+  return html;
+}
 function settingsLocked(what){
   return '<div class="card locked-note">' + icon("lock") +
     '<p class="lock-title">Only an owner or manager can change this</p>' +
     '<p class="lock-body">' + esc(what) + ' are set for the whole workshop. Ask an owner or manager if something here needs changing.</p></div>';
 }
-var SET_TABS = [["general","General"],["users","Users"],["lists","Lists"],["timing","Timing"]];
+var SET_TABS = [["general","General"],["users","Users"],["roles","Roles"],["lists","Lists"],["timing","Timing"]];
 function renderSettings(){
   var cur = DB.settings.color || THEMES[0].c;
   var tab = state.setTab || "general";
@@ -2081,6 +2149,7 @@ function renderSettings(){
   users += timingCardsHTML("staff");
   html += tab === "general" ? general
     : tab === "users" ? users
+    : tab === "roles" ? (can("staff") ? rolesCardHTML() : settingsLocked("What each role is allowed to do"))
     : tab === "lists" ? (can("config") ? LIST_DEFS.map(listCardHTML).join("") : settingsLocked("The shop's lists"))
     : (can("config") ? timingCardsHTML("config") : settingsLocked("Follow-up, warning and stock timings"));
   $("#v-settings").innerHTML = html;
@@ -2635,6 +2704,9 @@ document.addEventListener("click", function(e){
       break;
     }
     case "timing-edit": modalTimings(+el.dataset.g); break;
+    case "perms-reset":
+      if(confirm("Put every role back to the permissions the app ships with?")){ delete DB.settings.perms; save(); setRole(); renderSettings(); toast("Roles reset"); }
+      break;
     case "set-tab": state.setTab = el.dataset.t; renderSettings(); break;
     case "ai-connect": modalAiKey(); break;
     case "ai-forget": try { localStorage.removeItem(AI_KEY); } catch(e){} aiState = {busy:false, answer:"", error:"", question:""}; toast("Key removed"); renderInsights(); break;
@@ -2683,6 +2755,7 @@ document.addEventListener("click", function(e){
 });
 document.addEventListener("change", function(e){
   var el = e.target, o = currentOrder();
+  if(el.dataset.action === "perm-toggle"){ setPerm(el.dataset.role, el.dataset.k, el.checked); return; }
   if(el.id === "customColor"){ DB.settings.color = el.value; applyTheme(el.value); save(); renderSettings(); return; }
   if(!o) return;
   if(el.dataset.action === "insp-note"){ o.inspection[+el.dataset.i].note = el.value.trim(); save(); }

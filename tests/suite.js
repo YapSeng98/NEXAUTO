@@ -658,6 +658,31 @@ T('The owner still sees them',()=>{const b=app();b.setTab('users');return b.$('#
 T('No script errors',()=>{const b=as('marcus.lee','tech123');b.setTab('lists');b.setTab('timing');return b.errs.length===0;});
 }
 
+// ============ 35. ROLE PERMISSIONS ============
+S('35 Role permissions');
+{
+const as=(u,p)=>{const b=app(null,{anon:true});b.login(u,p);return b;};
+const tick=(b,role,k,on)=>{b.setTab('roles');const el=b.$(`[data-action="perm-toggle"][data-role="${role}"][data-k="${k}"]`);el.checked=on;el.dispatchEvent(new b.w.Event('change',{bubbles:true}));};
+T('Only the owner can open the Roles tab',()=>{const b=app();b.setTab('roles');const owner=!!b.$('[data-action="perm-toggle"]');const c=as('joanne.lim','manager123');c.setTab('roles');return owner&&!c.$('[data-action="perm-toggle"]')&&!!c.$('#v-settings .locked-note');});
+T('The matrix covers every permission and every role',()=>{const b=app();b.setTab('roles');const rows=b.$$('.perm-table tbody tr').length;const boxes=b.$$('[data-action="perm-toggle"]').length;return rows===11&&boxes===44;});
+T('The owner column is on and locked',()=>{const b=app();b.setTab('roles');const own=b.$$('[data-action="perm-toggle"][data-role="owner"]');return own.length===11&&own.every(x=>x.checked&&x.disabled);});
+T('It starts from the shipped defaults',()=>{const b=app();b.setTab('roles');const techPrice=b.$('[data-action="perm-toggle"][data-role="technician"][data-k="price"]');const advEdit=b.$('[data-action="perm-toggle"][data-role="advisor"][data-k="edit"]');return !techPrice.checked&&advEdit.checked;});
+
+T('Granting a technician prices takes effect immediately',()=>{const b=app();tick(b,'technician','price',true);const c=app(b.storage(),{anon:true});c.login('marcus.lee','tech123');return c.d.documentElement.dataset.canPrice==='1';});
+T('And they then see the priced quotation, not the job sheet',()=>{const b=app();tick(b,'technician','price',true);const c=app(b.storage(),{anon:true});c.login('marcus.lee','tech123');c.openOrder('WO-1043');c.tab('items');c.click('[data-action="preview-quote"]');return c.$('#docTitle').textContent==='Quotation preview'&&c.$('#docBody').textContent.includes('Total');});
+T('Granting edit lets a technician send a quote',()=>{const b=app();tick(b,'technician','edit',true);const c=app(b.storage(),{anon:true});c.login('marcus.lee','tech123');c.openOrder('WO-1043');return !!c.$('[data-action="approve-quote"]')||!!c.$('[data-action="send-quote"]');});
+T('Revoking a permission takes it away',()=>{const b=app();tick(b,'advisor','pay',false);const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1045');return c.d.documentElement.dataset.canPrice==='1'&&!c.$('[data-action="take-payment"]');});
+T('Revoking "see every job" limits a manager to their own',()=>{const b=app();tick(b,'manager','all',false);const c=app(b.storage(),{anon:true});c.login('joanne.lim','manager123');c.go('orders');const ids=c.$$('#v-orders [data-action="open-order"]').map(x=>x.dataset.id);const open=c.db().orders.filter(o=>o.stage!=='completed'&&o.stage!=='declined');return open.length>0&&ids.length===0&&open.every(o=>o.advisorId!=='s2'&&o.technicianId!=='s2');});
+T('An advisor without it still sees the jobs they run',()=>{const b=app();tick(b,'advisor','all',false);const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.go('orders');const ids=c.$$('#v-orders [data-action="open-order"]').map(x=>x.dataset.id);return ids.length>0&&ids.every(id=>{const o=c.order(id);return o.advisorId==='s3'||o.technicianId==='s3';});});
+T('Opening someone else\'s job is refused once it is revoked',()=>{const b=app();tick(b,'manager','all',false);const c=app(b.storage(),{anon:true});c.login('joanne.lim','manager123');c.go('orders');const e=c.d.createElement('button');e.dataset.action='open-order';e.dataset.id='WO-1043';c.d.body.appendChild(e);c.click(e);return !c.$('#panel').classList.contains('open')&&c.toast().includes("isn't assigned to you");});
+T('Granting config opens the Lists tab for that role',()=>{const b=app();tick(b,'technician','config',true);const c=app(b.storage(),{anon:true});c.login('marcus.lee','tech123');c.setTab('lists');return !c.$('#v-settings .locked-note')&&!!c.$('[data-action="list-add"][data-k="inspection"]');});
+T('The owner cannot be changed even by forcing the checkbox',()=>{const b=app();b.setTab('roles');const el=b.$('[data-action="perm-toggle"][data-role="owner"][data-k="staff"]');el.disabled=false;el.checked=false;el.dispatchEvent(new b.w.Event('change',{bubbles:true}));return b.d.documentElement.dataset.canStaff==='1'&&(!b.db().settings.perms||!b.db().settings.perms.owner);});
+T('Changes survive a reload',()=>{const b=app();tick(b,'technician','price',true);const c=app(b.storage());c.setTab('roles');return c.$('[data-action="perm-toggle"][data-role="technician"][data-k="price"]').checked;});
+T('Restore defaults puts everything back',()=>{const b=app();tick(b,'technician','price',true);tick(b,'advisor','pay',false);b.click('[data-action="perms-reset"]');const back=b.$$('[data-action="perm-toggle"][data-role="technician"][data-k="price"]')[0];return !back.checked&&!b.db().settings.perms;});
+T('Resetting the demo clears any role changes',()=>{const b=app();tick(b,'technician','price',true);b.setTab('general');b.click('[data-action="reset"]');return !b.db().settings.perms;});
+T('No script errors',()=>{const b=app();b.setTab('roles');return b.errs.length===0;});
+}
+
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;
 for(const [s,n,r,e] of results){ if(s!==cur){console.log('\n'+s);cur=s;} console.log(`  ${r==='PASS'?'✓':'✗'} ${n}${e?'  ['+e+']':''}`); r==='PASS'?pass++:fail++; }

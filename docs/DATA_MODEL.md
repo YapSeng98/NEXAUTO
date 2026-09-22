@@ -192,6 +192,7 @@ different workshop without edits:
 | color | string or null | Brand colour; every other shade is derived from it |
 | lists | `{inspection, payment, categories, adjustReasons, tiers}` | Each an ordered array of strings, each editable in Settings → Lists |
 | timings | object | Follow-up intervals, stalled-job thresholds, reorder window, sign-in policy. Any value left unset falls back to `DEFAULT_TIMINGS` |
+| perms | `{role: {flag: boolean}}` | Overrides on the shipped permission table. Only non-owner roles are stored; the owner row is forced on in code |
 
 ## Storage (demo)
 

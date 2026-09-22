@@ -17,7 +17,7 @@ Workshop operations app for auto repair shops. It covers vehicle check-in, inspe
 | Customers | Customer profiles, multiple vehicles, service history, lifetime spend, follow-ups |
 | Insights | Jobs that have stalled and why, stock to reorder with suggested quantities, customers worth calling, and an optional Ask-anything panel |
 | Reports | Revenue over 7 days, 30 days or 6 months, gross profit and margin, average ticket, quote approval rate, parts vs labor, completed jobs and revenue per technician |
-| Settings | Four tabs — General (workshop name, brand colour, reset), Users (staff and sign-in policy), Lists (inspection checklist, payment methods, part categories, adjustment reasons, customer tiers), Timing (follow-ups, stalled-job thresholds, stock planning) |
+| Settings | Five tabs — General (workshop name, brand colour, reset), Users (staff and sign-in policy), Roles (what each role may do), Lists (inspection checklist, payment methods, part categories, adjustment reasons, customer tiers), Timing (follow-ups, stalled-job thresholds, stock planning) |
 
 ## Signing in
 
@@ -60,6 +60,11 @@ in**. Five wrong passwords lock that username for a minute.
 | Rename the workshop, sign-in policy | ✓ | – | – | – |
 | Open the quotation document | ✓ | ✓ | ✓ | As a job sheet, no prices |
 
+**This table is the default, not a rule.** An owner changes any of it in
+**Settings → Roles** by ticking a box — want technicians to see prices, or
+advisors to stop taking payment? Tick it and it applies immediately. The owner
+row is fixed at everything so nobody can lock themselves out.
+
 Full details: [docs/ROLES.md](docs/ROLES.md)
 
 ## Work order process
@@ -100,7 +105,7 @@ docs/
   ARCHITECTURE.md     Current demo design and production target
   SECURITY.md         Security review of the demo, with severities
   SUPABASE_PLAN.md    Migration plan: schema, RLS policies, auth, phases
-  TEST_REPORT.md      Results of the 420 automated checks
+  TEST_REPORT.md      Results of the 437 automated checks
 tests/
   suite.js            Automated end-to-end test suite
 package.json          Test script
@@ -113,7 +118,7 @@ npm install
 npm test
 ```
 
-The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 420 passed, 0 failed`.
+The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 437 passed, 0 failed`.
 
 ## Making it your own
 
@@ -124,6 +129,7 @@ all of this in **Settings**, and it takes effect immediately:
 |---|---|
 | General | The workshop's name (sign-in page, sidebar, browser tab) and the brand colour every other shade is derived from |
 | Users | Who works here, their role and credentials; and how long a session lasts before it expires |
+| Roles | What each role is allowed to do, as a tick-box matrix |
 | Lists | The inspection checklist, payment methods, part categories, stock adjustment reasons and customer tiers |
 | Timing | When follow-ups are due, how many days a job can sit before it is flagged amber then red, and the window the reorder suggestions are calculated over |
 

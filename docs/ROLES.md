@@ -11,6 +11,18 @@
 Only the **owner** can manage users, rename the workshop and change sign-in policy (`staff`). Owners and **managers** share everything else that configures the shop (`config`).
 | Technician | Mechanic | Inspection and repair on their own jobs only, with no prices |
 
+## The matrix is editable
+
+The table below is what the app **ships with**, not what it is stuck with. An
+owner opens **Settings → Roles** and ticks what each role may do; changes apply
+the moment they are ticked, to anyone already signed in on that device.
+
+The owner column is fixed at everything and cannot be unticked. That is
+deliberate: any other rule lets an owner remove the last permission capable of
+restoring it and lock themselves out of their own workshop. The `perms()`
+function forces the owner row on regardless of what is stored, so forcing the
+disabled checkbox in devtools changes nothing.
+
 ## Permission flags
 
 Each role maps to a set of flags in the `PERMS` object in `index.html`.

@@ -38,12 +38,12 @@ see the same data. The backend that fixes that is in
 
 | Section | Contents |
 |---|---|
-| Constants | `STAGES`, `PERMS`, `DEFAULT_LISTS`, `LIST_DEFS`, `DEFAULT_TIMINGS`, `THEMES`, `NAV`, `ICON` |
+| Constants | `STAGES`, `BASE_PERMS`, `PERM_DEFS`, `DEFAULT_LISTS`, `LIST_DEFS`, `DEFAULT_TIMINGS`, `THEMES`, `NAV`, `ICON` |
 | Credentials | `digest()`, `setPassword()`, `checkPassword()` — demo-grade, see SECURITY.md H1 |
 | `seed()` / `buildHistory()` | Demo data, including six months of deterministic history |
 | Storage | `save()`, versioned load, `KEY` / `DB.v` |
 | Session | `readSession()`, `writeSession()`, lockout counters |
-| Settings | `listOf()`, `timing()`, `appName()`, `checklist()` — every shop-configurable value |
+| Settings | `listOf()`, `timing()`, `appName()`, `checklist()`, `perms()` — every shop-configurable value, including the role matrix |
 | Helpers | `can()`, `me()`, `totals()`, `avail()`, `reserve()`, `move()`, `log()` |
 | Insights engine | `jobStatus()`, `attentionList()`, `reorderPlan()`, `customerStats()` |
 | Views | `renderDashboard`, `renderOrders`, `renderInventory`, `renderCustomers`, `renderReports`, `renderInsights`, `renderSettings` |

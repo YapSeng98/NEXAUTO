@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 420 of 420 checks passed.**
+**Result: 437 of 437 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -42,6 +42,36 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Quotation preview | 19 | 19 |
 | Shop-configurable settings | 19 | 19 |
 | Locked settings | 9 | 9 |
+| Role permissions | 17 | 17 |
+
+## The permission matrix is editable (v0.15.0)
+
+`PERMS` was a constant. It is now the *default* — an owner opens
+**Settings → Roles** and ticks what each role may do, across 11 permissions and
+3 editable roles, and the change applies the moment it is ticked.
+
+The owner column is fixed at everything and disabled. `perms()` forces that row
+on regardless of what is stored, so re-enabling the checkbox in devtools and
+firing the event changes nothing — a check does exactly that and asserts
+`canStaff` stays `1` and nothing is written.
+
+The checks follow each grant through to behaviour rather than stopping at the
+stored value: granting a technician `price` makes prices appear on lines *and*
+switches their quote document from the job sheet to the priced quotation;
+granting `config` opens the Lists tab that was showing them a locked card;
+revoking `pay` from an advisor removes the payment button while leaving prices
+visible.
+
+### The bug this found
+
+| # | Bug | Found by |
+|---|---|---|
+| 18 | "Own jobs" was defined as `technicianId === me()`, so any non-technician role with `all` revoked saw **nothing** — the app had no concept of an advisor's own jobs | `Revoking "see every job" limits a manager to their own` |
+
+That assumption was invisible while `all` was hardcoded on for everyone except
+technicians. Making the flag editable is what exposed it. `visibleOrders()`,
+`allowedOrder()` and `allowedCustomer()` now share one `isMine()` that counts
+either seat on the job.
 
 ## Settings a role cannot change (v0.14.0)
 
