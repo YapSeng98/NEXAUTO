@@ -23,6 +23,7 @@ Each role maps to a set of flags in the `PERMS` object in `index.html`.
 | `all` | See every order and customer | ✓ | ✓ | ✓ | – |
 | `edit` | Edit quotes, discounts, follow-ups | ✓ | ✓ | ✓ | – |
 | `checkin` | Check a vehicle in and link it to a customer | ✓ | ✓ | ✓ | ✓ |
+| `checklist` | Edit the inspection checklist | ✓ | ✓ | – | – |
 | `pay` | Take payment | ✓ | ✓ | ✓ | – |
 
 ## Access rules

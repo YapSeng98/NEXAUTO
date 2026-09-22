@@ -15,8 +15,9 @@ Workshop operations app for auto repair shops. It covers vehicle check-in, inspe
 | Orders | Check in vehicles, 10-point inspection, build and send quotes, approve or decline, extra-work approval, payment, shared job notes |
 | Inventory | Parts with photos, on-hand, reserved and available stock, stock adjustments, purchase orders, receiving, suppliers, stock history |
 | Customers | Customer profiles, multiple vehicles, service history, lifetime spend, follow-ups |
+| Insights | Jobs that have stalled and why, stock to reorder with suggested quantities, customers worth calling, and an optional Ask-anything panel |
 | Reports | Revenue over 7 days, 30 days or 6 months, gross profit and margin, average ticket, quote approval rate, parts vs labor, completed jobs and revenue per technician |
-| Settings | Brand colour (Castrol green by default), user management, reset demo data |
+| Settings | Brand colour (Castrol green by default), user management, the inspection checklist, reset demo data |
 
 ## Signing in
 
@@ -54,6 +55,7 @@ in**. Five wrong passwords lock that username for a minute.
 | Purchase orders, receive stock | ✓ | ✓ | ✓ | – |
 | Add parts, change prices | ✓ | ✓ | – | – |
 | Manage users | ✓ | – | – | – |
+| Edit the inspection checklist | ✓ | ✓ | – | – |
 
 Full details: [docs/ROLES.md](docs/ROLES.md)
 
@@ -95,7 +97,7 @@ docs/
   ARCHITECTURE.md     Current demo design and production target
   SECURITY.md         Security review of the demo, with severities
   SUPABASE_PLAN.md    Migration plan: schema, RLS policies, auth, phases
-  TEST_REPORT.md      Results of the 279 automated checks
+  TEST_REPORT.md      Results of the 328 automated checks
 tests/
   suite.js            Automated end-to-end test suite
 package.json          Test script
@@ -108,7 +110,19 @@ npm install
 npm test
 ```
 
-The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 279 passed, 0 failed`.
+The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 328 passed, 0 failed`.
+
+## Ask-anything panel (optional)
+
+**Insights** works with no setup: stalled jobs, reorder quantities and customer
+analysis are all computed by the app from its own records. No key, no network, no
+cost.
+
+If you also want to ask questions in your own words, connect an Anthropic API key
+under **Insights → Connect a key**. It is stored in that browser only and billed
+to you. What gets sent is scoped to your role — a technician's request carries
+only their own jobs and no money fields at all. Don't use a shared production key;
+see [docs/SECURITY.md](docs/SECURITY.md) M5.
 
 ## Change the brand colour
 

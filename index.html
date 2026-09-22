@@ -248,6 +248,7 @@ html[data-can-purchase="0"] [data-purchase],
 html[data-can-staff="0"] [data-staff],
 html[data-can-edit="0"] [data-edit],
 html[data-can-checkin="0"] [data-checkin],
+html[data-can-checklist="0"] [data-checklist],
 html[data-can-revenue="1"] [data-personal]{display:none !important;}
 
 /* panels */
@@ -347,6 +348,90 @@ input[type=color]{width:40px;height:36px;padding:2px;border:1px solid var(--bord
 .toast.err{background:var(--red);color:#fff;}
 @media (min-width:768px){.toast{bottom:28px;}}
 @media (prefers-reduced-motion:reduce){*{transition:none !important;}}
+
+/* ================= v0.9 visual refresh =================
+   Appended last so it layers over the base rules above. */
+:root{
+  --radius:12px;
+  --shadow-sm:0 1px 2px rgba(16,24,18,.06), 0 1px 1px rgba(16,24,18,.04);
+  --shadow-md:0 4px 16px rgba(16,24,18,.08), 0 1px 3px rgba(16,24,18,.05);
+  --shadow-green:0 6px 20px color-mix(in srgb, var(--green) 26%, transparent);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --shadow-sm:0 1px 2px rgba(0,0,0,.5);
+    --shadow-md:0 6px 22px rgba(0,0,0,.55);
+    --shadow-green:0 6px 22px color-mix(in srgb, var(--green) 34%, transparent);
+  }
+}
+:root[data-theme="dark"]{
+  --shadow-sm:0 1px 2px rgba(0,0,0,.5);
+  --shadow-md:0 6px 22px rgba(0,0,0,.55);
+}
+
+body{font-size:14.5px;letter-spacing:-0.005em;}
+h1,h2,h3{letter-spacing:-0.02em;}
+
+/* sidebar: a workshop console rather than a plain list */
+.sidebar{background:linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 140%);border-right:1px solid rgba(255,255,255,.06);}
+.brand{font-size:20px;}
+.brand-mark{box-shadow:var(--shadow-green);border-radius:9px;}
+.nav-item{transition:background .15s ease, color .15s ease;position:relative;}
+.nav-item.active{box-shadow:var(--shadow-green);}
+.nav-item.active::before{content:"";position:absolute;left:-14px;top:50%;transform:translateY(-50%);width:3px;height:20px;border-radius:0 3px 3px 0;background:var(--green-bright);}
+.sidebar-foot{gap:11px;}
+
+/* topbar */
+.topbar{padding:14px 20px;backdrop-filter:saturate(1.4) blur(8px);background:color-mix(in srgb, var(--surface) 88%, transparent);}
+.topbar h1{font-size:20px;}
+@media (min-width:768px){.topbar{padding:16px 28px;}}
+
+/* cards + rows */
+.card{box-shadow:var(--shadow-sm);}
+.kpi{box-shadow:var(--shadow-sm);transition:transform .15s ease, box-shadow .15s ease;}
+.kpi:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);}
+.kpi .value{font-size:26px;letter-spacing:-0.03em;}
+.kpi.hero{background:linear-gradient(135deg, var(--green) 0%, color-mix(in srgb, var(--green) 72%, #000) 100%);box-shadow:var(--shadow-green);border:none;position:relative;overflow:hidden;}
+.kpi.hero::after{content:"";position:absolute;right:-28px;top:-28px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.09);}
+.row-card{box-shadow:var(--shadow-sm);transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;}
+button.row-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);}
+.qa-btn{box-shadow:var(--shadow-sm);transition:transform .12s ease, box-shadow .12s ease;}
+.qa-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);}
+.qa-btn.primary{background:linear-gradient(135deg, var(--green) 0%, color-mix(in srgb, var(--green) 74%, #000) 100%);box-shadow:var(--shadow-green);}
+.btn{transition:background .14s ease, border-color .14s ease, transform .1s ease;}
+.btn:active{transform:translateY(1px);}
+.btn.primary{box-shadow:var(--shadow-green);}
+.chip{transition:background .14s ease, color .14s ease, border-color .14s ease;}
+.badge{letter-spacing:.01em;}
+.plate{background:linear-gradient(180deg, var(--surface-2), color-mix(in srgb, var(--surface-2) 70%, var(--border)));box-shadow:inset 0 0 0 1px rgba(0,0,0,.04);}
+
+/* stage stepper reads like a progress rail */
+.stepper{position:relative;}
+.step i{transition:background .2s ease, box-shadow .2s ease;}
+.step.now i{box-shadow:0 0 0 4px color-mix(in srgb, var(--green) 22%, transparent);}
+
+/* section headings */
+.h4{font-family:'Space Grotesk','Inter',sans-serif;letter-spacing:-0.01em;}
+.section-head h2{display:flex;align-items:center;gap:8px;}
+.section-head h2 svg{width:16px;height:16px;color:var(--green-dark);}
+
+/* inspection checklist admin */
+.ck-no{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:var(--surface-2);border:1px solid var(--border);font-size:11.5px;font-weight:700;color:var(--text-secondary);margin-right:10px;font-family:'Space Grotesk',sans-serif;}
+.line .r .icon-btn{width:30px;height:30px;}
+.icon-btn[disabled]{opacity:.3;cursor:default;}
+
+/* insights + AI */
+.ai-card{border-color:color-mix(in srgb, var(--green) 30%, var(--border));background:linear-gradient(180deg, color-mix(in srgb, var(--green) 5%, var(--surface)) 0%, var(--surface) 62%);}
+.ai-suggest{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.ai-suggest .chip{white-space:normal;text-align:left;font-weight:500;}
+.ai-card textarea{width:100%;resize:vertical;}
+.ai-answer{margin-top:14px;padding:14px 16px;border-radius:var(--radius);background:var(--surface-2);border:1px solid var(--border);}
+.ai-answer p{margin:0 0 10px;font-size:13.8px;line-height:1.62;}
+.ai-answer p:last-child{margin-bottom:0;}
+
+/* charts get a little breathing room */
+.chart-box{padding-top:4px;}
+
 </style>
 </head>
 <body>
@@ -414,6 +499,7 @@ input[type=color]{width:40px;height:36px;padding:2px;border:1px solid var(--bord
       <section class="view" data-view="inventory" id="v-inventory"></section>
       <section class="view" data-view="customers" id="v-customers"></section>
       <section class="view" data-view="reports" id="v-reports"></section>
+      <section class="view" data-view="insights" id="v-insights"></section>
       <section class="view" data-view="settings" id="v-settings"></section>
     </div>
   </div>
@@ -471,6 +557,9 @@ var ICON = {
   users:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M16 14.2c2.5.4 4.5 2.6 4.5 5.8"/>',
   chart:'<path d="M4 19V11M10 19V5M16 19v-6M22 19H2"/>',
   gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 14.1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  up:'<path d="M12 19V6"/><path d="M6 11l6-6 6 6"/>',
+  down:'<path d="M12 5v13"/><path d="M6 13l6 6 6-6"/>',
+  spark:'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8Z"/>',
   pencil:'<path d="M4 20h4L19 9a2.5 2.5 0 0 0-3.5-3.5L4.5 16.5Z"/><path d="M14.5 6.5 17.5 9.5"/>',
   camera:'<path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4Z"/><circle cx="12" cy="13" r="3.4"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
@@ -485,12 +574,12 @@ function icon(name){ return '<svg viewBox="0 0 24 24" fill="none" stroke="curren
 var STAGES = ["reception","pre-inspection","quotation","in-service","completed"];
 var STAGE_LABEL = {"reception":"Reception","pre-inspection":"Inspection","quotation":"Quotation","in-service":"In service","completed":"Completed","declined":"Declined"};
 var STAGE_BADGE = {"reception":"b-neutral","pre-inspection":"b-amber","quotation":"b-amber","in-service":"b-green","completed":"b-muted","declined":"b-red"};
-var INSPECTION_TEMPLATE = ["Engine oil level and condition","Brake pads and discs","Tyres and tread depth","Battery health","Lights and signals","Suspension and steering","Coolant level","Wipers and washer","Air-con performance","Underbody and leaks"];
+var DEFAULT_INSPECTION = ["Engine oil level and condition","Brake pads and discs","Tyres and tread depth","Battery health","Lights and signals","Suspension and steering","Coolant level","Wipers and washer","Air-con performance","Underbody and leaks"];
 var PERMS = {
-  owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, pay:1, checkin:1},
-  manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1},
-  advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1},
-  technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, pay:0, checkin:1}
+  owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, pay:1, checkin:1, checklist:1},
+  manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, checklist:1},
+  advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, checklist:0},
+  technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, pay:0, checkin:1, checklist:0}
 };
 var ROLE_LABEL = {owner:"Owner", manager:"Manager", advisor:"Service advisor", technician:"Technician"};
 var THEMES = [
@@ -503,6 +592,7 @@ var NAV = [
   {v:"inventory", label:"Inventory", short:"Stock", ic:"stock"},
   {v:"customers", label:"Customers", short:"Customers", ic:"users"},
   {v:"reports", label:"Reports", short:"Reports", ic:"chart"},
+  {v:"insights", label:"Insights", short:"Insights", ic:"spark"},
   {v:"settings", label:"Settings", short:"Settings", ic:"gear"}
 ];
 
@@ -539,15 +629,23 @@ function userByName(username){
 }
 
 /* ================= seed data ================= */
+// The workshop's own list once an owner edits it; the shipped default while
+// seeding, so "reset demo data" really does restore the defaults.
+var seeding = false;
+function checklist(){
+  var c = !seeding && DB && DB.settings && DB.settings.inspection;
+  return c && c.length ? c : DEFAULT_INSPECTION;
+}
 function freshInspection(map){
-  return INSPECTION_TEMPLATE.map(function(n, i){ var s = map && map[i]; return {name:n, status: s ? s[0] : "unchecked", note: s ? (s[1]||"") : ""}; });
+  return checklist().map(function(n, i){ var s = map && map[i]; return {name:n, status: s ? s[0] : "unchecked", note: s ? (s[1]||"") : ""}; });
 }
 function allGood(except){
-  var m = {}; INSPECTION_TEMPLATE.forEach(function(_, i){ m[i] = ["good"]; });
+  var m = {}; checklist().forEach(function(_, i){ m[i] = ["good"]; });
   Object.keys(except||{}).forEach(function(k){ m[k] = except[k]; });
   return freshInspection(m);
 }
 function seed(){
+  seeding = true;
   var now = Date.now();
   function ago(min){ return new Date(now - min*60000).toISOString(); }
   var staff = [
@@ -594,22 +692,22 @@ function seed(){
       inspection:allGood(), quoteStatus:"approved", workDone:true, discount:0,
       items:[item("part","OIL-5W30","5W-30 synthetic oil, 4L",1,60,34), item("part","FLT-OIL01","Oil filter, universal",1,20,8), item("labor","","Labor: oil change",1,70,15)],
       payment:{method:"PayNow", amount:150, paidAt:ago(150)}, log:[{t:ago(300), x:"Checked in by Priya Nair"},{t:ago(150), x:"Paid by PayNow"}]},
-    {id:"WO-1043", customerId:"c1", vehicleId:"v1", stage:"quotation", advisorId:"s3", technicianId:"s4", mileage:72310, complaint:"Squealing noise when braking", createdAt:ago(180),
+    {id:"WO-1043", customerId:"c1", vehicleId:"v1", stage:"quotation", advisorId:"s3", technicianId:"s4", mileage:72310, complaint:"Squealing noise when braking", createdAt:ago(8640), stageSince:ago(5760),
       inspection:allGood({1:["problem","Front pads at 2mm, discs scored"],2:["attention","Rear tyres at 3mm"]}), quoteStatus:"sent", workDone:false, discount:20,
       items:[item("part","BRK-PADF1","Brake pad set, front",1,180,80), item("part","BRK-FLU01","Brake fluid DOT4, 1L",1,35,12), item("labor","","Labor: brake service",1,150,40)],
-      payment:null, log:[{t:ago(180), x:"Checked in by Priya Nair"},{t:ago(120), x:"Inspection completed by Marcus Lee"},{t:ago(95), x:"Quotation sent to customer"}]},
-    {id:"WO-1044", customerId:"c2", vehicleId:"v2", stage:"in-service", advisorId:"s3", technicianId:"s4", mileage:39880, complaint:"Service and aircon not cold", createdAt:ago(160),
+      payment:null, log:[{t:ago(8640), x:"Checked in by Priya Nair"},{t:ago(7200), x:"Inspection completed by Marcus Lee"},{t:ago(5760), x:"Quotation sent to customer"}]},
+    {id:"WO-1044", customerId:"c2", vehicleId:"v2", stage:"in-service", advisorId:"s3", technicianId:"s4", mileage:39880, complaint:"Service and aircon not cold", createdAt:ago(5760), stageSince:ago(4320),
       inspection:allGood({8:["problem","Low refrigerant"]}), quoteStatus:"approved", workDone:false, discount:0,
       items:[item("part","OIL-5W30","5W-30 synthetic oil, 4L",1,60,34), item("part","FLT-OIL01","Oil filter, universal",1,20,8), item("labor","","Labor: oil change",1,40,15), item("labor","","Repair: Air-con performance",1,200,83)],
-      payment:null, log:[{t:ago(160), x:"Checked in by Priya Nair"},{t:ago(110), x:"Customer approved quotation"}]},
-    {id:"WO-1045", customerId:"c7", vehicleId:"v7", stage:"in-service", advisorId:"s3", technicianId:"s5", mileage:28400, complaint:"General service", createdAt:ago(140),
+      payment:null, log:[{t:ago(5760), x:"Checked in by Priya Nair"},{t:ago(4320), x:"Customer approved quotation"}]},
+    {id:"WO-1045", customerId:"c7", vehicleId:"v7", stage:"in-service", advisorId:"s3", technicianId:"s5", mileage:28400, complaint:"General service", createdAt:ago(7200), stageSince:ago(2880),
       inspection:allGood(), quoteStatus:"approved", workDone:true, discount:0,
       items:[item("part","WPR-STD01","Wiper blade set",1,35,12), item("part","FLT-CAB01","Cabin air filter",1,45,18), item("labor","","Labor: general service",1,200,90)],
-      payment:null, log:[{t:ago(140), x:"Checked in by Priya Nair"},{t:ago(100), x:"Customer approved quotation"},{t:ago(20), x:"Work marked done by Daniel Koh"}]},
-    {id:"WO-1046", customerId:"c3", vehicleId:"v3", stage:"pre-inspection", advisorId:"s3", technicianId:"s5", mileage:88020, complaint:"Engine warning light on", createdAt:ago(50),
+      payment:null, log:[{t:ago(7200), x:"Checked in by Priya Nair"},{t:ago(5760), x:"Customer approved quotation"},{t:ago(2880), x:"Work marked done by Daniel Koh"}]},
+    {id:"WO-1046", customerId:"c3", vehicleId:"v3", stage:"pre-inspection", advisorId:"s3", technicianId:"s5", mileage:88020, complaint:"Engine warning light on", createdAt:ago(2880), stageSince:ago(2160),
       inspection:freshInspection({0:["good"],1:["good"],2:["attention","Uneven wear front left"],3:["good"]}), quoteStatus:"draft", workDone:false, discount:0, items:[],
-      payment:null, log:[{t:ago(50), x:"Checked in by Priya Nair"},{t:ago(35), x:"Inspection started"}]},
-    {id:"WO-1047", customerId:"c4", vehicleId:"v4", stage:"reception", advisorId:"s3", technicianId:"s4", mileage:102500, complaint:"Due for servicing", createdAt:ago(10),
+      payment:null, log:[{t:ago(2880), x:"Checked in by Priya Nair"},{t:ago(2160), x:"Inspection started"}]},
+    {id:"WO-1047", customerId:"c4", vehicleId:"v4", stage:"reception", advisorId:"s3", technicianId:"s4", mileage:102500, complaint:"Due for servicing", createdAt:ago(10), stageSince:ago(10),
       inspection:freshInspection(), quoteStatus:"draft", workDone:false, discount:0, items:[], payment:null, log:[{t:ago(10), x:"Checked in by Priya Nair"}]}
   ];
   var purchaseOrders = [
@@ -650,9 +748,10 @@ function seed(){
     {id:"m3", sku:"OIL-5W30", qty:-1, type:"sale", ref:"WO-1042", reason:"", by:"s3", at:ago(150)},
     {id:"m4", sku:"FLT-OIL01", qty:-1, type:"sale", ref:"WO-1042", reason:"", by:"s3", at:ago(150)}
   ]);
+  seeding = false;
   return {v:6, staff:staff, suppliers:suppliers, inventory:inventory, customers:customers, orders:orders,
     purchaseOrders:purchaseOrders, opportunities:opportunities, movements:movements, nextWO:1048, nextPO:202,
-    settings:{color:null}};
+    settings:{color:null, inspection:DEFAULT_INSPECTION.slice()}};
 }
 
 /* ---- six months of closed jobs, so the reports have something real to read ----
@@ -890,7 +989,7 @@ function goto(view, opts){
   window.scrollTo(0,0);
 }
 function renderView(v){
-  ({dashboard:renderDashboard, orders:renderOrders, inventory:renderInventory, customers:renderCustomers, reports:renderReports, settings:renderSettings})[v]();
+  ({dashboard:renderDashboard, orders:renderOrders, inventory:renderInventory, customers:renderCustomers, reports:renderReports, insights:renderInsights, settings:renderSettings})[v]();
 }
 function refresh(){
   save(); renderView(state.view);
@@ -901,7 +1000,7 @@ function setRole(){
   var root = document.documentElement, p = PERMS[role];
   root.dataset.canCost = p.cost; root.dataset.canPrice = p.price; root.dataset.canRevenue = p.revenue;
   root.dataset.canPurchase = p.purchase; root.dataset.canStaff = p.staff; root.dataset.canEdit = p.edit;
-  root.dataset.canCheckin = p.checkin;
+  root.dataset.canCheckin = p.checkin; root.dataset.canChecklist = p.checklist;
   var u = me();
   $("#sideAvatar").textContent = initials(u.name); $("#sideName").textContent = u.name; $("#sideRole").textContent = ROLE_LABEL[role];
   $("#topAvatar").textContent = initials(u.name); $("#userName").textContent = u.name; $("#userRole").textContent = ROLE_LABEL[role];
@@ -974,6 +1073,80 @@ function applyTheme(c){
   else document.documentElement.style.removeProperty("--green");
 }
 
+/* ================= insights engine =================
+   Everything here is computed from the workshop's own records. No model, no
+   network, no key — the AI panel further down is a separate, optional layer. */
+var AGE_RULES = {
+  "reception":      {warn:1, late:2, what:function(){ return "Checked in, inspection not started"; }},
+  "pre-inspection": {warn:1, late:2, what:function(o){ var ic = inspCounts(o); return "Inspection started, " + ic.unchecked + " item" + (ic.unchecked === 1 ? "" : "s") + " still unchecked"; }},
+  "quotation":      {warn:1, late:3, what:function(o){ return o.quoteStatus === "sent" ? "Quote sent, waiting on the customer" : o.items.length ? "Quote built but never sent" : "No quote started yet"; }},
+  "in-service":     {warn:2, late:4, what:function(o){ return o.workDone ? "Work finished, payment not taken" : "In service, work not marked done"; }}
+};
+function daysSince(iso){ return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)); }
+function stageStart(o){
+  if(o.stageSince) return o.stageSince;
+  return o.log && o.log.length ? o.log[o.log.length - 1].t : o.createdAt;
+}
+function jobStatus(o){
+  var rule = AGE_RULES[o.stage], sd = daysSince(stageStart(o));
+  return {order:o, days:daysSince(o.createdAt), stageDays:sd,
+    level: !rule ? "ok" : sd >= rule.late ? "late" : sd >= rule.warn ? "warn" : "ok",
+    reason: rule ? rule.what(o) : ""};
+}
+function attentionList(){
+  return visibleOrders().filter(isOpenJob).map(jobStatus)
+    .filter(function(j){ return j.level !== "ok"; })
+    .sort(function(a, b){ return b.stageDays - a.stageDays; });
+}
+function ageLabel(d){ return d === 0 ? "today" : d === 1 ? "1 day" : d + " days"; }
+
+var REORDER_LOOKBACK = 90, REORDER_COVER = 45;
+function usagePerDay(sku){
+  var from = Date.now() - REORDER_LOOKBACK * 86400000, used = 0;
+  DB.movements.forEach(function(m){
+    if(m.sku === sku && m.type === "sale" && new Date(m.at).getTime() >= from) used += Math.abs(m.qty);
+  });
+  return used / REORDER_LOOKBACK;
+}
+function reorderPlan(){
+  return DB.inventory.map(function(p){
+    var perDay = usagePerDay(p.sku), a = avail(p);
+    var cover = perDay > 0 ? Math.round(a / perDay) : null;
+    var target = Math.max(p.reorder + 1, Math.ceil(perDay * REORDER_COVER));
+    var below = a <= p.reorder, thin = cover !== null && cover < 21;
+    return {part:p, avail:a, perMonth:Math.round(perDay * 30), cover:cover,
+      qty:Math.max(1, target - a), urgent: below || (cover !== null && cover < 10),
+      why: below ? "Below the reorder point of " + p.reorder
+         : thin ? "About " + cover + " days of cover left"
+         : perDay === 0 && a === 0 ? "Out of stock" : ""};
+  }).filter(function(r){ return r.why; })
+    .sort(function(a, b){ return (b.urgent - a.urgent) || ((a.cover === null ? 999 : a.cover) - (b.cover === null ? 999 : b.cover)); });
+}
+
+function customerStats(){
+  var byCust = {};
+  DB.orders.forEach(function(o){
+    if(o.stage !== "completed" || !o.payment) return;
+    var c = byCust[o.customerId] || (byCust[o.customerId] = {id:o.customerId, visits:0, spend:0, last:""});
+    c.visits++; c.spend += totals(o).total;
+    if(o.payment.paidAt > c.last) c.last = o.payment.paidAt;
+  });
+  return Object.keys(byCust).map(function(k){
+    var c = byCust[k], rec = cust(k);
+    c.name = rec ? rec.name : "Unknown";
+    c.avg = Math.round(c.spend / c.visits);
+    c.sinceDays = c.last ? daysSince(c.last) : null;
+    return c;
+  });
+}
+function topCustomers(n){
+  return customerStats().sort(function(a, b){ return b.spend - a.spend; }).slice(0, n || 5);
+}
+function lapsedCustomers(n){
+  return customerStats().filter(function(c){ return c.visits >= 2 && c.sinceDays >= 120; })
+    .sort(function(a, b){ return b.spend - a.spend; }).slice(0, n || 5);
+}
+
 /* ================= dashboard ================= */
 function renderDashboard(){
   var paid = paidToday();
@@ -1015,6 +1188,7 @@ function renderDashboard(){
 
   html += '<div class="grid-2"><div class="card"><div class="section-head"><h2>' + (can("all") ? "Workshop pipeline" : "My pipeline") + '</h2><button class="link-btn" data-action="goto" data-view="orders">View orders</button></div>' + pipe + '</div>' +
     '<div class="card" data-edit><div class="section-head"><h2>Follow-ups</h2></div>' + oppHtml + '</div></div>';
+  html += attentionCardHTML();
 
   if(can("purchase")){
     html += '<div class="card"><div class="section-head"><h2>Low stock</h2>' + (low.length ? '<button class="btn sm primary" data-action="new-po" data-low="1">' + icon("cart") + 'Reorder all</button>' : '') + '</div>' +
@@ -1084,7 +1258,7 @@ function renderOrderPanel(o){
   var c = cust(o.customerId), v = veh(c, o.vehicleId), ic = inspCounts(o);
   $("#panelTitle").innerHTML = '<span class="plate">' + esc(v ? v.plate : "") + '</span>' + esc(v ? v.model : "");
   $("#panelSub").innerHTML = o.id + ' · <span class="badge ' + STAGE_BADGE[o.stage] + '">' + STAGE_LABEL[o.stage] + '</span>';
-  var tabs = [["overview","Overview",""],["inspection","Inspection", (INSPECTION_TEMPLATE.length - ic.unchecked) + "/" + INSPECTION_TEMPLATE.length],["items","Quote and items", o.items.length],["notes","Notes", notesOf(o).length || ""]];
+  var tabs = [["overview","Overview",""],["inspection","Inspection", (o.inspection.length - ic.unchecked) + "/" + o.inspection.length],["items","Quote and items", o.items.length],["notes","Notes", notesOf(o).length || ""]];
   $("#panelTabs").style.display = "flex";
   $("#panelTabs").innerHTML = tabs.map(function(t){ return '<button class="tab' + (state.orderTab === t[0] ? ' active' : '') + '" data-action="order-tab" data-tab="' + t[0] + '">' + t[1] + (t[2] !== "" ? '<span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join("");
   var body = "";
@@ -1200,11 +1374,11 @@ function orderActions(o, ic){
 
 /* order actions */
 function currentOrder(){ return state.panel && state.panel.type === "order" ? order(state.panel.id) : null; }
-function doStartInsp(o){ o.stage = "pre-inspection"; log(o, "Inspection started by " + me().name); state.orderTab = "inspection"; toast("Inspection started"); refresh(); }
+function doStartInsp(o){ o.stage = "pre-inspection"; o.stageSince = nowISO(); log(o, "Inspection started by " + me().name); state.orderTab = "inspection"; toast("Inspection started"); refresh(); }
 function doFinishInsp(o){
   var ic = inspCounts(o);
   if(ic.unchecked){ toast("Check all " + ic.unchecked + " remaining items first", true); state.orderTab = "inspection"; renderPanel(); return; }
-  o.stage = "quotation"; o.quoteStatus = "draft";
+  o.stage = "quotation"; o.stageSince = nowISO(); o.quoteStatus = "draft";
   log(o, "Inspection completed by " + me().name + " (" + ic.problem + " problem, " + ic.attention + " attention)");
   state.orderTab = "items"; toast("Inspection complete. Build the quote next."); refresh();
 }
@@ -1215,7 +1389,7 @@ function doSendQuote(o){
 function doApprove(o){
   var err = reserve(o, false);
   if(err){ toast(err, true); return; }
-  o.stage = "in-service"; o.quoteStatus = "approved"; log(o, "Customer approved quotation, parts reserved"); toast("Approved. Parts reserved, job is in service."); refresh();
+  o.stage = "in-service"; o.stageSince = nowISO(); o.quoteStatus = "approved"; log(o, "Customer approved quotation, parts reserved"); toast("Approved. Parts reserved, job is in service."); refresh();
 }
 function doApproveExtra(o){
   var err = reserve(o, true);
@@ -1223,7 +1397,7 @@ function doApproveExtra(o){
   log(o, "Customer approved additional work (" + money(totals(o).total) + " total)"); toast("Additional work approved"); refresh();
 }
 function doDecline(o){
-  o.stage = "declined"; o.quoteStatus = "rejected"; log(o, "Customer declined quotation");
+  o.stage = "declined"; o.stageSince = nowISO(); o.quoteStatus = "rejected"; log(o, "Customer declined quotation");
   DB.opportunities.push({id:uid("o"), customerId:o.customerId, type:"declined-quote", text:"Declined quote " + money(totals(o).total) + " on " + o.id, dueAt:new Date(Date.now()+14*86400000).toISOString(), sourceOrderId:o.id, status:"open", createdAt:nowISO()});
   toast("Marked declined. Follow-up added."); state.orderTab = "overview"; refresh();
 }
@@ -1404,6 +1578,190 @@ function renderReports(){
   }catch(e){}
 }
 
+/* ================= insights view ================= */
+function attentionCardHTML(){
+  var list = attentionList();
+  var html = '<div class="card"><div class="section-head"><h2>Needs attention</h2>' +
+    (list.length ? '<span class="badge ' + (list.some(function(j){ return j.level === "late"; }) ? 'b-red' : 'b-amber') + '">' + list.length + ' job' + (list.length === 1 ? '' : 's') + '</span>' : '<span class="badge b-green">All clear</span>') + '</div>';
+  if(!list.length) return html + '<div class="empty">Nothing is sitting still. Every open job has moved in the last day.</div></div>';
+  html += '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Open jobs that have not moved on. The count is days in the current stage, not days since check-in.</p>';
+  html += list.map(function(j){
+    var o = j.order, c = cust(o.customerId), v = veh(c, o.vehicleId);
+    return '<button class="row-card" data-action="open-order" data-id="' + o.id + '" style="margin-bottom:8px">' +
+      '<div class="row-main"><p class="title"><span class="plate">' + esc(v ? v.plate : "") + '</span>' + esc(c ? c.name : "") + '</p>' +
+      '<p class="sub">' + esc(j.reason) + '</p></div>' +
+      '<div class="row-end"><span class="badge ' + (j.level === "late" ? "b-red" : "b-amber") + '">' + ageLabel(j.stageDays) + ' in ' + STAGE_LABEL[o.stage].toLowerCase() + '</span>' +
+      '<span style="font-size:12px;color:var(--text-muted)">' + o.id + ' · open ' + ageLabel(j.days) + '</span></div></button>';
+  }).join("");
+  return html + '</div>';
+}
+function reorderCardHTML(){
+  var plan = reorderPlan();
+  var html = '<div class="card" data-purchase><div class="section-head"><h2>Stock to reorder</h2>' +
+    (plan.length ? '<button class="btn primary sm" data-action="new-po" data-suggest="1">' + icon("cart") + 'Draft purchase order</button>' : '<span class="badge b-green">Nothing due</span>') + '</div>';
+  if(!plan.length) return html + '<div class="empty">Every part has enough cover for the next few weeks.</div></div>';
+  html += '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Based on what each part actually sold over the last ' + REORDER_LOOKBACK + ' days, topped up to about ' + REORDER_COVER + ' days of cover.</p>';
+  html += '<div class="table-wrap"><table><thead><tr><th>Part</th><th>Available</th><th>Used / month</th><th>Cover</th><th>Suggested order</th><th>Why</th></tr></thead><tbody>' +
+    plan.map(function(r){
+      return '<tr data-sku="' + esc(r.part.sku) + '"><td><div style="display:flex;align-items:center;gap:10px">' + partThumb(r.part) + '<span><b style="font-weight:600">' + esc(r.part.name) + '</b><br><span style="font-size:12px;color:var(--text-muted)">' + esc(r.part.sku) + '</span></span></div></td>' +
+        '<td class="num">' + r.avail + '</td><td class="num">' + r.perMonth + '</td>' +
+        '<td class="num">' + (r.cover === null ? '—' : r.cover + 'd') + '</td>' +
+        '<td class="num" style="font-weight:700">' + r.qty + '</td>' +
+        '<td><span class="badge ' + (r.urgent ? 'b-red' : 'b-amber') + '">' + esc(r.why) + '</span></td></tr>';
+    }).join("") + '</tbody></table></div></div>';
+  return html;
+}
+function customerCardHTML(){
+  var top = topCustomers(5), lapsed = lapsedCustomers(5);
+  var html = '<div class="card" data-revenue><div class="section-head"><h2>Customers worth a call</h2></div>' +
+    '<div class="h4">Biggest spenders</div>' +
+    (top.length ? top.map(function(c){
+      return '<div class="line"><div class="l">' + esc(c.name) + '<span style="display:block;font-size:12px;color:var(--text-muted)">' + c.visits + ' visit' + (c.visits === 1 ? '' : 's') + ' · avg ' + money(c.avg) + '</span></div>' +
+        '<div class="r"><span class="amt">' + money(c.spend) + '</span></div></div>';
+    }).join("") : '<div class="empty">No completed jobs yet.</div>');
+  html += '<div class="h4" style="margin-top:16px">Not seen in a while</div>' +
+    (lapsed.length ? lapsed.map(function(c){
+      return '<div class="line"><div class="l">' + esc(c.name) + '<span style="display:block;font-size:12px;color:var(--text-muted)">' + c.visits + ' visits · last in ' + ageLabel(c.sinceDays) + ' ago</span></div>' +
+        '<div class="r"><span class="amt">' + money(c.spend) + '</span></div></div>';
+    }).join("") : '<div class="empty">Every regular has been in recently.</div>');
+  return html + '</div>';
+}
+function renderInsights(){
+  $("#v-insights").innerHTML = attentionCardHTML() + reorderCardHTML() + customerCardHTML() + aiCardHTML();
+}
+
+/* ================= optional AI assistant =================
+   The built-in analysis above needs nothing. This panel is separate and off by
+   default: it calls the Anthropic API straight from the browser, which means the
+   key sits in this browser's storage and travels on every request. That is only
+   acceptable because it is the visitor's OWN key, entered by them, never shipped
+   with the app. A shared key belongs behind a server — see docs/SECURITY.md. */
+var AI_KEY = "nexauto_ai_key";
+var AI_MODEL = "claude-opus-5";
+var aiState = {busy:false, answer:"", error:"", question:""};
+function aiKey(){ try { return localStorage.getItem(AI_KEY) || ""; } catch(e){ return ""; } }
+function aiSuggestions(){
+  return can("revenue")
+    ? ["Which jobs are at risk of losing us money this week?",
+       "What should I order today, and roughly what will it cost?",
+       "Which customers should I call back, and what would I say?"]
+    : ["Which of my jobs has been sitting the longest, and why?",
+       "What parts am I likely to run out of?",
+       "Summarise what is waiting on me right now."];
+}
+function aiContext(){
+  var showPrice = can("price"), showCost = can("cost"), showRev = can("revenue");
+  var ctx = {
+    today: new Date().toISOString().slice(0, 10),
+    signedInAs: {name:me().name, role:ROLE_LABEL[state.role]},
+    openJobs: visibleOrders().filter(isOpenJob).map(function(o){
+      var j = jobStatus(o), c = cust(o.customerId), v = veh(c, o.vehicleId), t = totals(o);
+      var row = {id:o.id, stage:STAGE_LABEL[o.stage], customer:c ? c.name : "", vehicle:v ? v.plate + " " + v.model : "",
+        technician:staffName(o.technicianId), complaint:o.complaint, daysOpen:j.days, daysInStage:j.stageDays,
+        status:j.level, holdUp:j.reason, notes:notesOf(o).map(function(r){ return staffName(r.by) + ": " + r.text; })};
+      if(showPrice) row.quoteTotal = t.total;
+      if(showCost) row.partsCost = t.cost;
+      return row;
+    }),
+    inventory: DB.inventory.map(function(p){
+      var row = {sku:p.sku, name:p.name, category:p.category, onHand:p.stock, reserved:p.reserved || 0,
+        available:avail(p), reorderPoint:p.reorder, usedPerMonth:Math.round(usagePerDay(p.sku) * 30)};
+      if(showPrice) row.sellPrice = p.price;
+      if(showCost) row.unitCost = p.cost;
+      return row;
+    }),
+    reorderSuggestions: reorderPlan().map(function(r){ return {sku:r.part.sku, suggestedQty:r.qty, reason:r.why, daysOfCover:r.cover}; })
+  };
+  if(showRev){
+    var bk = buckets({k:"6m", days:182});
+    ctx.monthlyRevenue = bk.map(function(b){
+      var rows = paidBetween(b.from, b.to);
+      return {month:b.label, jobs:rows.length, revenue:rows.reduce(function(x, o){ return x + totals(o).total; }, 0)};
+    });
+    ctx.topCustomers = topCustomers(8).map(function(c){ return {name:c.name, visits:c.visits, spend:c.spend, lastSeenDaysAgo:c.sinceDays}; });
+    ctx.lapsedCustomers = lapsedCustomers(8).map(function(c){ return {name:c.name, visits:c.visits, spend:c.spend, lastSeenDaysAgo:c.sinceDays}; });
+  }
+  return JSON.stringify(ctx);
+}
+var AI_SYSTEM = "You are the operations assistant inside NEXAUTO, software for a car repair workshop. " +
+  "Answer only from the workshop data given to you in <workshop_data>. If the data does not cover something, say so plainly rather than guessing. " +
+  "The reader is workshop staff, not an analyst: lead with the answer, name specific job numbers, parts and customers, and give quantities they can act on. " +
+  "Keep it under 200 words unless asked for detail. Use short paragraphs or a tight list. Never invent figures, and never mention costs, margins or revenue unless they appear in the data you were given.";
+
+function aiCardHTML(){
+  var key = aiKey();
+  var html = '<div class="card ai-card"><div class="section-head"><h2>' + icon("spark") + 'Ask about this workshop</h2>' +
+    (key ? '<button class="btn sm" data-action="ai-forget">Disconnect</button>' : '') + '</div>';
+  if(!key){
+    return html + '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">' +
+      'Everything above is worked out by the app itself. Connect an Anthropic API key and you can also ask questions in your own words — "what should I order", "which jobs are stuck and why".</p>' +
+      '<p class="img-note" style="margin-bottom:12px">Your key is stored in this browser only and is sent straight to Anthropic. Anyone with access to this browser can read it, so use a key you are happy to rotate — never a shared production one.</p>' +
+      '<button class="btn primary" data-action="ai-connect">Connect a key</button></div>';
+  }
+  html += '<div class="ai-suggest">' + aiSuggestions().map(function(q){
+    return '<button class="chip" data-action="ai-suggest" data-q="' + esc(q) + '">' + esc(q) + '</button>';
+  }).join("") + '</div>';
+  html += '<textarea id="aiQuestion" rows="2" placeholder="Ask anything about the jobs, stock or customers you can see">' + esc(aiState.question) + '</textarea>' +
+    '<div style="display:flex;gap:8px;align-items:center;margin-top:8px">' +
+    '<button class="btn primary" data-action="ai-ask"' + (aiState.busy ? ' disabled' : '') + '>' + (aiState.busy ? "Thinking…" : "Ask") + '</button>' +
+    '<span class="img-note" style="margin:0">Uses ' + AI_MODEL + ' and bills your key.</span></div>';
+  if(aiState.error) html += '<p class="login-error show" style="margin-top:12px">' + esc(aiState.error) + '</p>';
+  if(aiState.answer) html += '<div class="ai-answer">' + aiState.answer.split(/\n{2,}/).map(function(par){
+    return '<p>' + esc(par).replace(/\n/g, "<br>") + '</p>';
+  }).join("") + '</div>';
+  return html + '</div>';
+}
+function modalAiKey(){
+  openModal("Connect Anthropic API key",
+    field("API key", '<input type="password" name="key" required placeholder="sk-ant-..." autocomplete="off" spellcheck="false">') +
+    '<p class="img-note">Create one at console.anthropic.com. It is kept in this browser only. Use Disconnect to remove it.</p>',
+    "Connect", function(fd){
+      var k = String(fd.get("key") || "").trim();
+      if(k.indexOf("sk-ant-") !== 0) return "That does not look like an Anthropic key — they start with sk-ant-.";
+      try { localStorage.setItem(AI_KEY, k); } catch(e){ return "This browser refused to store the key."; }
+      aiState.error = ""; toast("Claude connected"); renderInsights();
+    });
+}
+function askClaude(question){
+  aiState.busy = true; aiState.error = ""; aiState.answer = ""; aiState.question = question;
+  renderInsights();
+  fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{
+      "content-type":"application/json",
+      "x-api-key":aiKey(),
+      "anthropic-version":"2023-06-01",
+      "anthropic-dangerous-direct-browser-access":"true"
+    },
+    body: JSON.stringify({
+      model: AI_MODEL,
+      max_tokens: 2000,
+      system: AI_SYSTEM,
+      messages: [{role:"user", content: question + "\n\n<workshop_data>\n" + aiContext() + "\n</workshop_data>"}]
+    })
+  }).then(function(r){
+    return r.json().then(function(body){ return {ok:r.ok, status:r.status, body:body}; });
+  }).then(function(res){
+    aiState.busy = false;
+    if(!res.ok){
+      var msg = res.body && res.body.error ? res.body.error.message : "Request failed";
+      aiState.error = res.status === 401 ? "That key was rejected. Disconnect and try another."
+        : res.status === 429 ? "Rate limited by the API. Wait a moment and ask again."
+        : "Claude could not answer (" + res.status + "): " + msg;
+    } else if(res.body.stop_reason === "refusal"){
+      aiState.error = "Claude declined to answer that one. Try rewording it.";
+    } else {
+      aiState.answer = (res.body.content || []).filter(function(b){ return b.type === "text"; })
+        .map(function(b){ return b.text; }).join("\n").trim() || "No answer came back.";
+    }
+    renderInsights();
+  }).catch(function(){
+    aiState.busy = false;
+    aiState.error = "Could not reach the API. Check the connection and the key.";
+    renderInsights();
+  });
+}
+
 /* ================= settings ================= */
 function renderSettings(){
   var cur = DB.settings.color || THEMES[0].c;
@@ -1413,8 +1771,41 @@ function renderSettings(){
   html += '<div class="card"><div class="section-head"><h2>Users</h2><button class="btn primary" data-action="new-staff" data-staff>' + icon("plus") + 'Add user</button></div>' +
     activeUsers().map(function(s){ return '<div class="line"><div class="l" style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:30px;height:30px;flex-basis:30px;font-size:11px">' + initials(s.name) + '</span><span>' + esc(s.name) + (s.id === state.userId ? ' <span class="badge b-green">You</span>' : '') + '<span style="display:block;font-size:12px;color:var(--text-muted)">' + esc(s.username || "—") + '</span></span></div><div class="r"><span class="badge ' + (s.role === "technician" ? "b-neutral" : "b-green") + '">' + ROLE_LABEL[s.role] + '</span><button class="btn sm" data-action="edit-staff" data-id="' + s.id + '" data-staff>Edit</button></div></div>'; }).join("") +
     '<p class="sub" style="color:var(--text-muted);font-size:12px;margin:12px 0 0">Each user signs in with their own username and password. Owners see everything and manage users. Managers see profit but cannot manage users. Advisors see prices but not cost or profit. Technicians only see their own jobs, with no prices.</p></div>';
+  html += '<div class="card" data-checklist><div class="section-head"><h2>Inspection checklist</h2>' +
+    '<span style="display:flex;gap:8px"><button class="btn sm" data-action="checklist-reset">Restore default</button>' +
+    '<button class="btn primary sm" data-action="checklist-add">' + icon("plus") + 'Add item</button></span></div>' +
+    '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">The points a technician works through on every vehicle. Changes apply to jobs checked in from now on — inspections already under way keep the list they started with.</p>' +
+    checklist().map(function(name, i){
+      return '<div class="line"><div class="l"><span class="ck-no">' + (i + 1) + '</span>' + esc(name) + '</div>' +
+        '<div class="r"><button class="icon-btn" data-action="checklist-move" data-i="' + i + '" data-d="-1" aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>' + icon("up") + '</button>' +
+        '<button class="icon-btn" data-action="checklist-move" data-i="' + i + '" data-d="1" aria-label="Move down"' + (i === checklist().length - 1 ? ' disabled' : '') + '>' + icon("down") + '</button>' +
+        '<button class="btn sm" data-action="checklist-rename" data-i="' + i + '">Rename</button>' +
+        '<button class="icon-btn" data-action="checklist-remove" data-i="' + i + '" aria-label="Remove">' + icon("trash") + '</button></div></div>';
+    }).join("") +
+    '<p class="img-note" style="margin-top:10px">' + checklist().length + ' point' + (checklist().length === 1 ? '' : 's') + ' · at least 3 are required.</p></div>';
   html += '<div class="card"><div class="section-head"><h2>Demo data</h2></div><p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Your changes are saved in this browser. Reset to start the demo fresh.</p><button class="btn danger" data-action="reset">Reset demo data</button></div>';
   $("#v-settings").innerHTML = html;
+}
+
+/* ---- inspection checklist admin ---- */
+function setChecklist(list){ DB.settings.inspection = list; save(); renderSettings(); }
+function checklistDupe(name, exceptIdx){
+  var n = name.trim().toLowerCase();
+  return checklist().some(function(x, i){ return i !== exceptIdx && x.trim().toLowerCase() === n; });
+}
+function modalChecklistItem(idx){
+  var editing = typeof idx === "number", current = editing ? checklist()[idx] : "";
+  openModal(editing ? "Rename checklist item" : "Add checklist item",
+    field("What the technician checks", '<input type="text" name="name" required maxlength="60" value="' + esc(current) + '" placeholder="Handbrake travel">'),
+    editing ? "Save" : "Add item", function(fd){
+      var name = String(fd.get("name") || "").trim();
+      if(name.length < 3) return "Give the item a name of at least 3 characters.";
+      if(checklistDupe(name, editing ? idx : -1)) return "That item is already on the list.";
+      var list = checklist().slice();
+      if(editing) list[idx] = name; else list.push(name);
+      setChecklist(list);
+      toast(editing ? "Item renamed" : "Item added");
+    });
 }
 
 /* ================= modal system ================= */
@@ -1478,7 +1869,7 @@ function modalNewOrder(pre){
     if(newVeh){ v = {id:uid("v"), plate:fd.get("plate").trim().toUpperCase(), model:fd.get("model").trim()}; c.vehicles.push(v); }
     else v = veh(c, vid);
     var o = {id:"WO-" + (DB.nextWO++), customerId:c.id, vehicleId:v.id, stage:"reception", advisorId: me().role === "technician" ? advisors()[0].id : me().id, technicianId:fd.get("tech"),
-      mileage:mileage, complaint:(fd.get("complaint")||"").trim(), createdAt:nowISO(), inspection:freshInspection(), quoteStatus:"draft", workDone:false, discount:0, items:[], payment:null, log:[], remarks:[]};
+      mileage:mileage, complaint:(fd.get("complaint")||"").trim(), createdAt:nowISO(), inspection:freshInspection(), quoteStatus:"draft", workDone:false, discount:0, items:[], payment:null, log:[], remarks:[], stageSince:nowISO()};
     log(o, "Checked in by " + me().name);
     DB.orders.push(o);
     if(pre.oppId){ var op = DB.opportunities.filter(function(x){ return x.id === pre.oppId; })[0]; if(op) op.status = "done"; }
@@ -1553,7 +1944,7 @@ function modalPayment(o){
   openModal("Take payment", body, "Confirm payment", function(fd){
     o.items.forEach(function(i){ if(i.type === "part"){ var p = part(i.sku); if(p){ p.stock = Math.max(0, p.stock - i.qty); p.reserved = Math.max(0, (p.reserved||0) - i.qty); move(p.sku, -i.qty, "sale", o.id); } } });
     o.payment = {method:fd.get("method"), amount:t.total, paidAt:nowISO()};
-    o.stage = "completed";
+    o.stage = "completed"; o.stageSince = nowISO();
     log(o, "Paid " + money(t.total) + " by " + fd.get("method").toLowerCase());
     o.inspection.forEach(function(i){
       var quoted = o.items.some(function(it){ return it.name.indexOf(i.name) > -1; });
@@ -1678,10 +2069,12 @@ function modalAdjust(p){
 function poLine(sku, qty){
   return '<div class="po-line"><select name="part">' + DB.inventory.map(function(p){ return opt(p.sku, p.name + " (" + avail(p) + " avail.)", p.sku === sku); }).join("") + '</select><input type="number" name="qty" min="1" step="1" value="' + (qty||1) + '" aria-label="Quantity"><button type="button" class="icon-btn" data-action="po-remove-line" aria-label="Remove line">' + icon("trash") + '</button></div>';
 }
-function modalNewPO(fillLow){
-  var low = fillLow ? lowStock() : [];
-  var lines = low.length ? low.map(function(p){ return poLine(p.sku, Math.max(p.reorder * 2 - avail(p), 1)); }).join("") : poLine(DB.inventory[0].sku, 1);
-  var supp = low.length ? low[0].supplier : DB.suppliers[0].id;
+function modalNewPO(mode){
+  var seedLines = mode === "suggest" ? reorderPlan().map(function(r){ return {sku:r.part.sku, qty:r.qty, supplier:r.part.supplier}; })
+    : mode === "low" ? lowStock().map(function(p){ return {sku:p.sku, qty:Math.max(p.reorder * 2 - avail(p), 1), supplier:p.supplier}; })
+    : [];
+  var lines = seedLines.length ? seedLines.map(function(l){ return poLine(l.sku, l.qty); }).join("") : poLine(DB.inventory[0].sku, 1);
+  var supp = seedLines.length ? seedLines[0].supplier : DB.suppliers[0].id;
   var body = field("Supplier", '<select name="supplier">' + DB.suppliers.map(function(s){ return opt(s.id, s.name, s.id === supp); }).join("") + '</select>') +
     '<div class="field"><label>Parts and quantity</label><div id="poLines">' + lines + '</div><button type="button" class="btn sm" data-action="po-add-line">' + icon("plus") + 'Add line</button></div>';
   openModal("New purchase order", body, "Place order", function(fd){
@@ -1821,9 +2214,39 @@ document.addEventListener("click", function(e){
     case "pick-image": { var fi = $("#imgFile"); if(fi) fi.click(); break; }
     case "clear-image": { var hid = $("#imgData"); if(hid) hid.value = ""; setImagePreview(""); break; }
     case "edit-order": if(o) modalEditOrder(o); break;
+    case "checklist-add": modalChecklistItem(); break;
+    case "checklist-rename": modalChecklistItem(+el.dataset.i); break;
+    case "checklist-move": {
+      var ml = checklist().slice(), from = +el.dataset.i, to = from + (+el.dataset.d);
+      if(to < 0 || to >= ml.length) break;
+      ml.splice(to, 0, ml.splice(from, 1)[0]);
+      setChecklist(ml);
+      break;
+    }
+    case "checklist-remove": {
+      var rl = checklist().slice();
+      if(rl.length <= 3){ toast("Keep at least 3 checks on the list", true); break; }
+      var removed = rl.splice(+el.dataset.i, 1)[0];
+      setChecklist(rl);
+      toast("Removed " + removed);
+      break;
+    }
+    case "checklist-reset":
+      if(confirm("Restore the default 10-point checklist?")){ setChecklist(DEFAULT_INSPECTION.slice()); toast("Default checklist restored"); }
+      break;
+    case "ai-connect": modalAiKey(); break;
+    case "ai-forget": try { localStorage.removeItem(AI_KEY); } catch(e){} aiState = {busy:false, answer:"", error:"", question:""}; toast("Key removed"); renderInsights(); break;
+    case "ai-suggest": aiState.question = el.dataset.q; renderInsights(); var qa = $("#aiQuestion"); if(qa) qa.focus(); break;
+    case "ai-ask": {
+      var qEl = $("#aiQuestion"), q = qEl ? qEl.value.trim() : "";
+      if(!q){ toast("Type a question first", true); break; }
+      if(aiState.busy) break;
+      askClaude(q);
+      break;
+    }
     case "new-part": modalNewPart(); break;
     case "adjust-stock": modalAdjust(part(el.dataset.sku)); break;
-    case "new-po": closePanel(); modalNewPO(el.dataset.low === "1"); break;
+    case "new-po": closePanel(); modalNewPO(el.dataset.suggest === "1" ? "suggest" : el.dataset.low === "1" ? "low" : ""); break;
     case "po-add-line": $("#poLines").insertAdjacentHTML("beforeend", poLine(DB.inventory[0].sku, 1)); break;
     case "po-remove-line": if($$("#poLines .po-line").length > 1) el.closest(".po-line").remove(); break;
     case "receive-po":

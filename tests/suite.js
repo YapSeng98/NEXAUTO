@@ -450,6 +450,75 @@ T('Counts follow the selected range',()=>{const six=rows().reduce((s,r)=>s+Numbe
 T('Technicians do not see the shop-wide breakdown',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');b.go('reports');return b.d.documentElement.dataset.canRevenue==='0';});
 T('No script errors',()=>a.errs.length===0);}
 
+// ============ 24. JOB AGEING ============
+S('24 Job ageing and reminders');
+{const a=app();
+T('Stuck jobs are listed on the dashboard',()=>{a.go('dashboard');return a.$$('#v-dashboard [data-action="open-order"]').length>0;});
+T('Insights lists the same jobs with a reason',()=>{a.go('insights');const rows=a.$$('#v-insights [data-action="open-order"]');return rows.length>0&&rows.every(r=>r.textContent.trim().length>0);});
+T('A quote sent days ago is flagged as waiting on the customer',()=>{a.go('insights');const row=a.$$('#v-insights [data-action="open-order"]').find(r=>r.dataset.id==='WO-1043');return !!row&&row.textContent.includes('waiting on the customer');});
+T('Finished work that has not been paid is flagged',()=>{a.go('insights');const row=a.$$('#v-insights [data-action="open-order"]').find(r=>r.dataset.id==='WO-1045');return !!row&&row.textContent.includes('payment not taken');});
+T('An unfinished inspection is flagged with the number left',()=>{a.go('insights');const row=a.$$('#v-insights [data-action="open-order"]').find(r=>r.dataset.id==='WO-1046');return !!row&&/\d+ items? still unchecked/.test(row.textContent);});
+T('A job checked in today is not flagged',()=>{a.go('insights');return !a.$$('#v-insights [data-action="open-order"]').some(r=>r.dataset.id==='WO-1047');});
+T('Completed jobs are never flagged',()=>{a.go('insights');const ids=a.$$('#v-insights [data-action="open-order"]').map(r=>r.dataset.id);return ids.every(id=>{const o=a.order(id);return o.stage!=='completed'&&o.stage!=='declined';});});
+T('Days shown are days in the stage, not days since check-in',()=>{a.go('insights');const row=a.$$('#v-insights [data-action="open-order"]').find(r=>r.dataset.id==='WO-1045');return row.textContent.includes('2 days in in service')&&row.textContent.includes('open 5 days');});
+T('The list is sorted by how long each job has been stuck',()=>{a.go('insights');const ds=a.$$('#v-insights [data-action="open-order"]').map(r=>Number(r.textContent.match(/(\d+) days? in/)[1]));return ds.every((d,i)=>i===0||d<=ds[i-1]);});
+T('Clearing the hold-up removes the job from the list',()=>{const b=app();b.openOrder('WO-1045');b.click('[data-action="take-payment"]');b.submit();b.go('insights');return !b.$$('#v-insights [data-action="open-order"]').some(r=>r.dataset.id==='WO-1045');});
+T('A technician only sees their own stuck jobs',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');b.go('insights');const ids=b.$$('#v-insights [data-action="open-order"]').map(r=>r.dataset.id);return ids.length>0&&ids.every(id=>b.order(id).technicianId==='s4');});
+T('No script errors',()=>a.errs.length===0);}
+
+// ============ 25. REORDER SUGGESTIONS ============
+S('25 Reorder suggestions');
+{const a=app();a.go('insights');
+const rows=()=>a.$$('#v-insights table tbody tr');
+T('Parts that need ordering are listed',()=>rows().length>0);
+T('Every listed part gives a reason',()=>rows().every(r=>/Below the reorder point|days of cover|Out of stock/.test(r.textContent)));
+T('Parts below their reorder point are included',()=>{const low=a.db().inventory.filter(p=>(p.stock-(p.reserved||0))<=p.reorder);return low.length>0&&low.every(p=>rows().some(r=>r.dataset.sku===p.sku));});
+T('Parts that are not listed are genuinely healthy',()=>{const listed=rows().map(r=>r.dataset.sku);const skipped=a.db().inventory.filter(p=>listed.indexOf(p.sku)===-1);return skipped.length>0&&skipped.every(p=>(p.stock-(p.reserved||0))>p.reorder);});
+T('A suggested quantity is given for each',()=>rows().every(r=>{const cells=[...r.querySelectorAll('td')];return Number(cells[4].textContent)>0;}));
+T('Monthly usage comes from real stock movements',()=>{const r=rows()[0];const sku=r.dataset.sku;const from=Date.now()-90*86400000;const used=a.db().movements.filter(m=>m.sku===sku&&m.type==='sale'&&new Date(m.at).getTime()>=from).reduce((s,m)=>s+Math.abs(m.qty),0);const want=Math.round(used/90*30);return Number([...r.querySelectorAll('td')][2].textContent)===want;});
+T('Ordering the suggestion clears the part from the list',()=>{const b=app();b.go('insights');const sku=b.$$('#v-insights table tbody tr')[0].dataset.sku;const before=b.part(sku).stock;b.click('[data-action="new-po"][data-suggest="1"]');const ok=b.$$('#modalForm [name="part"]').length>0;b.click('[data-action="close-modal"]');return ok&&before===b.part(sku).stock;});
+T('The draft purchase order is prefilled with the suggestions',()=>{const b=app();b.go('insights');const want=b.$$('#v-insights table tbody tr').length;b.click('[data-action="new-po"][data-suggest="1"]');const lines=b.$$('#poLines .po-line').length;b.click('[data-action="close-modal"]');return lines===want;});
+T('Technicians do not see the reorder card',()=>{const b=app(null,{anon:true});b.login('marcus.lee','tech123');b.go('insights');return b.d.documentElement.dataset.canPurchase==='0';});
+T('No script errors',()=>a.errs.length===0);}
+
+// ============ 26. INSPECTION CHECKLIST ADMIN ============
+S('26 Inspection checklist admin');
+{
+const list=b=>b.db().settings.inspection;
+T('Owners see the checklist manager',()=>{const b=app();b.go('settings');return b.d.documentElement.dataset.canChecklist==='1'&&!!b.$('[data-action="checklist-add"]');});
+T('Managers see it too',()=>{const b=app(null,{anon:true});b.login('joanne.lim','manager123');b.go('settings');return b.d.documentElement.dataset.canChecklist==='1';});
+T('Advisors and technicians do not',()=>{const roles=[['priya.nair','advisor123'],['marcus.lee','tech123']];return roles.every(([u,p])=>{const b=app(null,{anon:true});b.login(u,p);b.go('settings');return b.d.documentElement.dataset.canChecklist==='0';});});
+T('The default list has the ten original points',()=>{const b=app();return list(b).length===10&&list(b)[0]==='Engine oil level and condition';});
+T('An item can be added',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-add"]');b.F('name').value='Handbrake travel';b.submit();return list(b).length===11&&list(b)[10]==='Handbrake travel';});
+T('A duplicate item is rejected',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-add"]');b.F('name').value='battery health';b.submit();const ok=b.modalOpen()&&b.err().includes('already on the list');b.click('[data-action="close-modal"]');return ok&&list(b).length===10;});
+T('A too-short name is rejected',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-add"]');b.F('name').value='ab';b.submit();const ok=b.modalOpen()&&b.err().includes('at least 3');b.click('[data-action="close-modal"]');return ok;});
+T('An item can be renamed',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-rename"][data-i="3"]');b.F('name').value='Battery and charging';b.submit();return list(b)[3]==='Battery and charging';});
+T('An item can be moved up',()=>{const b=app();b.go('settings');const second=list(b)[1];b.click('[data-action="checklist-move"][data-i="1"][data-d="-1"]');return list(b)[0]===second;});
+T('An item can be moved down',()=>{const b=app();b.go('settings');const first=list(b)[0];b.click('[data-action="checklist-move"][data-i="0"][data-d="1"]');return list(b)[1]===first;});
+T('An item can be removed',()=>{const b=app();b.go('settings');const gone=list(b)[9];b.click('[data-action="checklist-remove"][data-i="9"]');return list(b).length===9&&!list(b).includes(gone);});
+T('The list cannot drop below three items',()=>{const b=app();b.go('settings');for(let i=0;i<12;i++){const btn=b.$('[data-action="checklist-remove"]');if(btn)b.click(btn);}return list(b).length===3&&b.toast().includes('at least 3');});
+T('New jobs use the edited list',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-add"]');b.F('name').value='Handbrake travel';b.submit();b.click('#v-settings');b.go('orders');b.click('#v-orders [data-action="new-order"]');b.set('customer','c6');b.F('mileage').value='52000';b.submit();const o=b.db().orders.find(x=>x.customerId==='c6'&&x.stage==='reception');return o.inspection.length===11&&o.inspection[10].name==='Handbrake travel';});
+T('Jobs already open keep the list they started with',()=>{const b=app();const before=b.order('WO-1047').inspection.length;b.go('settings');b.click('[data-action="checklist-add"]');b.F('name').value='Handbrake travel';b.submit();return b.order('WO-1047').inspection.length===before;});
+T('The inspection tab counts that job\'s own list',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-remove"][data-i="9"]');b.openOrder('WO-1047');return b.$('[data-action="order-tab"][data-tab="inspection"]').textContent.includes('0/10');});
+T('Restore default brings the ten points back',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-remove"][data-i="0"]');b.click('[data-action="checklist-reset"]');return list(b).length===10&&list(b)[0]==='Engine oil level and condition';});
+T('The edited list survives a reload',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-add"]');b.F('name').value='Handbrake travel';b.submit();const c=app(b.storage());return list(c).includes('Handbrake travel');});
+T('No script errors',()=>{const b=app();b.go('settings');return b.errs.length===0;});
+}
+
+// ============ 27. AI PANEL ============
+S('27 AI panel');
+{
+T('The panel is off until a key is connected',()=>{const b=app();b.go('insights');return !!b.$('[data-action="ai-connect"]')&&!b.$('#aiQuestion');});
+T('It explains where the key is stored before asking for one',()=>{const b=app();b.go('insights');return b.$('.ai-card').textContent.includes('stored in this browser only');});
+T('A key that is not an Anthropic key is rejected',()=>{const b=app();b.go('insights');b.click('[data-action="ai-connect"]');b.F('key').value='hunter2';b.submit();const ok=b.modalOpen()&&b.err().includes('sk-ant-');b.click('[data-action="close-modal"]');return ok;});
+T('Connecting a key reveals the question box',()=>{const b=app();b.go('insights');b.click('[data-action="ai-connect"]');b.F('key').value='sk-ant-test-key';b.submit();return !!b.$('#aiQuestion')&&!!b.$('[data-action="ai-ask"]');});
+T('Disconnecting removes the key from storage',()=>{const b=app();b.go('insights');b.click('[data-action="ai-connect"]');b.F('key').value='sk-ant-test-key';b.submit();b.click('[data-action="ai-forget"]');return !b.w.localStorage.getItem('nexauto_ai_key')&&!b.$('#aiQuestion');});
+T('An empty question is not sent',()=>{const b=app();b.go('insights');b.click('[data-action="ai-connect"]');b.F('key').value='sk-ant-test-key';b.submit();b.click('[data-action="ai-ask"]');return b.toast().includes('Type a question');});
+T('Suggested questions fill the box',()=>{const b=app();b.go('insights');b.click('[data-action="ai-connect"]');b.F('key').value='sk-ant-test-key';b.submit();b.click('[data-action="ai-suggest"]');return b.$('#aiQuestion').value.length>10;});
+T('The key is never written into the page',()=>{const b=app();b.go('insights');b.click('[data-action="ai-connect"]');b.F('key').value='sk-ant-secret-value';b.submit();return !b.d.body.innerHTML.includes('sk-ant-secret-value');});
+T('No script errors',()=>{const b=app();b.go('insights');return b.errs.length===0;});
+}
+
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;
 for(const [s,n,r,e] of results){ if(s!==cur){console.log('\n'+s);cur=s;} console.log(`  ${r==='PASS'?'✓':'✗'} ${n}${e?'  ['+e+']':''}`); r==='PASS'?pass++:fail++; }

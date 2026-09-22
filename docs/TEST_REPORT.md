@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 279 of 279 checks passed.**
+**Result: 328 of 328 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -31,6 +31,43 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Part photos | 10 | 10 |
 | Edit job details | 16 | 16 |
 | Jobs completed per technician | 9 | 9 |
+| Job ageing and reminders | 12 | 12 |
+| Reorder suggestions | 10 | 10 |
+| Inspection checklist admin | 18 | 18 |
+| AI panel | 9 | 9 |
+
+## Insights, reminders and the AI panel (v0.9.0)
+
+**Ageing.** Jobs now record when they entered their current stage, so the app can
+say *why* something is stuck and for how long — "quote sent, waiting on the
+customer, 4 days in quotation" rather than just an age. The count deliberately
+measures time in the stage, not time since check-in: a job open six days that
+moved yesterday is fine, one open two days that has not moved in two is not.
+Checks cover each stage's rule, that fresh and closed jobs are never flagged,
+that clearing the hold-up removes the row, and that a technician sees only their
+own.
+
+**Reorder suggestions.** Usage is measured from the actual sale movements of the
+last 90 days, so the suggested quantity is grounded in what the workshop really
+consumes rather than a fixed multiple of the reorder point. A check recomputes
+monthly usage from the movement log and compares it to what the table prints, and
+another asserts that every part left off the list is genuinely above its reorder
+point.
+
+**Editable inspection checklist.** The 10 points were hardcoded. Owners and
+managers can now add, rename, reorder, remove and restore them in Settings.
+The important property is that jobs already under way keep the list they started
+with — orders store their own copy — and the inspection tab counts that job's own
+list rather than the current template. Both are tested.
+
+**AI panel.** Off until someone adds their own Anthropic key. The checks cover
+the gating, key validation, disconnect, and that the key is never written into the
+page. Verified separately in the browser by stubbing `fetch` and reading the
+outgoing request: correct endpoint, `claude-opus-5`, a 4.7KB context — and, for a
+technician, a payload containing only their own jobs with no cost, price or
+revenue fields at all. That last point is the one worth keeping: the AI context is
+filtered by role before it leaves, which is what C1 in SECURITY.md says the rest
+of the app should do.
 
 ## Editing a job, and jobs per technician (v0.8.0)
 

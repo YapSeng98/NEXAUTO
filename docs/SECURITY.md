@@ -56,7 +56,7 @@ every signed-in user regardless of role.
 
 ### C2. The whole database is user-writable
 
-`localStorage["nexauto_demo_v5"]` holds orders, payments, stock, costs and the
+`localStorage["nexauto_demo_v6"]` holds orders, payments, stock, costs and the
 staff table. Confirmed readable and editable from the page context. A user can:
 
 - set their own `role` to `"owner"` and reload,
@@ -183,6 +183,29 @@ font origins. Needs a real host; GitHub Pages cannot set headers, so use the
 - **L4.** Usernames are enumerable through the user list in Settings for any role
   that can open it — acceptable, but worth knowing.
 - **L5.** No password complexity rule beyond a 6-character minimum.
+
+### M5. The AI panel puts an API key in browser storage
+
+Added in v0.9.0. The **Ask about this workshop** panel calls the Anthropic API
+directly from the page, so the key lives in `localStorage` and travels on every
+request. This is defensible only because of how it is scoped:
+
+- the key is the **visitor's own**, typed in by them, never shipped with the app;
+- the panel is off until they add one, and **Disconnect** removes it;
+- the UI says where the key is stored before asking for it.
+
+It is still a key in a browser. Anyone with access to that browser (or any XSS in
+this page) can read it. The card says to use a rotatable key, never a shared one.
+
+**One thing this does better than the rest of the app:** the payload sent to the
+API is built per role. A technician's request carries only their own jobs and no
+cost, price or revenue fields at all — verified by reading the outgoing request
+body. That is real filtering of the data, not CSS hiding it after the fact. It is
+what C1's fix should look like everywhere.
+
+**Fix:** a server-side proxy holding one key, which is the same backend that
+fixes C1-C3. See [SUPABASE_PLAN.md](SUPABASE_PLAN.md) — an Edge Function is the
+natural home.
 
 ---
 
