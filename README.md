@@ -33,7 +33,7 @@ one fills the form:
 | Technician | `marcus.lee` | `tech123` |
 | Technician | `daniel.koh` | `tech123` |
 
-Owners add users and set their credentials in **Settings → Users**. Sessions last
+**There is no sign-up.** This is staff software for one workshop, so accounts are created for people, not by them: the owner adds a user and hands over a username and temporary password in **Settings → Users**. The sign-in page says so. The very first owner is created when the workshop is set up — by the seed here, by an invite once there is a backend. Sessions last
 12 hours, and are kept after closing the tab only if you tick **Keep me signed
 in**. Five wrong passwords lock that username for a minute.
 
@@ -106,7 +106,7 @@ docs/
   ARCHITECTURE.md     Current demo design and production target
   SECURITY.md         Security review of the demo, with severities
   SUPABASE_PLAN.md    Migration plan: schema, RLS policies, auth, phases
-  TEST_REPORT.md      Results of the 445 automated checks
+  TEST_REPORT.md      Results of the 454 automated checks
 tests/
   suite.js            Automated end-to-end test suite
 package.json          Test script
@@ -119,7 +119,7 @@ npm install
 npm test
 ```
 
-The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 445 passed, 0 failed`.
+The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 454 passed, 0 failed`.
 
 ## Making it your own
 

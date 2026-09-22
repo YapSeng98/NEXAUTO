@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 445 of 445 checks passed.**
+**Result: 454 of 454 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -43,6 +43,33 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Shop-configurable settings | 19 | 19 |
 | Locked settings | 9 | 9 |
 | Role permissions | 25 | 25 |
+
+## End-to-end pass, and the bug it found (v0.18.0)
+
+The whole workflow was driven in a real browser, one job from check-in to
+payment: sign-in and a failed attempt, check-in with the duplicate-phone and
+duplicate-plate guards, inspection as the assigned technician, the technician
+adding a part and unpriced work, the advisor pricing and sending, the new
+`approve` permission toggled live, approval reserving stock, extra work blocking
+payment until approved, payment deducting stock and writing movements, then
+inventory, purchasing, customers, reports, insights and all five settings tabs.
+
+### The bug it found
+
+| # | Bug | Impact |
+|---|---|---|
+| 20 | Whether a finding had been quoted was decided by **substring-matching the finding's name against the line names**. Anyone who typed their own description — which the technician quote flow now encourages — left the finding looking unquoted | On payment the shop got a follow-up telling it to chase a customer about a problem it had just repaired and invoiced |
+
+A quote line raised from a finding now carries that finding's index, so the link
+is explicit rather than guessed; the old wording match stays as a fallback for
+lines named after the finding. Six checks cover it, including that a line renamed
+to something completely different still counts, and that a problem nobody quoted
+still raises the follow-up it should.
+
+Two notes for anyone repeating this: `window.confirm` must be stubbed before
+driving the app from the console, or the reset button's native dialog freezes the
+renderer; and `[data-action="add-labor"]` matches the finding's **Add to quote**
+button first, so the plain one needs `:not([data-prefill])`.
 
 ## Approving a quote is its own permission (v0.17.0)
 

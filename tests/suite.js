@@ -510,6 +510,8 @@ T('No script errors',()=>{const b=app();b.go('settings');return b.errs.length===
 S('27 AI panel');
 {
 T('The panel is off until a key is connected',()=>{const b=app();b.go('insights');return !!b.$('[data-action="ai-connect"]')&&!b.$('#aiQuestion');});
+T('The sign-in page says where accounts come from',()=>{const b=app(null,{anon:true});return b.$('.login-help').textContent.includes('created by the workshop owner')&&b.$('.login-help').textContent.includes('Settings');});
+T('There is no self-service sign-up',()=>{const b=app(null,{anon:true});const t=b.$('#loginScreen').textContent.toLowerCase();return !t.includes('sign up')&&!t.includes('create account')&&!t.includes('register');});
 T('It explains where the key is stored before asking for one',()=>{const b=app();b.go('insights');return b.$('.ai-card').textContent.includes('stored in this browser only');});
 T('A key that is not an Anthropic key is rejected',()=>{const b=app();b.go('insights');b.click('[data-action="ai-connect"]');b.F('key').value='hunter2';b.submit();const ok=b.modalOpen()&&b.err().includes('sk-ant-');b.click('[data-action="close-modal"]');return ok;});
 T('Connecting a key reveals the question box',()=>{const b=app();b.go('insights');b.click('[data-action="ai-connect"]');b.F('key').value='sk-ant-test-key';b.submit();return !!b.$('#aiQuestion')&&!!b.$('[data-action="ai-ask"]');});
@@ -689,6 +691,25 @@ T('Changes survive a reload',()=>{const b=app();tick(b,'technician','price',true
 T('Restore defaults puts everything back',()=>{const b=app();tick(b,'technician','price',true);tick(b,'advisor','pay',false);b.click('[data-action="perms-reset"]');const back=b.$$('[data-action="perm-toggle"][data-role="technician"][data-k="price"]')[0];return !back.checked&&!b.db().settings.perms;});
 T('Resetting the demo clears any role changes',()=>{const b=app();tick(b,'technician','price',true);b.setTab('general');b.click('[data-action="reset"]');return !b.db().settings.perms;});
 T('No script errors',()=>{const b=app();b.setTab('roles');return b.errs.length===0;});
+}
+
+// ============ 36. FINDINGS LINKED TO QUOTE LINES ============
+S('36 Findings linked to quote lines');
+{
+const adv=()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123');return b;};
+// WO-1047 to quotation with one problem finding at index 1
+const prep=b=>{b.openOrder('WO-1047');b.click('[data-action="start-insp"]');b.checkAll();
+  b.click(b.$$('[data-action="insp-set"][data-s="problem"]')[1]);
+  b.click('[data-action="finish-insp"]');b.tab('items');};
+const payOff=b=>{b.click('[data-action="send-quote"]');b.click('[data-action="approve-quote"]');
+  b.click('[data-action="work-done"]');b.click('[data-action="take-payment"]');b.submit();};
+T('The Add to quote button carries the finding it came from',()=>{const b=adv();prep(b);return b.$('[data-action="add-labor"][data-prefill]').dataset.finding==='1';});
+T('A line added that way is linked, not matched by wording',()=>{const b=adv();prep(b);b.click('[data-action="add-labor"][data-prefill]');b.F('name').value='Skim discs and fit new pads';b.F('price').value='240';b.submit();const it=b.order('WO-1047').items[0];return it.finding===1&&it.name==='Skim discs and fit new pads';});
+T('The finding shows as Quoted even when renamed',()=>{const b=adv();prep(b);b.click('[data-action="add-labor"][data-prefill]');b.F('name').value='Skim discs and fit new pads';b.F('price').value='240';b.submit();return b.$('#panelBody').textContent.includes('Quoted');});
+T('A renamed line still suppresses the chase-up follow-up',()=>{const b=adv();prep(b);b.click('[data-action="add-labor"][data-prefill]');b.F('name').value='Skim discs and fit new pads';b.F('price').value='240';b.submit();payOff(b);return !b.db().opportunities.some(o=>o.sourceOrderId==='WO-1047'&&o.type==='inspection-finding');});
+T('A problem nobody quoted still raises one',()=>{const b=adv();prep(b);b.click('[data-action="add-labor"]:not([data-prefill])');b.F('name').value='Something unrelated';b.F('price').value='90';b.submit();payOff(b);return b.db().opportunities.some(o=>o.sourceOrderId==='WO-1047'&&o.type==='inspection-finding'&&o.text.includes('Brake pads'));});
+T('The old wording match still works for lines named after the finding',()=>{const b=adv();prep(b);b.click('[data-action="add-labor"]:not([data-prefill])');b.F('name').value='Repair: Brake pads and discs';b.F('price').value='240';b.submit();payOff(b);return !b.db().opportunities.some(o=>o.sourceOrderId==='WO-1047'&&o.type==='inspection-finding');});
+T('No script errors',()=>{const b=adv();prep(b);return b.errs.length===0;});
 }
 
 // ============ REPORT ============

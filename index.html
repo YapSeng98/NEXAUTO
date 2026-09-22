@@ -576,6 +576,9 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
 .row-main .title{white-space:normal;}
 .line .l,.line .r{min-width:0;}
 .opp .t{overflow-wrap:anywhere;}
+
+.login-help{margin:14px 0 0;font-size:12.5px;line-height:1.55;color:var(--text-muted);text-align:center;}
+.login-help b{color:var(--text-secondary);font-weight:600;}
 </style>
 </head>
 <body>
@@ -624,6 +627,7 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
         <label class="check"><input type="checkbox" id="loginRemember" name="remember"> Keep me signed in</label>
       </div>
       <button type="submit" class="btn primary block" id="loginSubmit">Sign in</button>
+      <p class="login-help">No account? Staff accounts are created by the workshop owner in <b>Settings &rarr; Users</b>. Ask them to add you and hand you a username.</p>
     </form>
     <div class="demo-card" id="demoAccounts">
       <h2>Demo accounts</h2>
@@ -1600,6 +1604,14 @@ function orderInspection(o, ic){
   }).join("");
   return html;
 }
+/* Did anything on the quote answer this finding? An explicit link beats guessing
+   from the wording — a technician who writes their own description would
+   otherwise leave the shop a reminder to chase a job it had just finished. */
+function answersFinding(o, finding, idx){
+  return o.items.some(function(it){
+    return it.finding === idx || it.name.indexOf(finding.name) > -1;
+  });
+}
 function orderItems(o){
   var onQuote = o.stage === "quotation" || o.stage === "in-service";
   var editable = can("edit") && onQuote;
@@ -1610,12 +1622,14 @@ function orderItems(o){
   if(o.stage === "reception" || o.stage === "pre-inspection") html += '<div class="hint">Finish the inspection first. The quote opens once the checklist is complete.</div>';
   else html += '<div class="hint">Quote status: <b style="color:var(--text-primary)">' + qs[o.quoteStatus] + '</b>' + (o.stage === "in-service" && editable ? '. Anything added now is extra work and needs the customer\'s approval.' : '') + '</div>';
 
-  var findings = o.inspection.filter(function(i){ return i.status === "problem" || i.status === "attention"; });
+  // Keep each finding's place in the checklist: it is the id a quote line links to.
+  var findings = [];
+  o.inspection.forEach(function(it, ix){ if(it.status === "problem" || it.status === "attention") findings.push({f:it, idx:ix}); });
   if(findings.length && o.stage !== "reception"){
-    html += '<div class="h4" style="margin-top:4px">Inspection findings</div>' + findings.map(function(f){
-      var added = o.items.some(function(it){ return it.name.indexOf(f.name) > -1; });
+    html += '<div class="h4" style="margin-top:4px">Inspection findings</div>' + findings.map(function(row){
+      var f = row.f, idx = row.idx, added = answersFinding(o, f, idx);
       return '<div class="finding"><span><span class="badge ' + (f.status === "problem" ? "b-red" : "b-amber") + '">' + (f.status === "problem" ? "Problem" : "Attention") + '</span> ' + esc(f.name) + (f.note ? ' — ' + esc(f.note) : '') + '</span>' +
-        (canAdd && !added ? '<button class="btn sm" data-action="add-labor" data-prefill="' + esc("Repair: " + f.name) + '">Add to quote</button>' : (added ? '<span class="badge b-green">Quoted</span>' : '')) + '</div>';
+        (canAdd && !added ? '<button class="btn sm" data-action="add-labor" data-finding="' + idx + '" data-prefill="' + esc("Repair: " + f.name) + '">Add to quote</button>' : (added ? '<span class="badge b-green">Quoted</span>' : '')) + '</div>';
     }).join("");
   }
 
@@ -2394,7 +2408,7 @@ function modalAddPart(o){
     refresh();
   });
 }
-function modalAddLabor(o, prefill){
+function modalAddLabor(o, prefill, findingIdx){
   var priced = can("price");
   var body = field("Description", '<input type="text" name="name" required placeholder="Labor: wheel alignment" value="' + esc(prefill || "") + '">') +
     (priced ? '<div class="field-row">' + field("Price to customer", '<input type="number" name="price" min="0" step="1" required placeholder="80">') + '<div data-cost>' + field("Internal cost", '<input type="number" name="cost" min="0" step="1" value="0">') + '</div></div>'
@@ -2402,8 +2416,10 @@ function modalAddLabor(o, prefill){
   openModal(priced ? "Add labor" : "Add work needed", body, "Add to quote", function(fd){
     var price = priced ? Number(fd.get("price")) : 0;
     if(priced && (isNaN(price) || price < 0)) return "Enter a valid price.";
-    o.items.push({id:uid("i"), type:"labor", sku:"", name:fd.get("name").trim(), qty:1, price:price,
-      cost:priced ? (Number(fd.get("cost")) || 0) : 0, approved:false, by:me().id, needsPrice:!priced});
+    var line = {id:uid("i"), type:"labor", sku:"", name:fd.get("name").trim(), qty:1, price:price,
+      cost:priced ? (Number(fd.get("cost")) || 0) : 0, approved:false, by:me().id, needsPrice:!priced};
+    if(findingIdx !== undefined && findingIdx !== null && findingIdx !== "") line.finding = Number(findingIdx);
+    o.items.push(line);
     if(o.quoteStatus === "sent"){ o.quoteStatus = "draft"; }
     log(o, "Added " + fd.get("name").trim() + (priced ? "" : " (needs pricing)"));
     toast(priced ? "Labor added" : "Added for the advisor to price"); refresh();
@@ -2431,8 +2447,8 @@ function modalPayment(o){
     o.payment = {method:fd.get("method"), amount:t.total, paidAt:nowISO()};
     o.stage = "completed"; o.stageSince = nowISO();
     log(o, "Paid " + money(t.total) + " by " + fd.get("method").toLowerCase());
-    o.inspection.forEach(function(i){
-      var quoted = o.items.some(function(it){ return it.name.indexOf(i.name) > -1; });
+    o.inspection.forEach(function(i, idx){
+      var quoted = answersFinding(o, i, idx);
       if((i.status === "attention" || (i.status === "problem" && !quoted))) DB.opportunities.push({id:uid("o"), customerId:o.customerId, type:"inspection-finding", text:i.name + (i.note ? ": " + i.note : ""), dueAt:new Date(Date.now()+timing("followFinding")*86400000).toISOString(), sourceOrderId:o.id, status:"open", createdAt:nowISO()});
     });
     DB.opportunities.forEach(function(x){ if(x.customerId === o.customerId && x.type === "service-due" && x.status === "open") x.status = "done"; });
@@ -2680,7 +2696,7 @@ document.addEventListener("click", function(e){
       if(!o.items.length){ toast("This order has no items to charge", true); break; }
       modalPayment(o); break;
     case "add-part": modalAddPart(o); break;
-    case "add-labor": modalAddLabor(o, el.dataset.prefill); break;
+    case "add-labor": modalAddLabor(o, el.dataset.prefill, el.dataset.finding); break;
     case "remove-item":
       var gone = o.items.filter(function(i){ return i.id === el.dataset.item; })[0];
       if(gone && gone.approved && gone.type === "part"){ var gp = part(gone.sku); if(gp) gp.reserved = Math.max(0, (gp.reserved||0) - gone.qty); }
