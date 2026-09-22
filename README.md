@@ -33,7 +33,15 @@ one fills the form:
 | Technician | `marcus.lee` | `tech123` |
 | Technician | `daniel.koh` | `tech123` |
 
-**There is no sign-up.** This is staff software for one workshop, so accounts are created for people, not by them: the owner adds a user and hands over a username and temporary password in **Settings → Users**. The sign-in page says so. The very first owner is created when the workshop is set up — by the seed here, by an invite once there is a backend. Sessions last
+**There is no sign-up, but there is setup.** Staff accounts are created for
+people, not by them: the owner adds a user in **Settings → Users** and hands over
+a username and temporary password.
+
+A brand-new workshop starts from **Create your workshop** on the sign-in page.
+Give it a name, create the owner's account, and choose whether to keep the sample
+parts list. You get an empty shop — no jobs, no customers, no history — with the
+sample parts at zero stock so you count your own in. It replaces whatever is in
+that browser, demo included. Sessions last
 12 hours, and are kept after closing the tab only if you tick **Keep me signed
 in**. Five wrong passwords lock that username for a minute.
 
@@ -106,7 +114,7 @@ docs/
   ARCHITECTURE.md     Current demo design and production target
   SECURITY.md         Security review of the demo, with severities
   SUPABASE_PLAN.md    Migration plan: schema, RLS policies, auth, phases
-  TEST_REPORT.md      Results of the 454 automated checks
+  TEST_REPORT.md      Results of the 473 automated checks
 tests/
   suite.js            Automated end-to-end test suite
 package.json          Test script
@@ -119,7 +127,7 @@ npm install
 npm test
 ```
 
-The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 454 passed, 0 failed`.
+The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 473 passed, 0 failed`.
 
 ## Making it your own
 

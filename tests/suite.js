@@ -712,6 +712,39 @@ T('The old wording match still works for lines named after the finding',()=>{con
 T('No script errors',()=>{const b=adv();prep(b);return b.errs.length===0;});
 }
 
+// ============ 37. FIRST-RUN WORKSHOP SETUP ============
+S('37 First-run workshop setup');
+{
+const fresh=()=>app(null,{anon:true});
+const make=(b,o={})=>{b.click('[data-action="setup-shop"]');
+  b.F('shop').value=o.shop||'Ah Seng Motors';
+  b.F('owner').value=o.owner||'Ah Seng';
+  b.F('username').value=o.username||'ah.seng';
+  b.F('password').value=o.password||'ahseng123';
+  b.F('confirm').value=o.confirm!==undefined?o.confirm:(o.password||'ahseng123');
+  if(o.catalogue===false) b.F('catalogue').checked=false;
+  b.submit();};
+T('The sign-in page offers a way to set up a new workshop',()=>{const b=fresh();return !!b.$('[data-action="setup-shop"]')&&b.$('.login-setup').textContent.includes('first time');});
+T('Creating one signs the owner straight in',()=>{const b=fresh();make(b);return b.authed()&&b.$('#userName').textContent==='Ah Seng'&&b.$('#userRole').textContent==='Owner';});
+T('The workshop takes the name given',()=>{const b=fresh();make(b);return b.$('#brandName').textContent==='Ah Seng Motors'&&b.d.title.startsWith('Ah Seng Motors');});
+T('It starts with no jobs, customers or history',()=>{const b=fresh();make(b);const d=b.db();return d.orders.length===0&&d.customers.length===0&&d.movements.length===0&&d.opportunities.length===0&&d.purchaseOrders.length===0;});
+T('The only user is the owner who created it',()=>{const b=fresh();make(b);const st=b.db().staff;return st.length===1&&st[0].role==='owner'&&st[0].username==='ah.seng';});
+T('Job numbers start from scratch',()=>{const b=fresh();make(b);return b.db().nextWO===1001&&b.db().nextPO===101;});
+T('The sample parts come in at zero stock',()=>{const b=fresh();make(b);const inv=b.db().inventory;return inv.length>0&&inv.every(p=>p.stock===0&&p.reserved===0)&&inv.every(p=>p.price>0);});
+T('Declining the sample leaves the shelves empty',()=>{const b=fresh();make(b,{catalogue:false});return b.db().inventory.length===0&&b.db().suppliers.length===0;});
+T('The new owner can sign in again with those credentials',()=>{const b=fresh();make(b);b.signOut();b.login('ah.seng','ahseng123');return b.authed()&&b.$('#userName').textContent==='Ah Seng';});
+T('The demo accounts no longer work',()=>{const b=fresh();make(b);b.signOut();b.login('alex.tan','owner123');return !b.authed();});
+T('Mismatched passwords are rejected',()=>{const b=fresh();make(b,{confirm:'somethingelse'});const ok=b.modalOpen()&&b.err().includes('do not match');b.click('[data-action="close-modal"]');return ok&&!b.authed();});
+T('A short password is rejected',()=>{const b=fresh();make(b,{password:'abc',confirm:'abc'});const ok=b.modalOpen()&&b.err().includes('at least 6');b.click('[data-action="close-modal"]');return ok;});
+T('A malformed username is rejected',()=>{const b=fresh();make(b,{username:'a b!'});const ok=b.modalOpen()&&b.err().includes('Username must be');b.click('[data-action="close-modal"]');return ok;});
+T('An unnamed workshop is rejected',()=>{const b=fresh();make(b,{shop:'X'});const ok=b.modalOpen()&&b.err().includes('at least 2');b.click('[data-action="close-modal"]');return ok;});
+T('A failed attempt leaves the demo untouched',()=>{const b=fresh();make(b,{confirm:'nope'});b.click('[data-action="close-modal"]');b.login('alex.tan','owner123');return b.authed()&&b.db().orders.length>200;});
+T('The new workshop survives a reload',()=>{const b=fresh();make(b);const c=app(b.storage());return c.$('#brandName').textContent==='Ah Seng Motors'&&c.db().staff.length===1;});
+T('The owner can then add staff as normal',()=>{const b=fresh();make(b);b.setTab('users');b.click('[data-action="new-staff"]');b.F('name').value='Siti';b.F('role').value='technician';b.F('username').value='siti';b.F('password').value='siti12345';b.submit();return b.db().staff.length===2;});
+T('A brand-new workshop has nothing flagged as stalled',()=>{const b=fresh();make(b);b.go('insights');return b.$$('#v-insights [data-action="open-order"]').length===0;});
+T('No script errors',()=>{const b=fresh();make(b);return b.errs.length===0;});
+}
+
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;
 for(const [s,n,r,e] of results){ if(s!==cur){console.log('\n'+s);cur=s;} console.log(`  ${r==='PASS'?'✓':'✗'} ${n}${e?'  ['+e+']':''}`); r==='PASS'?pass++:fail++; }

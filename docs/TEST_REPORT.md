@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 454 of 454 checks passed.**
+**Result: 473 of 473 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -43,6 +43,29 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Shop-configurable settings | 19 | 19 |
 | Locked settings | 9 | 9 |
 | Role permissions | 25 | 25 |
+
+## Setting up a new workshop (v0.19.0)
+
+There was no way to start a workshop that was not the demo. The sign-in page now
+offers **Create your workshop**: a name, the owner's own account, and a choice of
+whether to keep the sample parts list. It hands back an empty shop — no jobs, no
+customers, no history, job numbers from 1001 — with the new owner signed in and
+the sample parts at zero stock so the shop counts its own in.
+
+19 checks cover it, including that a failed attempt leaves the demo untouched,
+the demo accounts stop working afterwards, and the owner can then add staff
+normally.
+
+### The bug this found
+
+| # | Bug | Impact |
+|---|---|---|
+| 21 | The modal layer sits at `z-index:40`, the sign-in screen at `60`. Any modal opened from the sign-in page rendered **behind** it | The setup form was open, focusable and submittable — and completely invisible |
+
+The tests passed while this was broken, because jsdom has no paint: the classes,
+the form fields and the submit all behaved. Only opening it in a browser showed
+the form was underneath. Modals now sit above the sign-in screen, and toasts
+above modals.
 
 ## End-to-end pass, and the bug it found (v0.18.0)
 
