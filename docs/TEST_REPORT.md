@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 392 of 392 checks passed.**
+**Result: 411 of 411 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -33,13 +33,45 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Jobs completed per technician | 9 | 9 |
 | Job ageing and reminders | 12 | 12 |
 | Reorder suggestions | 10 | 10 |
-| Inspection checklist admin | 18 | 18 |
+| Editable lists | 18 | 18 |
 | AI panel | 9 | 9 |
 | Quote stage messaging | 7 | 7 |
 | Technician line items | 18 | 18 |
 | Workshop name | 11 | 11 |
 | Purchase order list | 9 | 9 |
 | Quotation preview | 19 | 19 |
+| Shop-configurable settings | 19 | 19 |
+
+## Everything a shop can configure (v0.13.0)
+
+The hardcoded values a real workshop would want to own are now in
+`DB.settings`, editable by an owner or manager. The checklist editor was
+generalised into one list editor driving five lists, and the numbers moved into
+four grouped cards.
+
+| Now editable | Was |
+|---|---|
+| Payment methods | `["Card","Cash","PayNow","Bank transfer"]` |
+| Part categories | `["Fluids","Filters","Brakes",…]` |
+| Stock adjustment reasons | `["Stock count","Damaged","Returned","Other"]` |
+| Customer tiers | `Gold` / `Silver` / `Standard`, with `Standard` hardcoded for new customers |
+| Follow-up timing | 14 / 30 / 180 days and +10,000 km |
+| Stalled-job thresholds | 1–4 days, varying per stage |
+| Reorder window | 90 days of usage, 45 days of cover |
+| Sign-in policy | 12-hour session, 5 attempts, 60-second lock |
+
+The checks do not stop at "the setting saved" — each one is followed through to
+where it is used: a new payment method appears when closing a job, a new category
+when adding a part, moving a tier to the top changes what a new customer gets,
+tightening the stalled thresholds flags more jobs, a shorter reorder window
+changes the note on the Insights table, and a two-attempt lockout locks after
+two. Session length is verified by reloading with a session older than the new
+limit.
+
+Settings also became four tabs. That page had grown to thirteen cards and nearly
+4,000px of scroll; it is now four tabs of 450–2,200px. The tabs broke 54 existing
+tests that assumed one long page, which is the honest cost of the change and the
+reason the harness now has a `setTab()` helper.
 
 ## Quotation preview (v0.12.0)
 

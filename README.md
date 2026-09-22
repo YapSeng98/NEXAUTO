@@ -17,7 +17,7 @@ Workshop operations app for auto repair shops. It covers vehicle check-in, inspe
 | Customers | Customer profiles, multiple vehicles, service history, lifetime spend, follow-ups |
 | Insights | Jobs that have stalled and why, stock to reorder with suggested quantities, customers worth calling, and an optional Ask-anything panel |
 | Reports | Revenue over 7 days, 30 days or 6 months, gross profit and margin, average ticket, quote approval rate, parts vs labor, completed jobs and revenue per technician |
-| Settings | Workshop name, brand colour (Castrol green by default), user management, the inspection checklist, reset demo data |
+| Settings | Four tabs — General (workshop name, brand colour, reset), Users (staff and sign-in policy), Lists (inspection checklist, payment methods, part categories, adjustment reasons, customer tiers), Timing (follow-ups, stalled-job thresholds, stock planning) |
 
 ## Signing in
 
@@ -56,7 +56,9 @@ in**. Five wrong passwords lock that username for a minute.
 | Purchase orders, receive stock | ✓ | ✓ | ✓ | – |
 | Add parts, change prices | ✓ | ✓ | – | – |
 | Manage users | ✓ | – | – | – |
-| Edit the inspection checklist | ✓ | ✓ | – | – |
+| Edit the shop's lists and timings | ✓ | ✓ | – | – |
+| Rename the workshop, sign-in policy | ✓ | – | – | – |
+| Open the quotation document | ✓ | ✓ | ✓ | As a job sheet, no prices |
 
 Full details: [docs/ROLES.md](docs/ROLES.md)
 
@@ -98,7 +100,7 @@ docs/
   ARCHITECTURE.md     Current demo design and production target
   SECURITY.md         Security review of the demo, with severities
   SUPABASE_PLAN.md    Migration plan: schema, RLS policies, auth, phases
-  TEST_REPORT.md      Results of the 392 automated checks
+  TEST_REPORT.md      Results of the 411 automated checks
 tests/
   suite.js            Automated end-to-end test suite
 package.json          Test script
@@ -111,7 +113,22 @@ npm install
 npm test
 ```
 
-The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 392 passed, 0 failed`.
+The suite loads `index.html` in a simulated browser, signs in through the real login form, and clicks through every process as each role. It ends with `TOTAL: 411 passed, 0 failed`.
+
+## Making it your own
+
+Nothing about the workshop is baked into the code. An owner or manager can change
+all of this in **Settings**, and it takes effect immediately:
+
+| Tab | What you control |
+|---|---|
+| General | The workshop's name (sign-in page, sidebar, browser tab) and the brand colour every other shade is derived from |
+| Users | Who works here, their role and credentials; and how long a session lasts before it expires |
+| Lists | The inspection checklist, payment methods, part categories, stock adjustment reasons and customer tiers |
+| Timing | When follow-ups are due, how many days a job can sit before it is flagged amber then red, and the window the reorder suggestions are calculated over |
+
+Jobs copy the inspection checklist when they are created, so editing the list
+never rewrites a job already under way.
 
 ## Ask-anything panel (optional)
 

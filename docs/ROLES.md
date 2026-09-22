@@ -7,6 +7,8 @@
 | Owner | Shop owner | Full access, including user management |
 | Manager | Workshop manager | Full operations and financials, no user management |
 | Advisor | Service advisor, front desk | Customers, quotes and payments. Sees selling prices but not cost or profit |
+
+Only the **owner** can manage users, rename the workshop and change sign-in policy (`staff`). Owners and **managers** share everything else that configures the shop (`config`).
 | Technician | Mechanic | Inspection and repair on their own jobs only, with no prices |
 
 ## Permission flags
@@ -23,7 +25,7 @@ Each role maps to a set of flags in the `PERMS` object in `index.html`.
 | `all` | See every order and customer | ✓ | ✓ | ✓ | – |
 | `edit` | Edit quotes, discounts, follow-ups | ✓ | ✓ | ✓ | – |
 | `checkin` | Check a vehicle in and link it to a customer | ✓ | ✓ | ✓ | ✓ |
-| `checklist` | Edit the inspection checklist | ✓ | ✓ | – | – |
+| `config` | Edit the shop's lists and timings in Settings | ✓ | ✓ | – | – |
 | `additems` | Add parts and work to a job's quote | ✓ | ✓ | ✓ | ✓ |
 | `pay` | Take payment | ✓ | ✓ | ✓ | – |
 
@@ -31,6 +33,7 @@ Each role maps to a set of flags in the `PERMS` object in `index.html`.
 
 - **Technicians** only see orders where they are the assigned technician, and only customers who have one of those orders. Opening any other order or customer is refused, even from a link.
 - **Technicians can check a vehicle in** (`checkin`), picking an existing customer or registering a new one. The job is assigned to them by default — otherwise it would disappear from their list the moment it was saved — and an advisor is recorded as the advisor of record. Check-in is the only write they have outside their own jobs' inspection and notes; it grants nothing else.
+- **The inspection checklist, payment methods, part categories, stock adjustment reasons and customer tiers are all editable** by an owner or manager in Settings → Lists. Jobs copy the checklist at check-in, so editing it never rewrites a job already under way.
 - **Any role on a job can edit its details** — technician, mileage and complaint — while it is open. A technician handing a job to someone else loses sight of it, so the app says so before and after the change. Editing details grants nothing else: prices, discounts and payment stay behind their own flags.
 - **Technicians can add to a quote but never price it.** A part they pick up carries the price list's price and cost without showing either. Work they describe is saved unpriced and flagged, an advisor sets the price, and the quote cannot be sent while anything is still unpriced. They can delete only their own unapproved lines.
 - **The quotation document opens for everyone on the job**, but a technician gets it as a job sheet: the findings, the work and the quantities, with the price columns and totals left out of the document rather than hidden in it.

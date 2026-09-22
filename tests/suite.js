@@ -26,6 +26,7 @@ function app(storage,opts={}){
     kpi(label){const k=A.$$('#v-reports .kpi').find(e=>e.querySelector('.label').textContent.trim()===label);return k?k.querySelector('.value').textContent.trim():null;},
     num(s){return Number(String(s==null?'':s).replace(/[^0-9.-]/g,''));},
     range(r){A.click(`[data-action="report-range"][data-r="${r}"]`);},
+    setTab(t){A.go('settings');A.click(`[data-action="set-tab"][data-t="${t}"]`);},
     total(o){let s=0,c=0;o.items.forEach(i=>{s+=i.qty*i.price;c+=i.qty*i.cost;});const t=Math.max(0,s-(o.discount||0));return{total:t,cost:c,profit:t-c};},
     paidBetween(from,to){return A.db().orders.filter(o=>o.stage==='completed'&&o.payment&&new Date(o.payment.paidAt).getTime()>=from&&new Date(o.payment.paidAt).getTime()<to);},
     authed(){return d.documentElement.dataset.authed==='1';},
@@ -36,7 +37,7 @@ function app(storage,opts={}){
     go(v,f){A.click(`[data-action="goto"][data-view="${v}"]`+(f?`[data-filter="${f}"]`:''));},
     openOrder(id){A.go('orders');const f=A.$('[data-action="order-filter"][data-f="all"]');if(f)A.click(f);A.click(`[data-action="open-order"][data-id="${id}"]`);},
     tab(t){A.click(`[data-action="order-tab"][data-tab="${t}"]`);},
-    db(){return JSON.parse(w.localStorage.getItem('nexauto_demo_v6'));},
+    db(){return JSON.parse(w.localStorage.getItem('nexauto_demo_v7'));},
     part(sku){return A.db().inventory.find(p=>p.sku===sku);},
     order(id){return A.db().orders.find(o=>o.id===id);},
     checkAll(s='good'){A.$$(`[data-action="insp-set"][data-s="${s}"]`).forEach((_,i)=>A.click(A.$$(`[data-action="insp-set"][data-s="${s}"]`)[i]));},
@@ -168,9 +169,9 @@ T('No script errors',()=>a.errs.length===0);}
 S('8 Roles and permissions');
 {const a=app();
 const vis=el=>{let e=el;while(e&&e!==a.d.documentElement){const k=[...e.attributes].map(x=>x.name).find(n=>/^data-(cost|price|revenue|purchase|staff|edit|personal)$/.test(n));if(k){const perm=k.slice(5);const root=a.d.documentElement.dataset;const map={cost:'canCost',price:'canPrice',revenue:'canRevenue',purchase:'canPurchase',staff:'canStaff',edit:'canEdit'};if(perm==='personal'){if(root.canRevenue==='1')return false;}else if(root[map[perm]]==='0')return false;}e=e.parentElement;}return true;};
-T('Owner sees revenue, cost, add user',()=>{a.go('dashboard');const r=vis(a.$('[data-revenue]'));a.go('settings');return r&&vis(a.$('[data-action="new-staff"]'));});
+T('Owner sees revenue, cost, add user',()=>{a.go('dashboard');const r=vis(a.$('[data-revenue]'));a.setTab('users');return r&&vis(a.$('[data-action="new-staff"]'));});
 a.signIn('s2');
-T('Manager sees profit but cannot manage users',()=>{a.go('dashboard');const r=vis(a.$('[data-revenue]'));a.go('settings');return r&&!vis(a.$('[data-action="new-staff"]'));});
+T('Manager sees profit but cannot manage users',()=>{a.go('dashboard');const r=vis(a.$('[data-revenue]'));a.setTab('users');return r&&!vis(a.$('[data-action="new-staff"]'));});
 a.signIn('s3');
 T('Advisor: no revenue/profit on dashboard',()=>{a.go('dashboard');return !vis(a.$('.kpi[data-revenue]'))&&vis(a.$('.kpi[data-personal]'));});
 T('Advisor: sees selling price, not cost',()=>{a.openOrder('WO-1043');a.tab('items');const pr=a.$('#panelBody [data-price]'),co=a.$('#panelBody [data-cost]');return vis(pr)&&!vis(co);});
@@ -192,18 +193,18 @@ T('No script errors',()=>a.errs.length===0);}
 
 // ============ 9. USERS ============
 S('9 User management');
-{const a=app();a.go('settings');
+{const a=app();a.setTab('users');
 T('Add user',()=>{a.click('[data-action="new-staff"]');a.F('name').value='Siti';a.F('role').value='technician';a.F('username').value='siti.a';a.F('password').value='siti12345';a.submit();return a.db().staff.some(s=>s.name==='Siti');});
 T('Duplicate name rejected',()=>{a.click('[data-action="new-staff"]');a.F('name').value='siti';a.F('username').value='siti.b';a.F('password').value='siti12345';a.submit();const ok=a.modalOpen()&&a.err().includes('already exists');a.click('[data-action="close-modal"]');return ok;});
 T('New user appears in the users list',()=>a.$('#v-settings').textContent.includes('siti.a'));
 T('New technician appears in check-in technician list',()=>{a.click('#v-settings');a.go('orders');a.click('#v-orders [data-action="new-order"]');const ok=[...a.F('tech').options].some(o=>o.textContent==='Siti');a.click('[data-action="close-modal"]');return ok;});
-T('Change role takes effect',()=>{a.go('settings');const sid=a.db().staff.find(s=>s.name==='Siti').id;a.click(`[data-action="edit-staff"][data-id="${sid}"]`);a.F('role').value='advisor';a.submit();return a.db().staff.find(s=>s.name==='Siti').role==='advisor';});
+T('Change role takes effect',()=>{a.setTab('users');const sid=a.db().staff.find(s=>s.name==='Siti').id;a.click(`[data-action="edit-staff"][data-id="${sid}"]`);a.F('role').value='advisor';a.submit();return a.db().staff.find(s=>s.name==='Siti').role==='advisor';});
 T('Cannot demote the last owner',()=>{a.click('[data-action="edit-staff"][data-id="s1"]');a.F('role').value='manager';a.submit();const ok=a.modalOpen();a.click('[data-action="close-modal"]');return ok;});
 T('Cannot change a technician with open jobs to another role',()=>{a.click('[data-action="edit-staff"][data-id="s5"]');a.F('role').value='advisor';a.submit();const ok=a.modalOpen();a.click('[data-action="close-modal"]');return ok&&a.db().staff.find(s=>s.id==='s5').role==='technician';});
 T('Cannot deactivate a user with open jobs',()=>{a.click('[data-action="edit-staff"][data-id="s4"]');a.click('[data-action="remove-staff"]');return a.db().staff.find(s=>s.id==='s4').active===true;});
 T('Deactivate keeps history (name still shown on old jobs)',()=>{a.click('[data-action="close-modal"]');const sid=a.db().staff.find(s=>s.name==='Siti').id;a.click(`[data-action="edit-staff"][data-id="${sid}"]`);a.click('[data-action="remove-staff"]');const u=a.db().staff.find(s=>s.id===sid);return u&&u.active===false&&!a.$('#v-settings').textContent.includes('siti.a');});
-T('Cannot deactivate yourself',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Owner2';b.F('role').value='owner';b.F('username').value='owner2';b.F('password').value='owner12345';b.submit();b.click('[data-action="edit-staff"][data-id="s1"]');b.click('[data-action="remove-staff"]');return b.db().staff.find(s=>s.id==='s1').active===true&&b.toast().includes('yourself');});
-T('Signing in as a demoted user uses their new permissions',()=>{const b=app();b.go('settings');b.click('[data-action="edit-staff"][data-id="s2"]');b.F('role').value='advisor';b.submit();b.signIn('s2');return b.d.documentElement.dataset.canCost==='0';});
+T('Cannot deactivate yourself',()=>{const b=app();b.setTab('users');b.click('[data-action="new-staff"]');b.F('name').value='Owner2';b.F('role').value='owner';b.F('username').value='owner2';b.F('password').value='owner12345';b.submit();b.click('[data-action="edit-staff"][data-id="s1"]');b.click('[data-action="remove-staff"]');return b.db().staff.find(s=>s.id==='s1').active===true&&b.toast().includes('yourself');});
+T('Signing in as a demoted user uses their new permissions',()=>{const b=app();b.setTab('users');b.click('[data-action="edit-staff"][data-id="s2"]');b.F('role').value='advisor';b.submit();b.signIn('s2');return b.d.documentElement.dataset.canCost==='0';});
 T('No script errors',()=>a.errs.length===0);}
 
 // ============ 10. SETTINGS / PERSISTENCE ============
@@ -213,7 +214,7 @@ T('Theme colour applies',()=>{a.go('settings');a.click('[data-action="theme"][da
 T('Data survives a page reload',()=>{a.openOrder('WO-1047');a.click('[data-action="start-insp"]');const st=a.storage();const b=app(st);return b.order('WO-1047').stage==='pre-inspection'&&b.d.documentElement.style.getPropertyValue('--green')==='#1D5FD1';});
 T('Signed-in user survives reload',()=>{a.signIn('s3');const b=app(a.storage());return b.authed()&&b.$('#userName').textContent==='Priya Nair';});
 T('Order counter survives reload (no duplicate WO numbers)',()=>{const b=app(a.storage());b.signIn('s1');b.click('#v-dashboard [data-action="new-order"]');b.set('customer','c6');b.F('mileage').value='50000';b.submit();const ids=b.db().orders.map(o=>o.id);return new Set(ids).size===ids.length;});
-T('Reset restores demo data',()=>{a.go('settings');a.signIn('s1');a.go('settings');a.click('[data-action="reset"]');return a.order('WO-1047').stage==='reception'&&!a.d.documentElement.style.getPropertyValue('--green');});
+T('Reset restores demo data',()=>{a.setTab('general');a.signIn('s1');a.setTab('general');a.click('[data-action="reset"]');return a.order('WO-1047').stage==='reception'&&!a.d.documentElement.style.getPropertyValue('--green');});
 T('No script errors',()=>a.errs.length===0);}
 
 // ============ 11. LOGIN ============
@@ -263,24 +264,24 @@ T('An expired session forces a new sign-in',()=>{const b=app(null,{session:sessi
 T('A session just inside the window still works',()=>{const b=app(null,{session:session('s1',Date.now()-11*3600000)});return b.authed();});
 T('A tampered session (unknown user) forces a new sign-in',()=>{const b=app(null,{session:JSON.stringify({userId:'s999',at:Date.now()})});return !b.authed();});
 T('A corrupt session value forces a new sign-in',()=>{const b=app(null,{session:'not-json'});return !b.authed();});
-T('Changing role does not need a new sign-in but applies live',()=>{const b=app();b.go('settings');b.click('[data-action="edit-staff"][data-id="s1"]');b.F('name').value='Alex Tan';b.submit();return b.authed();});
+T('Changing role does not need a new sign-in but applies live',()=>{const b=app();b.setTab('users');b.click('[data-action="edit-staff"][data-id="s1"]');b.F('name').value='Alex Tan';b.submit();return b.authed();});
 T('No script errors',()=>{const b=app();b.signOut();return b.errs.length===0;});
 }
 
 // ============ 14. CREDENTIAL MANAGEMENT ============
 S('14 Credential management');
 {
-T('Owner can reset another user\'s password',()=>{const b=app();b.go('settings');b.click('[data-action="edit-staff"][data-id="s3"]');b.F('password').value='newpass123';b.submit();b.signOut();b.login('priya.nair','newpass123');return b.authed();});
-T('The old password stops working after a reset',()=>{const b=app();b.go('settings');b.click('[data-action="edit-staff"][data-id="s3"]');b.F('password').value='newpass123';b.submit();b.signOut();b.login('priya.nair','advisor123');return !b.authed();});
-T('Owner can change a username and it is used to sign in',()=>{const b=app();b.go('settings');b.click('[data-action="edit-staff"][data-id="s4"]');b.F('username').value='marcus.l';b.submit();b.signOut();b.login('marcus.l','tech123');return b.authed();});
-T('Duplicate username is rejected',()=>{const b=app();b.go('settings');b.click('[data-action="edit-staff"][data-id="s4"]');b.F('username').value='alex.tan';b.submit();const ok=b.modalOpen()&&b.err().includes('taken');b.click('[data-action="close-modal"]');return ok;});
-T('Invalid username format is rejected',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Bad User';b.F('username').value='a b!';b.F('password').value='goodpass1';b.submit();const ok=b.modalOpen()&&b.err().includes('Username must be');b.click('[data-action="close-modal"]');return ok;});
-T('Short password is rejected',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Short Pw';b.F('username').value='short.pw';b.F('password').value='12345';b.submit();const ok=b.modalOpen()&&b.err().includes('at least 6');b.click('[data-action="close-modal"]');return ok;});
-T('A new user can sign in with the credentials they were given',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Nurul Aina';b.F('role').value='advisor';b.F('username').value='nurul.aina';b.F('password').value='aina12345';b.submit();b.signOut();b.login('nurul.aina','aina12345');return b.authed()&&b.$('#userName').textContent==='Nurul Aina'&&b.d.documentElement.dataset.canCost==='0';});
-T('A deactivated user cannot sign in',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Temp Staff';b.F('role').value='advisor';b.F('username').value='temp.staff';b.F('password').value='temp12345';b.submit();const sid=b.db().staff.find(s=>s.name==='Temp Staff').id;b.click(`[data-action="edit-staff"][data-id="${sid}"]`);b.click('[data-action="remove-staff"]');b.signOut();b.login('temp.staff','temp12345');return !b.authed()&&b.loginErr().includes('Wrong username or password');});
-T('A deactivated user\'s existing session is rejected on reload',()=>{const b=app();b.go('settings');b.click('[data-action="new-staff"]');b.F('name').value='Gone Soon';b.F('role').value='advisor';b.F('username').value='gone.soon';b.F('password').value='gone12345';b.submit();const sid=b.db().staff.find(s=>s.name==='Gone Soon').id;b.click(`[data-action="edit-staff"][data-id="${sid}"]`);b.click('[data-action="remove-staff"]');const c=app(b.storage(),{session:session(sid)});return !c.authed();});
-T('Password reset clears an existing lockout',()=>{const b=app(null,{anon:true});for(let i=0;i<5;i++)b.login('priya.nair','bad'+i);b.login('alex.tan','owner123');b.go('settings');b.click('[data-action="edit-staff"][data-id="s3"]');b.F('password').value='fresh12345';b.submit();b.signOut();b.login('priya.nair','fresh12345');return b.authed();});
-T('Usernames are shown in the user list',()=>{const b=app();b.go('settings');const t=b.$('#v-settings').textContent;return t.includes('alex.tan')&&t.includes('marcus.lee');});
+T('Owner can reset another user\'s password',()=>{const b=app();b.setTab('users');b.click('[data-action="edit-staff"][data-id="s3"]');b.F('password').value='newpass123';b.submit();b.signOut();b.login('priya.nair','newpass123');return b.authed();});
+T('The old password stops working after a reset',()=>{const b=app();b.setTab('users');b.click('[data-action="edit-staff"][data-id="s3"]');b.F('password').value='newpass123';b.submit();b.signOut();b.login('priya.nair','advisor123');return !b.authed();});
+T('Owner can change a username and it is used to sign in',()=>{const b=app();b.setTab('users');b.click('[data-action="edit-staff"][data-id="s4"]');b.F('username').value='marcus.l';b.submit();b.signOut();b.login('marcus.l','tech123');return b.authed();});
+T('Duplicate username is rejected',()=>{const b=app();b.setTab('users');b.click('[data-action="edit-staff"][data-id="s4"]');b.F('username').value='alex.tan';b.submit();const ok=b.modalOpen()&&b.err().includes('taken');b.click('[data-action="close-modal"]');return ok;});
+T('Invalid username format is rejected',()=>{const b=app();b.setTab('users');b.click('[data-action="new-staff"]');b.F('name').value='Bad User';b.F('username').value='a b!';b.F('password').value='goodpass1';b.submit();const ok=b.modalOpen()&&b.err().includes('Username must be');b.click('[data-action="close-modal"]');return ok;});
+T('Short password is rejected',()=>{const b=app();b.setTab('users');b.click('[data-action="new-staff"]');b.F('name').value='Short Pw';b.F('username').value='short.pw';b.F('password').value='12345';b.submit();const ok=b.modalOpen()&&b.err().includes('at least 6');b.click('[data-action="close-modal"]');return ok;});
+T('A new user can sign in with the credentials they were given',()=>{const b=app();b.setTab('users');b.click('[data-action="new-staff"]');b.F('name').value='Nurul Aina';b.F('role').value='advisor';b.F('username').value='nurul.aina';b.F('password').value='aina12345';b.submit();b.signOut();b.login('nurul.aina','aina12345');return b.authed()&&b.$('#userName').textContent==='Nurul Aina'&&b.d.documentElement.dataset.canCost==='0';});
+T('A deactivated user cannot sign in',()=>{const b=app();b.setTab('users');b.click('[data-action="new-staff"]');b.F('name').value='Temp Staff';b.F('role').value='advisor';b.F('username').value='temp.staff';b.F('password').value='temp12345';b.submit();const sid=b.db().staff.find(s=>s.name==='Temp Staff').id;b.click(`[data-action="edit-staff"][data-id="${sid}"]`);b.click('[data-action="remove-staff"]');b.signOut();b.login('temp.staff','temp12345');return !b.authed()&&b.loginErr().includes('Wrong username or password');});
+T('A deactivated user\'s existing session is rejected on reload',()=>{const b=app();b.setTab('users');b.click('[data-action="new-staff"]');b.F('name').value='Gone Soon';b.F('role').value='advisor';b.F('username').value='gone.soon';b.F('password').value='gone12345';b.submit();const sid=b.db().staff.find(s=>s.name==='Gone Soon').id;b.click(`[data-action="edit-staff"][data-id="${sid}"]`);b.click('[data-action="remove-staff"]');const c=app(b.storage(),{session:session(sid)});return !c.authed();});
+T('Password reset clears an existing lockout',()=>{const b=app(null,{anon:true});for(let i=0;i<5;i++)b.login('priya.nair','bad'+i);b.login('alex.tan','owner123');b.setTab('users');b.click('[data-action="edit-staff"][data-id="s3"]');b.F('password').value='fresh12345';b.submit();b.signOut();b.login('priya.nair','fresh12345');return b.authed();});
+T('Usernames are shown in the user list',()=>{const b=app();b.setTab('users');const t=b.$('#v-settings').textContent;return t.includes('alex.tan')&&t.includes('marcus.lee');});
 T('No script errors',()=>{const b=app();b.go('settings');return b.errs.length===0;});
 }
 
@@ -482,26 +483,26 @@ T('Technicians do not see the reorder card',()=>{const b=app(null,{anon:true});b
 T('No script errors',()=>a.errs.length===0);}
 
 // ============ 26. INSPECTION CHECKLIST ADMIN ============
-S('26 Inspection checklist admin');
+S('26 Editable lists');
 {
-const list=b=>b.db().settings.inspection;
-T('Owners see the checklist manager',()=>{const b=app();b.go('settings');return b.d.documentElement.dataset.canChecklist==='1'&&!!b.$('[data-action="checklist-add"]');});
-T('Managers see it too',()=>{const b=app(null,{anon:true});b.login('joanne.lim','manager123');b.go('settings');return b.d.documentElement.dataset.canChecklist==='1';});
-T('Advisors and technicians do not',()=>{const roles=[['priya.nair','advisor123'],['marcus.lee','tech123']];return roles.every(([u,p])=>{const b=app(null,{anon:true});b.login(u,p);b.go('settings');return b.d.documentElement.dataset.canChecklist==='0';});});
+const list=b=>b.db().settings.lists.inspection;
+T('Owners see the list managers',()=>{const b=app();b.setTab('lists');return b.d.documentElement.dataset.canConfig==='1'&&!!b.$('[data-action="list-add"][data-k="inspection"]');});
+T('Managers see it too',()=>{const b=app(null,{anon:true});b.login('joanne.lim','manager123');b.go('settings');return b.d.documentElement.dataset.canConfig==='1';});
+T('Advisors and technicians do not',()=>{const roles=[['priya.nair','advisor123'],['marcus.lee','tech123']];return roles.every(([u,p])=>{const b=app(null,{anon:true});b.login(u,p);b.go('settings');return b.d.documentElement.dataset.canConfig==='0';});});
 T('The default list has the ten original points',()=>{const b=app();return list(b).length===10&&list(b)[0]==='Engine oil level and condition';});
-T('An item can be added',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-add"]');b.F('name').value='Handbrake travel';b.submit();return list(b).length===11&&list(b)[10]==='Handbrake travel';});
-T('A duplicate item is rejected',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-add"]');b.F('name').value='battery health';b.submit();const ok=b.modalOpen()&&b.err().includes('already on the list');b.click('[data-action="close-modal"]');return ok&&list(b).length===10;});
-T('A too-short name is rejected',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-add"]');b.F('name').value='ab';b.submit();const ok=b.modalOpen()&&b.err().includes('at least 3');b.click('[data-action="close-modal"]');return ok;});
-T('An item can be renamed',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-rename"][data-i="3"]');b.F('name').value='Battery and charging';b.submit();return list(b)[3]==='Battery and charging';});
-T('An item can be moved up',()=>{const b=app();b.go('settings');const second=list(b)[1];b.click('[data-action="checklist-move"][data-i="1"][data-d="-1"]');return list(b)[0]===second;});
-T('An item can be moved down',()=>{const b=app();b.go('settings');const first=list(b)[0];b.click('[data-action="checklist-move"][data-i="0"][data-d="1"]');return list(b)[1]===first;});
-T('An item can be removed',()=>{const b=app();b.go('settings');const gone=list(b)[9];b.click('[data-action="checklist-remove"][data-i="9"]');return list(b).length===9&&!list(b).includes(gone);});
-T('The list cannot drop below three items',()=>{const b=app();b.go('settings');for(let i=0;i<12;i++){const btn=b.$('[data-action="checklist-remove"]');if(btn)b.click(btn);}return list(b).length===3&&b.toast().includes('at least 3');});
-T('New jobs use the edited list',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-add"]');b.F('name').value='Handbrake travel';b.submit();b.click('#v-settings');b.go('orders');b.click('#v-orders [data-action="new-order"]');b.set('customer','c6');b.F('mileage').value='52000';b.submit();const o=b.db().orders.find(x=>x.customerId==='c6'&&x.stage==='reception');return o.inspection.length===11&&o.inspection[10].name==='Handbrake travel';});
-T('Jobs already open keep the list they started with',()=>{const b=app();const before=b.order('WO-1047').inspection.length;b.go('settings');b.click('[data-action="checklist-add"]');b.F('name').value='Handbrake travel';b.submit();return b.order('WO-1047').inspection.length===before;});
-T('The inspection tab counts that job\'s own list',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-remove"][data-i="9"]');b.openOrder('WO-1047');return b.$('[data-action="order-tab"][data-tab="inspection"]').textContent.includes('0/10');});
-T('Restore default brings the ten points back',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-remove"][data-i="0"]');b.click('[data-action="checklist-reset"]');return list(b).length===10&&list(b)[0]==='Engine oil level and condition';});
-T('The edited list survives a reload',()=>{const b=app();b.go('settings');b.click('[data-action="checklist-add"]');b.F('name').value='Handbrake travel';b.submit();const c=app(b.storage());return list(c).includes('Handbrake travel');});
+T('An item can be added',()=>{const b=app();b.setTab('lists');b.click('[data-action="list-add"][data-k="inspection"]');b.F('name').value='Handbrake travel';b.submit();return list(b).length===11&&list(b)[10]==='Handbrake travel';});
+T('A duplicate item is rejected',()=>{const b=app();b.setTab('lists');b.click('[data-action="list-add"][data-k="inspection"]');b.F('name').value='battery health';b.submit();const ok=b.modalOpen()&&b.err().includes('already on the list');b.click('[data-action="close-modal"]');return ok&&list(b).length===10;});
+T('A too-short name is rejected',()=>{const b=app();b.setTab('lists');b.click('[data-action="list-add"][data-k="inspection"]');b.F('name').value='a';b.submit();const ok=b.modalOpen()&&b.err().includes('at least 2');b.click('[data-action="close-modal"]');return ok;});
+T('An item can be renamed',()=>{const b=app();b.setTab('lists');b.click('[data-action="list-rename"][data-k="inspection"][data-i="3"]');b.F('name').value='Battery and charging';b.submit();return list(b)[3]==='Battery and charging';});
+T('An item can be moved up',()=>{const b=app();b.setTab('lists');const second=list(b)[1];b.click('[data-action="list-move"][data-k="inspection"][data-i="1"][data-d="-1"]');return list(b)[0]===second;});
+T('An item can be moved down',()=>{const b=app();b.setTab('lists');const first=list(b)[0];b.click('[data-action="list-move"][data-k="inspection"][data-i="0"][data-d="1"]');return list(b)[1]===first;});
+T('An item can be removed',()=>{const b=app();b.setTab('lists');const gone=list(b)[9];b.click('[data-action="list-remove"][data-k="inspection"][data-i="9"]');return list(b).length===9&&!list(b).includes(gone);});
+T('The list cannot drop below three items',()=>{const b=app();b.setTab('lists');for(let i=0;i<12;i++){const btn=b.$('[data-action="list-remove"][data-k="inspection"]');if(btn)b.click(btn);}return list(b).length===3&&b.toast().includes('at least 3');});
+T('New jobs use the edited list',()=>{const b=app();b.setTab('lists');b.click('[data-action="list-add"][data-k="inspection"]');b.F('name').value='Handbrake travel';b.submit();b.click('#v-settings');b.go('orders');b.click('#v-orders [data-action="new-order"]');b.set('customer','c6');b.F('mileage').value='52000';b.submit();const o=b.db().orders.find(x=>x.customerId==='c6'&&x.stage==='reception');return o.inspection.length===11&&o.inspection[10].name==='Handbrake travel';});
+T('Jobs already open keep the list they started with',()=>{const b=app();const before=b.order('WO-1047').inspection.length;b.setTab('lists');b.click('[data-action="list-add"][data-k="inspection"]');b.F('name').value='Handbrake travel';b.submit();return b.order('WO-1047').inspection.length===before;});
+T('The inspection tab counts that job\'s own list',()=>{const b=app();b.setTab('lists');b.click('[data-action="list-remove"][data-k="inspection"][data-i="9"]');b.openOrder('WO-1047');return b.$('[data-action="order-tab"][data-tab="inspection"]').textContent.includes('0/10');});
+T('Restore default brings the ten points back',()=>{const b=app();b.setTab('lists');b.click('[data-action="list-remove"][data-k="inspection"][data-i="0"]');b.click('[data-action="list-reset"][data-k="inspection"]');return list(b).length===10&&list(b)[0]==='Engine oil level and condition';});
+T('The edited list survives a reload',()=>{const b=app();b.setTab('lists');b.click('[data-action="list-add"][data-k="inspection"]');b.F('name').value='Handbrake travel';b.submit();const c=app(b.storage());return list(c).includes('Handbrake travel');});
 T('No script errors',()=>{const b=app();b.go('settings');return b.errs.length===0;});
 }
 
@@ -570,7 +571,7 @@ T('The new name is there before anyone signs in',()=>{const b=app();b.go('settin
 T('A blank or one-character name is rejected',()=>{const b=app();b.go('settings');b.click('[data-action="app-name"]');b.F('name').value='X';b.submit();const ok=b.modalOpen()&&b.err().includes('at least 2');b.click('[data-action="close-modal"]');return ok&&nameOf(b)==='NEXAUTO';});
 T('The name is escaped, not rendered as markup',()=>{const b=app();b.go('settings');b.click('[data-action="app-name"]');b.F('name').value='<b>Hack</b>';b.submit();return !b.$('#v-settings').querySelector('b b')&&b.$('#brandName').textContent==='<b>Hack</b>';});
 T('It survives a reload',()=>{const b=app();b.go('settings');b.click('[data-action="app-name"]');b.F('name').value='Ah Seng Motors';b.submit();const c=app(b.storage());return c.$('#brandName').textContent==='Ah Seng Motors';});
-T('Resetting the demo restores the default name',()=>{const b=app();b.go('settings');b.click('[data-action="app-name"]');b.F('name').value='Ah Seng Motors';b.submit();b.click('[data-action="reset"]');return b.$('#brandName').textContent==='NEXAUTO';});
+T('Resetting the demo restores the default name',()=>{const b=app();b.setTab('general');b.click('[data-action="app-name"]');b.F('name').value='Ah Seng Motors';b.submit();b.click('[data-action="reset"]');return b.$('#brandName').textContent==='NEXAUTO';});
 T('No script errors',()=>{const b=app();b.go('settings');return b.errs.length===0;});
 }
 
@@ -611,8 +612,35 @@ T('But it still lists the work and what was found',()=>{const b=app(null,{anon:t
 T('An advisor still gets the priced version',()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123');b.openOrder('WO-1043');b.tab('items');b.click('[data-action="preview-quote"]');return b.$('#docTitle').textContent==='Quotation preview'&&b.$('#docBody').textContent.includes('Total');});
 T('There is nothing to preview before the inspection is done',()=>{const b=adv();b.openOrder('WO-1047');b.tab('items');return !b.$('[data-action="preview-quote"]');});
 T('Closing the preview leaves the job open behind it',()=>{const b=adv();openPreview(b,'WO-1043');b.click('[data-action="close-doc"]');return !b.$('#docWrap').classList.contains('open')&&b.$('#panel').classList.contains('open');});
-T('The customer name is escaped, not rendered as markup',()=>{const b=adv();const o=b.order('WO-1043');const db=b.db();const c=db.customers.find(x=>x.id===o.customerId);b.w.localStorage.setItem('nexauto_demo_v6',JSON.stringify(Object.assign(db,{customers:db.customers.map(x=>x.id===c.id?Object.assign({},x,{name:'<img src=x>'}):x)})));const c2=app(b.storage(),{anon:true});c2.login('priya.nair','advisor123');openPreview(c2,'WO-1043');return !c2.$('#docBody').querySelector('img');});
+T('The customer name is escaped, not rendered as markup',()=>{const b=adv();const o=b.order('WO-1043');const db=b.db();const c=db.customers.find(x=>x.id===o.customerId);b.w.localStorage.setItem('nexauto_demo_v7',JSON.stringify(Object.assign(db,{customers:db.customers.map(x=>x.id===c.id?Object.assign({},x,{name:'<img src=x>'}):x)})));const c2=app(b.storage(),{anon:true});c2.login('priya.nair','advisor123');openPreview(c2,'WO-1043');return !c2.$('#docBody').querySelector('img');});
 T('No script errors',()=>{const b=adv();openPreview(b,'WO-1043');return b.errs.length===0;});
+}
+
+// ============ 33. SHOP-CONFIGURABLE SETTINGS ============
+S('33 Shop-configurable settings');
+{
+const addTo=(b,k,v)=>{b.setTab('lists');b.click(`[data-action="list-add"][data-k="${k}"]`);b.F('name').value=v;b.submit();};
+const setTiming=(b,gi,k,v)=>{b.setTab(gi===3?'users':'timing');b.click(`[data-action="timing-edit"][data-g="${gi}"]`);b.F(k).value=String(v);b.submit();};
+T('Every list has its own manager card',()=>{const b=app();b.setTab('lists');return ['inspection','payment','categories','adjustReasons','tiers'].every(k=>!!b.$(`[data-action="list-add"][data-k="${k}"]`));});
+T('Advisors cannot reach any of them',()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123');b.go('settings');return b.d.documentElement.dataset.canConfig==='0';});
+T('A new payment method shows up when taking payment',()=>{const b=app();addTo(b,'payment','GrabPay');b.openOrder('WO-1045');b.click('[data-action="take-payment"]');const ok=[...b.F('method').options].some(o=>o.value==='GrabPay');b.click('[data-action="close-modal"]');return ok;});
+T('A removed payment method disappears',()=>{const b=app();b.setTab('lists');b.click('[data-action="list-remove"][data-k="payment"][data-i="0"]');const gone=b.db().settings.lists.payment;b.openOrder('WO-1045');b.click('[data-action="take-payment"]');const opts=[...b.F('method').options].map(o=>o.value);b.click('[data-action="close-modal"]');return opts.length===gone.length;});
+T('A new part category is offered when adding a part',()=>{const b=app();addTo(b,'categories','Exhaust');b.go('inventory');b.click('[data-action="new-part"]');const ok=[...b.F('category').options].some(o=>o.value==='Exhaust');b.click('[data-action="close-modal"]');return ok;});
+T('A new stock adjustment reason is offered',()=>{const b=app();addTo(b,'adjustReasons','Warranty return');b.go('inventory');b.click('[data-action="adjust-stock"][data-sku="OIL-5W30"]');const ok=[...b.F('reason').options].some(o=>o.value==='Warranty return');b.click('[data-action="close-modal"]');return ok;});
+T('The first tier is what a new customer gets',()=>{const b=app();b.setTab('lists');b.click('[data-action="list-move"][data-k="tiers"][data-i="0"][data-d="1"]');const first=b.db().settings.lists.tiers[0];b.click('#v-dashboard [data-action="new-order"]');b.F('cname').value='Tier Test';b.F('cphone').value='9000 5555';b.F('plate').value='SGP 55 T';b.F('model').value='Honda Fit';b.F('mileage').value='1000';b.submit();return b.db().customers.find(c=>c.name==='Tier Test').tier===first;});
+
+T('Stalled-job thresholds are editable and take effect',()=>{const b=app();setTiming(b,1,'ageWarn',9);setTiming(b,1,'ageLate',10);b.go('insights');return b.$$('#v-insights [data-action="open-order"]').length===0;});
+T('Tightening them flags more jobs',()=>{const b=app();setTiming(b,1,'ageWarn',1);setTiming(b,1,'ageLate',2);b.go('insights');const tight=b.$$('#v-insights [data-action="open-order"]').length;setTiming(b,1,'ageWarn',5);b.go('insights');return tight>b.$$('#v-insights [data-action="open-order"]').length;});
+T('The reorder window is editable and changes the maths',()=>{const b=app();b.go('insights');const before=b.$$('#v-insights table tbody tr').length;setTiming(b,2,'stockCover',120);b.go('insights');return b.$$('#v-insights table tbody tr').length>=before&&b.db().settings.timings.stockCover===120;});
+T('The reorder note reflects the configured window',()=>{const b=app();setTiming(b,2,'stockLookback',30);b.go('insights');return b.$('#v-insights').textContent.includes('last 30 days');});
+T('Follow-up timing is editable and used on a declined quote',()=>{const b=app();setTiming(b,0,'followDeclined',3);b.openOrder('WO-1043');b.click('[data-action="decline-quote"]');const o=b.db().opportunities.find(x=>x.type==='declined-quote');const days=Math.round((new Date(o.dueAt)-Date.now())/86400000);return days===3;});
+T('Session length is editable and honoured',()=>{const b=app();setTiming(b,3,'sessionHours',2);const c=app(b.storage(),{session:session('s1',Date.now()-3*3600000)});return !c.authed();});
+T('Lockout attempts are editable',()=>{const b=app();setTiming(b,3,'maxAttempts',2);const c=app(b.storage(),{anon:true});c.login('alex.tan','bad1');c.login('alex.tan','bad2');return c.loginErr().includes('Too many failed attempts');});
+T('A value below one is rejected',()=>{const b=app();b.setTab('timing');b.click('[data-action="timing-edit"][data-g="1"]');b.F('ageWarn').value='0';b.submit();const ok=b.modalOpen()&&b.err().includes('at least 1');b.click('[data-action="close-modal"]');return ok;});
+T('Only the owner can change sign-in policy',()=>{const b=app(null,{anon:true});b.login('joanne.lim','manager123');b.go('settings');return b.d.documentElement.dataset.canConfig==='1'&&b.d.documentElement.dataset.canStaff==='0';});
+T('Settings survive a reload',()=>{const b=app();addTo(b,'payment','GrabPay');setTiming(b,2,'stockCover',60);const c=app(b.storage());return c.db().settings.lists.payment.includes('GrabPay')&&c.db().settings.timings.stockCover===60;});
+T('Resetting the demo restores every default',()=>{const b=app();addTo(b,'payment','GrabPay');setTiming(b,2,'stockCover',60);b.setTab('general');b.click('[data-action="reset"]');const st=b.db().settings;return !st.lists.payment.includes('GrabPay')&&st.timings.stockCover===undefined;});
+T('No script errors',()=>{const b=app();b.go('settings');return b.errs.length===0;});
 }
 
 // ============ REPORT ============

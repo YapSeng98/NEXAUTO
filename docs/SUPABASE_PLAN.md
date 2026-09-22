@@ -28,7 +28,7 @@ in one endpoint cannot leak the whole table.
 
 ## 2. Data model
 
-Nine tables, everything scoped by `shop_id` from day one (adding multi-branch
+Eleven tables, everything scoped by `shop_id` from day one (adding multi-branch
 later is a rewrite; adding it now is a column).
 
 ```sql
@@ -95,6 +95,7 @@ create table orders (
   mileage       integer not null,
   complaint     text,
   quote_status  text not null default 'draft',
+  stage_since   timestamptz not null default now(),
   discount_cents integer not null default 0 check (discount_cents >= 0),
   work_done     boolean not null default false,
   created_at    timestamptz not null default now(),
@@ -111,7 +112,28 @@ create table order_items (
   qty         integer not null check (qty > 0),
   price_cents integer not null,
   cost_cents  integer not null,          -- restricted column
-  approved    boolean not null default false
+  approved    boolean not null default false,
+  added_by    uuid references profiles(id),
+  needs_price boolean not null default false
+);
+
+-- The shared note thread on a job. Readable by anyone who can read the job.
+create table job_notes (
+  id       uuid primary key default gen_random_uuid(),
+  shop_id  uuid not null references shops(id),
+  order_id uuid not null references orders(id) on delete cascade,
+  author_id uuid not null references profiles(id),
+  body     text not null check (char_length(body) between 1 and 500),
+  at       timestamptz not null default now()
+);
+
+-- Everything a shop configures: lists, timings, name, brand colour.
+create table shop_settings (
+  shop_id  uuid primary key references shops(id) on delete cascade,
+  app_name text not null default 'NEXAUTO',
+  color    text,
+  lists    jsonb not null default '{}'::jsonb,
+  timings  jsonb not null default '{}'::jsonb
 );
 
 create table stock_movements (
@@ -140,6 +162,11 @@ create table audit_log (
 
 Plus `suppliers`, `purchase_orders`, `po_items`, `inspections`, `opportunities`
 on the same pattern — same `shop_id` column, same policy shape.
+
+Two constraints the demo enforces in JavaScript become database constraints here:
+a quote cannot be sent while any of its lines has `needs_price`, and an order's
+inspection is a snapshot of the checklist rather than a reference to it, so
+editing `shop_settings.lists` never rewrites history.
 
 **Money is integer cents.** Floats lose money at the third decimal and the loss
 compounds through discount → subtotal → margin.
@@ -361,9 +388,15 @@ and its record cannot come apart.
 
 ## 7. Migration phases
 
-**Phase 0 — do now, no backend needed.** Add SRI hashes to the Chart.js and
-fonts tags, add a CSP meta tag, gate the demo-credentials card behind a build
-flag (M2, M3, M4 in SECURITY.md). Hours, not days.
+**Phase 0 — do now, no backend needed.** Chart.js already carries an SRI hash
+(M3, done). Still outstanding: a CSP meta tag, vendoring the Google Fonts files,
+and gating the demo-credentials card behind a build flag (M2, M4 in
+SECURITY.md). Hours, not days.
+
+An Edge Function holding one Anthropic key also belongs here, replacing the
+bring-your-own-key AI panel (M5). The panel already builds its payload per role,
+so the function's job is to hold the key and re-apply that filtering server-side
+rather than trusting the client's version of it.
 
 **Phase 1 — schema and policies.** Create the project, run the migrations, seed
 one shop and five staff. Write the policy test suite *first*: for each of the

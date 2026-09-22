@@ -1,8 +1,9 @@
 # Security review
 
-Reviewed: the single-page demo (`index.html`) with browser storage and the login
-screen added in v0.5.0. Every finding below was checked against the running app,
-not assumed from reading the code.
+Reviewed: the single-page demo (`index.html`) as of v0.13.0 — browser storage,
+the sign-in screen, shared job notes, part photos, the quotation document, the
+optional AI panel and the shop-configurable settings. Every finding below was
+checked against the running app, not assumed from reading the code.
 
 **The one-line summary:** the app is well built for a demo and carefully written
 in the places that usually go wrong (output escaping, input validation, state
@@ -56,7 +57,7 @@ every signed-in user regardless of role.
 
 ### C2. The whole database is user-writable
 
-`localStorage["nexauto_demo_v6"]` holds orders, payments, stock, costs and the
+`localStorage["nexauto_demo_v7"]` holds orders, payments, stock, costs and the
 staff table. Confirmed readable and editable from the page context. A user can:
 
 - set their own `role` to `"owner"` and reload,
@@ -235,6 +236,22 @@ here they do not:
   every field.
 - **The limitations are documented, not hidden.** The README and the login screen
   both say permissions are browser-side.
+- **Everything user-written is escaped at render.** That now includes job notes,
+  the workshop name, the editable lists and every field on the quotation
+  document. Checks store `<img src=x onerror=...>` as a note, a workshop name and
+  a customer name, and assert no element is created in any of the three.
+- **The AI payload is filtered by role before it leaves.** A technician's request
+  carries only their own jobs and no money fields at all. That is the one place
+  in the app where a permission actually withholds data rather than hiding it.
+
+### One note on the configurable settings
+
+Sign-in policy (session length, lockout attempts and duration) is now editable by
+the owner. That does not weaken anything, because C3 already establishes the
+sign-in check is not a security control — a session is forgeable regardless of
+how long it claims to last. When the backend lands, these values move to the
+server and become real, and at that point the UI should stop offering to loosen
+them without a second factor.
 
 ---
 

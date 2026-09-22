@@ -248,7 +248,7 @@ html[data-can-purchase="0"] [data-purchase],
 html[data-can-staff="0"] [data-staff],
 html[data-can-edit="0"] [data-edit],
 html[data-can-checkin="0"] [data-checkin],
-html[data-can-checklist="0"] [data-checklist],
+html[data-can-config="0"] [data-config],
 html[data-can-revenue="1"] [data-personal]{display:none !important;}
 
 /* panels */
@@ -725,12 +725,48 @@ var STAGES = ["reception","pre-inspection","quotation","in-service","completed"]
 var STAGE_LABEL = {"reception":"Reception","pre-inspection":"Inspection","quotation":"Quotation","in-service":"In service","completed":"Completed","declined":"Declined"};
 var STAGE_BADGE = {"reception":"b-neutral","pre-inspection":"b-amber","quotation":"b-amber","in-service":"b-green","completed":"b-muted","declined":"b-red"};
 var DEFAULT_APP_NAME = "NEXAUTO";
+/* Shop-configurable lists. Anything here can be edited in Settings; the defaults
+   are what a fresh demo starts with and what "Restore default" puts back. */
+var DEFAULT_LISTS = {
+  inspection: null, // filled from DEFAULT_INSPECTION below
+  payment: ["Card", "Cash", "PayNow", "Bank transfer"],
+  categories: ["Fluids", "Filters", "Brakes", "Engine", "Electrical", "Suspension", "Tyres", "Accessories"],
+  adjustReasons: ["Stock count", "Damaged", "Returned", "Other"],
+  tiers: ["Standard", "Silver", "Gold"]
+};
+var LIST_DEFS = [
+  {key:"inspection", label:"Inspection checklist", min:3, unit:"point",
+   hint:"The points a technician works through on every vehicle. Changes apply to jobs checked in from now on \u2014 inspections already under way keep the list they started with.",
+   placeholder:"Handbrake travel"},
+  {key:"payment", label:"Payment methods", min:1, unit:"method",
+   hint:"What you can take payment by. Shown when closing a job.", placeholder:"GrabPay"},
+  {key:"categories", label:"Part categories", min:1, unit:"category",
+   hint:"How parts are grouped in the inventory.", placeholder:"Exhaust"},
+  {key:"adjustReasons", label:"Stock adjustment reasons", min:1, unit:"reason",
+   hint:"Offered when someone corrects a stock count, and recorded in the stock history.", placeholder:"Warranty return"},
+  {key:"tiers", label:"Customer tiers", min:1, unit:"tier",
+   hint:"How you grade customers. The first one is used for anybody new.", placeholder:"Fleet"}
+];
+var DEFAULT_TIMINGS = {
+  followDeclined:14, followFinding:30, followService:180, serviceKm:10000,
+  ageWarn:1, ageLate:3, stockLookback:90, stockCover:45,
+  sessionHours:12, maxAttempts:5, lockSeconds:60
+};
+function listOf(k){
+  var v = DB && DB.settings && DB.settings.lists && DB.settings.lists[k];
+  return (v && v.length) ? v : DEFAULT_LISTS[k];
+}
+function timing(k){
+  var t = DB && DB.settings && DB.settings.timings;
+  var v = t && t[k];
+  return (typeof v === "number" && !isNaN(v)) ? v : DEFAULT_TIMINGS[k];
+}
 var DEFAULT_INSPECTION = ["Engine oil level and condition","Brake pads and discs","Tyres and tread depth","Battery health","Lights and signals","Suspension and steering","Coolant level","Wipers and washer","Air-con performance","Underbody and leaks"];
 var PERMS = {
-  owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, pay:1, checkin:1, checklist:1, additems:1},
-  manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, checklist:1, additems:1},
-  advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, checklist:0, additems:1},
-  technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, pay:0, checkin:1, checklist:0, additems:1}
+  owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, pay:1, checkin:1, config:1, additems:1},
+  manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, config:1, additems:1},
+  advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, pay:1, checkin:1, config:0, additems:1},
+  technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, pay:0, checkin:1, config:0, additems:1}
 };
 var ROLE_LABEL = {owner:"Owner", manager:"Manager", advisor:"Service advisor", technician:"Technician"};
 var THEMES = [
@@ -783,9 +819,10 @@ function userByName(username){
 // The workshop's own list once an owner edits it; the shipped default while
 // seeding, so "reset demo data" really does restore the defaults.
 var seeding = false;
+DEFAULT_LISTS.inspection = DEFAULT_INSPECTION;
 function checklist(){
-  var c = !seeding && DB && DB.settings && DB.settings.inspection;
-  return c && c.length ? c : DEFAULT_INSPECTION;
+  if(seeding) return DEFAULT_INSPECTION;
+  return listOf("inspection");
 }
 function freshInspection(map){
   return checklist().map(function(n, i){ var s = map && map[i]; return {name:n, status: s ? s[0] : "unchecked", note: s ? (s[1]||"") : ""}; });
@@ -900,9 +937,10 @@ function seed(){
     {id:"m4", sku:"FLT-OIL01", qty:-1, type:"sale", ref:"WO-1042", reason:"", by:"s3", at:ago(150)}
   ]);
   seeding = false;
-  return {v:6, staff:staff, suppliers:suppliers, inventory:inventory, customers:customers, orders:orders,
+  return {v:7, staff:staff, suppliers:suppliers, inventory:inventory, customers:customers, orders:orders,
     purchaseOrders:purchaseOrders, opportunities:opportunities, movements:movements, nextWO:1048, nextPO:202,
-    settings:{color:null, inspection:DEFAULT_INSPECTION.slice(), appName:DEFAULT_APP_NAME}};
+    settings:{color:null, appName:DEFAULT_APP_NAME, timings:{},
+      lists:Object.keys(DEFAULT_LISTS).reduce(function(m, k){ m[k] = DEFAULT_LISTS[k].slice(); return m; }, {})}};
 }
 
 /* ---- six months of closed jobs, so the reports have something real to read ----
@@ -1014,15 +1052,13 @@ function buildHistory(now, baseCustomers, inventory, staff){
 /* ================= storage ================= */
 // Bump BOTH of these whenever the seed gains a field, or returning visitors keep
 // their old blob and silently miss the new data.
-var KEY = "nexauto_demo_v6";
+var KEY = "nexauto_demo_v7";
 var SESSION_KEY = "nexauto_session";
 var LOCKOUT_KEY = "nexauto_lockouts";
-var SESSION_HOURS = 12;
-var MAX_ATTEMPTS = 5;
-var LOCK_SECONDS = 60;
+
 var DB = null;
 try { DB = JSON.parse(localStorage.getItem(KEY)); } catch(e){ DB = null; }
-if(!DB || DB.v !== 6) DB = seed();
+if(!DB || DB.v !== 7) DB = seed();
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch(e){ toast("Browser storage is full \u2014 remove a part photo or reset the demo data.", true); } }
 
 /* ================= session ================= */
@@ -1034,7 +1070,7 @@ function readSession(){
   var s = null;
   try { s = JSON.parse(raw); } catch(e){ return null; }
   if(!s || !s.userId || !s.at) return null;
-  if(Date.now() - s.at > SESSION_HOURS * 3600000) return null;
+  if(Date.now() - s.at > timing("sessionHours") * 3600000) return null;
   var u = DB.staff.filter(function(x){ return x.id === s.userId; })[0];
   if(!u || u.active === false) return null;
   return s;
@@ -1061,9 +1097,9 @@ function lockStatus(username){
 function noteFailure(username){
   var key = normUsername(username), locks = readLocks(), l = locks[key] || {n:0, until:0};
   l.n = (l.n || 0) + 1;
-  if(l.n >= MAX_ATTEMPTS){ l.until = Date.now() + LOCK_SECONDS*1000; l.n = 0; }
+  if(l.n >= timing("maxAttempts")){ l.until = Date.now() + timing("lockSeconds")*1000; l.n = 0; }
   locks[key] = l; writeLocks(locks);
-  return l.until > Date.now() ? LOCK_SECONDS : MAX_ATTEMPTS - l.n;
+  return l.until > Date.now() ? timing("lockSeconds") : timing("maxAttempts") - l.n;
 }
 function clearFailures(username){
   var locks = readLocks(); delete locks[normUsername(username)]; writeLocks(locks);
@@ -1071,7 +1107,7 @@ function clearFailures(username){
 
 /* ================= state & lookups ================= */
 var ORDER_PAGE = 25;
-var state = {role:"owner", userId:null, poShowDone:false, view:"dashboard", orderFilter:"open", orderQuery:"", orderLimit:ORDER_PAGE, invTab:"parts", invQuery:"", custQuery:"", panel:null, orderTab:"overview", reportRange:"30d"};
+var state = {role:"owner", userId:null, poShowDone:false, setTab:"general", view:"dashboard", orderFilter:"open", orderQuery:"", orderLimit:ORDER_PAGE, invTab:"parts", invQuery:"", custQuery:"", panel:null, orderTab:"overview", reportRange:"30d"};
 
 function can(k){ return !!PERMS[state.role][k]; }
 function activeUsers(){ return DB.staff.filter(function(s){ return s.active !== false; }); }
@@ -1151,7 +1187,7 @@ function setRole(){
   var root = document.documentElement, p = PERMS[role];
   root.dataset.canCost = p.cost; root.dataset.canPrice = p.price; root.dataset.canRevenue = p.revenue;
   root.dataset.canPurchase = p.purchase; root.dataset.canStaff = p.staff; root.dataset.canEdit = p.edit;
-  root.dataset.canCheckin = p.checkin; root.dataset.canChecklist = p.checklist;
+  root.dataset.canCheckin = p.checkin; root.dataset.canConfig = p.config;
   var u = me();
   $("#sideAvatar").textContent = initials(u.name); $("#sideName").textContent = u.name; $("#sideRole").textContent = ROLE_LABEL[role];
   $("#topAvatar").textContent = initials(u.name); $("#userName").textContent = u.name; $("#userRole").textContent = ROLE_LABEL[role];
@@ -1203,8 +1239,8 @@ function attemptLogin(username, password, remember){
   // Same message whether the user exists or the password is wrong: do not leak which.
   if(!u || u.active === false || !checkPassword(u, password)){
     var left = noteFailure(name);
-    return left === LOCK_SECONDS
-      ? "Too many failed attempts. Try again in " + LOCK_SECONDS + "s."
+    return left === timing("lockSeconds")
+      ? "Too many failed attempts. Try again in " + timing("lockSeconds") + "s."
       : "Wrong username or password. " + left + " attempt" + (left === 1 ? "" : "s") + " left.";
   }
   clearFailures(name);
@@ -1246,10 +1282,10 @@ function applyTheme(c){
    Everything here is computed from the workshop's own records. No model, no
    network, no key — the AI panel further down is a separate, optional layer. */
 var AGE_RULES = {
-  "reception":      {warn:1, late:2, what:function(){ return "Checked in, inspection not started"; }},
-  "pre-inspection": {warn:1, late:2, what:function(o){ var ic = inspCounts(o); return "Inspection started, " + ic.unchecked + " item" + (ic.unchecked === 1 ? "" : "s") + " still unchecked"; }},
-  "quotation":      {warn:1, late:3, what:function(o){ return o.quoteStatus === "sent" ? "Quote sent, waiting on the customer" : o.items.length ? "Quote built but never sent" : "No quote started yet"; }},
-  "in-service":     {warn:2, late:4, what:function(o){ return o.workDone ? "Work finished, payment not taken" : "In service, work not marked done"; }}
+  "reception":      function(){ return "Checked in, inspection not started"; },
+  "pre-inspection": function(o){ var ic = inspCounts(o); return "Inspection started, " + ic.unchecked + " item" + (ic.unchecked === 1 ? "" : "s") + " still unchecked"; },
+  "quotation":      function(o){ return o.quoteStatus === "sent" ? "Quote sent, waiting on the customer" : o.items.length ? "Quote built but never sent" : "No quote started yet"; },
+  "in-service":     function(o){ return o.workDone ? "Work finished, payment not taken" : "In service, work not marked done"; }
 };
 function daysSince(iso){ return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)); }
 function stageStart(o){
@@ -1258,9 +1294,10 @@ function stageStart(o){
 }
 function jobStatus(o){
   var rule = AGE_RULES[o.stage], sd = daysSince(stageStart(o));
+  var warn = timing("ageWarn"), late = Math.max(warn, timing("ageLate"));
   return {order:o, days:daysSince(o.createdAt), stageDays:sd,
-    level: !rule ? "ok" : sd >= rule.late ? "late" : sd >= rule.warn ? "warn" : "ok",
-    reason: rule ? rule.what(o) : ""};
+    level: !rule ? "ok" : sd >= late ? "late" : sd >= warn ? "warn" : "ok",
+    reason: rule ? rule(o) : ""};
 }
 function attentionList(){
   return visibleOrders().filter(isOpenJob).map(jobStatus)
@@ -1269,19 +1306,19 @@ function attentionList(){
 }
 function ageLabel(d){ return d === 0 ? "today" : d === 1 ? "1 day" : d + " days"; }
 
-var REORDER_LOOKBACK = 90, REORDER_COVER = 45;
+
 function usagePerDay(sku){
-  var from = Date.now() - REORDER_LOOKBACK * 86400000, used = 0;
+  var lookback = timing("stockLookback"), from = Date.now() - lookback * 86400000, used = 0;
   DB.movements.forEach(function(m){
     if(m.sku === sku && m.type === "sale" && new Date(m.at).getTime() >= from) used += Math.abs(m.qty);
   });
-  return used / REORDER_LOOKBACK;
+  return used / lookback;
 }
 function reorderPlan(){
   return DB.inventory.map(function(p){
     var perDay = usagePerDay(p.sku), a = avail(p);
     var cover = perDay > 0 ? Math.round(a / perDay) : null;
-    var target = Math.max(p.reorder + 1, Math.ceil(perDay * REORDER_COVER));
+    var target = Math.max(p.reorder + 1, Math.ceil(perDay * timing("stockCover")));
     var below = a <= p.reorder, thin = cover !== null && cover < 21;
     return {part:p, avail:a, perMonth:Math.round(perDay * 30), cover:cover,
       qty:Math.max(1, target - a), urgent: below || (cover !== null && cover < 10),
@@ -1643,7 +1680,7 @@ function doApproveExtra(o){
 }
 function doDecline(o){
   o.stage = "declined"; o.stageSince = nowISO(); o.quoteStatus = "rejected"; log(o, "Customer declined quotation");
-  DB.opportunities.push({id:uid("o"), customerId:o.customerId, type:"declined-quote", text:"Declined quote " + money(totals(o).total) + " on " + o.id, dueAt:new Date(Date.now()+14*86400000).toISOString(), sourceOrderId:o.id, status:"open", createdAt:nowISO()});
+  DB.opportunities.push({id:uid("o"), customerId:o.customerId, type:"declined-quote", text:"Declined quote " + money(totals(o).total) + " on " + o.id, dueAt:new Date(Date.now()+timing("followDeclined")*86400000).toISOString(), sourceOrderId:o.id, status:"open", createdAt:nowISO()});
   toast("Marked declined. Follow-up added."); state.orderTab = "overview"; refresh();
 }
 function doWorkDone(o){ o.workDone = true; log(o, "Work marked done by " + me().name); toast("Work marked done"); refresh(); }
@@ -1851,7 +1888,7 @@ function reorderCardHTML(){
   var html = '<div class="card" data-purchase><div class="section-head"><h2>Stock to reorder</h2>' +
     (plan.length ? '<button class="btn primary sm" data-action="new-po" data-suggest="1">' + icon("cart") + 'Draft purchase order</button>' : '<span class="badge b-green">Nothing due</span>') + '</div>';
   if(!plan.length) return html + '<div class="empty">Every part has enough cover for the next few weeks.</div></div>';
-  html += '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Based on what each part actually sold over the last ' + REORDER_LOOKBACK + ' days, topped up to about ' + REORDER_COVER + ' days of cover.</p>';
+  html += '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Based on what each part actually sold over the last ' + timing("stockLookback") + ' days, topped up to about ' + timing("stockCover") + ' days of cover.</p>';
   html += '<div class="table-wrap"><table><thead><tr><th>Part</th><th>Available</th><th>Used / month</th><th>Cover</th><th>Suggested order</th><th>Why</th></tr></thead><tbody>' +
     plan.map(function(r){
       return '<tr data-sku="' + esc(r.part.sku) + '"><td><div style="display:flex;align-items:center;gap:10px">' + partThumb(r.part) + '<span><b style="font-weight:600">' + esc(r.part.name) + '</b><br><span style="font-size:12px;color:var(--text-muted)">' + esc(r.part.sku) + '</span></span></div></td>' +
@@ -2014,51 +2051,121 @@ function askClaude(question){
 }
 
 /* ================= settings ================= */
+var SET_TABS = [["general","General"],["users","Users"],["lists","Lists"],["timing","Timing"]];
 function renderSettings(){
   var cur = DB.settings.color || THEMES[0].c;
-  var html = '<div class="card"><div class="section-head"><h2>App colour</h2></div><p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Pick the brand colour for buttons, highlights and charts. It applies across the app instantly.</p>' +
+  var tab = state.setTab || "general";
+  var html = '<div class="chips">' + SET_TABS.map(function(t){
+    return '<button class="chip' + (tab === t[0] ? ' active' : '') + '" data-action="set-tab" data-t="' + t[0] + '">' + t[1] + '</button>';
+  }).join("") + '</div>';
+  var general = '<div class="card"><div class="section-head"><h2>App colour</h2></div><p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Pick the brand colour for buttons, highlights and charts. It applies across the app instantly.</p>' +
     '<div class="swatches">' + THEMES.map(function(t){ return '<button class="swatch' + (cur.toLowerCase() === t.c.toLowerCase() ? ' active' : '') + '" style="background:' + t.c + '" data-action="theme" data-c="' + t.c + '" aria-label="' + t.name + '" title="' + t.name + '"></button>'; }).join("") +
     '<label class="sr-only" for="customColor">Custom colour</label><input type="color" id="customColor" value="' + cur + '" title="Custom colour"></div></div>';
-  html += '<div class="card"><div class="section-head"><h2>Users</h2><button class="btn primary" data-action="new-staff" data-staff>' + icon("plus") + 'Add user</button></div>' +
+  var users = '<div class="card"><div class="section-head"><h2>Users</h2><button class="btn primary" data-action="new-staff" data-staff>' + icon("plus") + 'Add user</button></div>' +
     activeUsers().map(function(s){ return '<div class="line"><div class="l" style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:30px;height:30px;flex-basis:30px;font-size:11px">' + initials(s.name) + '</span><span>' + esc(s.name) + (s.id === state.userId ? ' <span class="badge b-green">You</span>' : '') + '<span style="display:block;font-size:12px;color:var(--text-muted)">' + esc(s.username || "—") + '</span></span></div><div class="r"><span class="badge ' + (s.role === "technician" ? "b-neutral" : "b-green") + '">' + ROLE_LABEL[s.role] + '</span><button class="btn sm" data-action="edit-staff" data-id="' + s.id + '" data-staff>Edit</button></div></div>'; }).join("") +
     '<p class="sub" style="color:var(--text-muted);font-size:12px;margin:12px 0 0">Each user signs in with their own username and password. Owners see everything and manage users. Managers see profit but cannot manage users. Advisors see prices but not cost or profit. Technicians only see their own jobs, with no prices.</p></div>';
-  html += '<div class="card" data-staff><div class="section-head"><h2>Workshop name</h2><button class="btn sm" data-action="app-name">' + icon("pencil") + 'Rename</button></div>' +
+  general += '<div class="card" data-staff><div class="section-head"><h2>Workshop name</h2><button class="btn sm" data-action="app-name">' + icon("pencil") + 'Rename</button></div>' +
     '<p class="sub" style="color:var(--text-secondary);margin:0;font-size:13px">Currently <b style="color:var(--text-primary)">' + esc(appName()) + '</b> \u2014 shown on the sign-in page, in the sidebar and in the browser tab.</p></div>';
-  html += '<div class="card" data-checklist><div class="section-head"><h2>Inspection checklist</h2>' +
-    '<span style="display:flex;gap:8px"><button class="btn sm" data-action="checklist-reset">Restore default</button>' +
-    '<button class="btn primary sm" data-action="checklist-add">' + icon("plus") + 'Add item</button></span></div>' +
-    '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">The points a technician works through on every vehicle. Changes apply to jobs checked in from now on — inspections already under way keep the list they started with.</p>' +
-    checklist().map(function(name, i){
-      return '<div class="line"><div class="l"><span class="ck-no">' + (i + 1) + '</span>' + esc(name) + '</div>' +
-        '<div class="r"><button class="icon-btn" data-action="checklist-move" data-i="' + i + '" data-d="-1" aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>' + icon("up") + '</button>' +
-        '<button class="icon-btn" data-action="checklist-move" data-i="' + i + '" data-d="1" aria-label="Move down"' + (i === checklist().length - 1 ? ' disabled' : '') + '>' + icon("down") + '</button>' +
-        '<button class="btn sm" data-action="checklist-rename" data-i="' + i + '">Rename</button>' +
-        '<button class="icon-btn" data-action="checklist-remove" data-i="' + i + '" aria-label="Remove">' + icon("trash") + '</button></div></div>';
-    }).join("") +
-    '<p class="img-note" style="margin-top:10px">' + checklist().length + ' point' + (checklist().length === 1 ? '' : 's') + ' · at least 3 are required.</p></div>';
-  html += '<div class="card"><div class="section-head"><h2>Demo data</h2></div><p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Your changes are saved in this browser. Reset to start the demo fresh.</p><button class="btn danger" data-action="reset">Reset demo data</button></div>';
+  general += '<div class="card"><div class="section-head"><h2>Demo data</h2></div><p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Your changes are saved in this browser. Reset to start the demo fresh.</p><button class="btn danger" data-action="reset">Reset demo data</button></div>';
+  users += timingCardsHTML("staff");
+  html += tab === "general" ? general
+    : tab === "users" ? users
+    : tab === "lists" ? LIST_DEFS.map(listCardHTML).join("")
+    : timingCardsHTML("config");
   $("#v-settings").innerHTML = html;
 }
 
-/* ---- inspection checklist admin ---- */
-function setChecklist(list){ DB.settings.inspection = list; save(); renderSettings(); }
-function checklistDupe(name, exceptIdx){
-  var n = name.trim().toLowerCase();
-  return checklist().some(function(x, i){ return i !== exceptIdx && x.trim().toLowerCase() === n; });
+/* ---- editable lists and timings ---- */
+function listDef(k){ return LIST_DEFS.filter(function(d){ return d.key === k; })[0]; }
+function setList(k, list){
+  DB.settings.lists = DB.settings.lists || {};
+  DB.settings.lists[k] = list;
+  save(); renderSettings();
 }
-function modalChecklistItem(idx){
-  var editing = typeof idx === "number", current = editing ? checklist()[idx] : "";
-  openModal(editing ? "Rename checklist item" : "Add checklist item",
-    field("What the technician checks", '<input type="text" name="name" required maxlength="60" value="' + esc(current) + '" placeholder="Handbrake travel">'),
-    editing ? "Save" : "Add item", function(fd){
+function listDupe(k, name, exceptIdx){
+  var n = name.trim().toLowerCase();
+  return listOf(k).some(function(x, i){ return i !== exceptIdx && x.trim().toLowerCase() === n; });
+}
+function listCardHTML(def){
+  var list = listOf(def.key);
+  return '<div class="card" data-config><div class="section-head"><h2>' + esc(def.label) + '</h2>' +
+    '<span style="display:flex;gap:8px"><button class="btn sm" data-action="list-reset" data-k="' + def.key + '">Restore default</button>' +
+    '<button class="btn primary sm" data-action="list-add" data-k="' + def.key + '">' + icon("plus") + 'Add</button></span></div>' +
+    '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">' + esc(def.hint) + '</p>' +
+    list.map(function(name, i){
+      return '<div class="line"><div class="l"><span class="ck-no">' + (i + 1) + '</span>' + esc(name) + '</div>' +
+        '<div class="r"><button class="icon-btn" data-action="list-move" data-k="' + def.key + '" data-i="' + i + '" data-d="-1" aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>' + icon("up") + '</button>' +
+        '<button class="icon-btn" data-action="list-move" data-k="' + def.key + '" data-i="' + i + '" data-d="1" aria-label="Move down"' + (i === list.length - 1 ? ' disabled' : '') + '>' + icon("down") + '</button>' +
+        '<button class="btn sm" data-action="list-rename" data-k="' + def.key + '" data-i="' + i + '">Rename</button>' +
+        '<button class="icon-btn" data-action="list-remove" data-k="' + def.key + '" data-i="' + i + '" aria-label="Remove">' + icon("trash") + '</button></div></div>';
+    }).join("") +
+    '<p class="img-note" style="margin-top:10px">' + list.length + ' ' + def.unit + (list.length === 1 ? '' : 's') +
+    ' · at least ' + def.min + ' required.</p></div>';
+}
+function modalListItem(k, idx){
+  var def = listDef(k), editing = typeof idx === "number", current = editing ? listOf(k)[idx] : "";
+  openModal((editing ? "Rename — " : "Add to — ") + def.label,
+    field(def.label.replace(/s$/, ""), '<input type="text" name="name" required maxlength="60" value="' + esc(current) + '" placeholder="' + esc(def.placeholder) + '">'),
+    editing ? "Save" : "Add", function(fd){
       var name = String(fd.get("name") || "").trim();
-      if(name.length < 3) return "Give the item a name of at least 3 characters.";
-      if(checklistDupe(name, editing ? idx : -1)) return "That item is already on the list.";
-      var list = checklist().slice();
+      if(name.length < 2) return "Give it a name of at least 2 characters.";
+      if(listDupe(k, name, editing ? idx : -1)) return "That is already on the list.";
+      var list = listOf(k).slice();
       if(editing) list[idx] = name; else list.push(name);
-      setChecklist(list);
-      toast(editing ? "Item renamed" : "Item added");
+      setList(k, list);
+      toast(editing ? "Renamed" : "Added");
     });
+}
+
+var TIMING_GROUPS = [
+  {title:"Follow-up reminders", perm:"config",
+   note:"How long after a job before the app reminds you to call the customer.",
+   fields:[["followDeclined","Days after a declined quote","day"],
+           ["followFinding","Days after an unquoted inspection finding","day"],
+           ["followService","Days until the next service reminder","day"],
+           ["serviceKm","Kilometres until the next service","km"]]},
+  {title:"Stalled job warnings", perm:"config",
+   note:"How long a job can sit in one stage before it is flagged on the dashboard.",
+   fields:[["ageWarn","Days in a stage before amber","day"],
+           ["ageLate","Days in a stage before red","day"]]},
+  {title:"Stock planning", perm:"config",
+   note:"How reorder suggestions are worked out.",
+   fields:[["stockLookback","Days of usage history to measure","day"],
+           ["stockCover","Days of cover to order up to","day"]]},
+  {title:"Sign-in policy", perm:"staff",
+   note:"Applies the next time someone signs in. These are browser-side only until there is a backend — see docs/SECURITY.md.",
+   fields:[["sessionHours","Hours before a session expires","hour"],
+           ["maxAttempts","Failed attempts before lockout","attempt"],
+           ["lockSeconds","Seconds an account stays locked","second"]]}
+];
+function timingCardsHTML(perm){
+  return TIMING_GROUPS.map(function(g, gi){
+    if(perm && g.perm !== perm) return "";
+    return '<div class="card" data-' + g.perm + '><div class="section-head"><h2>' + esc(g.title) + '</h2>' +
+      '<button class="btn sm" data-action="timing-edit" data-g="' + gi + '">' + icon("pencil") + 'Edit</button></div>' +
+      '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">' + esc(g.note) + '</p>' +
+      g.fields.map(function(f){
+        var v = timing(f[0]);
+        return '<div class="line"><div class="l">' + esc(f[1]) + '</div><div class="r"><b>' + v + '</b> ' + esc(f[2]) + (v === 1 ? '' : 's') + '</div></div>';
+      }).join("") + '</div>';
+  }).join("");
+}
+function modalTimings(gi){
+  var g = TIMING_GROUPS[gi];
+  var body = g.fields.map(function(f){
+    return field(f[1], '<input type="number" name="' + f[0] + '" min="1" step="1" required value="' + timing(f[0]) + '">');
+  }).join("") + '<p class="img-note">' + esc(g.note) + '</p>';
+  openModal(g.title, body, "Save", function(fd){
+    var next = {};
+    for(var i = 0; i < g.fields.length; i++){
+      var k = g.fields[i][0], n = Number(fd.get(k));
+      if(isNaN(n) || n < 1) return "Every value must be a whole number of at least 1.";
+      next[k] = Math.round(n);
+    }
+    DB.settings.timings = DB.settings.timings || {};
+    Object.keys(next).forEach(function(k){ DB.settings.timings[k] = next[k]; });
+    save(); renderSettings(); toast(g.title + " updated");
+  });
 }
 
 /* ================= modal system ================= */
@@ -2117,7 +2224,7 @@ function modalNewOrder(pre){
       var lastKm = DB.orders.filter(function(x){ return x.vehicleId === vid; }).reduce(function(m,x){ return Math.max(m, Number(x.mileage)||0); }, 0);
       if(mileage < lastKm) return "Mileage can't be lower than the last visit (" + lastKm.toLocaleString() + " km).";
     }
-    if(newCust){ c = {id:uid("c"), name:fd.get("cname").trim(), phone:fd.get("cphone").trim(), tier:"Standard", vehicles:[]}; DB.customers.push(c); }
+    if(newCust){ c = {id:uid("c"), name:fd.get("cname").trim(), phone:fd.get("cphone").trim(), tier:listOf("tiers")[0], vehicles:[]}; DB.customers.push(c); }
     else c = cust(cid);
     if(newVeh){ v = {id:uid("v"), plate:fd.get("plate").trim().toUpperCase(), model:fd.get("model").trim()}; c.vehicles.push(v); }
     else v = veh(c, vid);
@@ -2208,7 +2315,7 @@ function modalPriceItem(o, it){
 function modalPayment(o){
   var t = totals(o);
   var body = '<div class="kpi hero" style="margin-bottom:14px"><p class="label">Amount due</p><p class="value num">' + money(t.total) + '</p><p class="foot">' + o.items.length + ' items' + (o.discount ? ' · ' + money(o.discount) + ' discount' : '') + '</p></div>' +
-    field("Payment method", '<select name="method">' + ["Card","Cash","PayNow","Bank transfer"].map(function(m){ return opt(m,m); }).join("") + '</select>') +
+    field("Payment method", '<select name="method">' + listOf("payment").map(function(m){ return opt(m,m); }).join("") + '</select>') +
     '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0">Closing deducts parts from stock and schedules the next service follow-up.</p>';
   openModal("Take payment", body, "Confirm payment", function(fd){
     o.items.forEach(function(i){ if(i.type === "part"){ var p = part(i.sku); if(p){ p.stock = Math.max(0, p.stock - i.qty); p.reserved = Math.max(0, (p.reserved||0) - i.qty); move(p.sku, -i.qty, "sale", o.id); } } });
@@ -2217,10 +2324,10 @@ function modalPayment(o){
     log(o, "Paid " + money(t.total) + " by " + fd.get("method").toLowerCase());
     o.inspection.forEach(function(i){
       var quoted = o.items.some(function(it){ return it.name.indexOf(i.name) > -1; });
-      if((i.status === "attention" || (i.status === "problem" && !quoted))) DB.opportunities.push({id:uid("o"), customerId:o.customerId, type:"inspection-finding", text:i.name + (i.note ? ": " + i.note : ""), dueAt:new Date(Date.now()+30*86400000).toISOString(), sourceOrderId:o.id, status:"open", createdAt:nowISO()});
+      if((i.status === "attention" || (i.status === "problem" && !quoted))) DB.opportunities.push({id:uid("o"), customerId:o.customerId, type:"inspection-finding", text:i.name + (i.note ? ": " + i.note : ""), dueAt:new Date(Date.now()+timing("followFinding")*86400000).toISOString(), sourceOrderId:o.id, status:"open", createdAt:nowISO()});
     });
     DB.opportunities.forEach(function(x){ if(x.customerId === o.customerId && x.type === "service-due" && x.status === "open") x.status = "done"; });
-    DB.opportunities.push({id:uid("o"), customerId:o.customerId, type:"service-due", text:"Next service at " + (Number(o.mileage) + 10000).toLocaleString() + " km", dueAt:new Date(Date.now()+180*86400000).toISOString(), sourceOrderId:o.id, status:"open", createdAt:nowISO()});
+    DB.opportunities.push({id:uid("o"), customerId:o.customerId, type:"service-due", text:"Next service at " + (Number(o.mileage) + timing("serviceKm")).toLocaleString() + " km", dueAt:new Date(Date.now()+timing("followService")*86400000).toISOString(), sourceOrderId:o.id, status:"open", createdAt:nowISO()});
     state.orderTab = "overview"; toast("Payment recorded. " + o.id + " closed."); refresh();
   });
 }
@@ -2307,7 +2414,7 @@ function modalEditOrder(o){
 }
 function modalNewPart(){
   var body = field("Part name", '<input type="text" name="name" required placeholder="Spark plug, iridium">') +
-    '<div class="field-row">' + field("SKU", '<input type="text" name="sku" required placeholder="SPK-IR01">') + field("Category", '<select name="category">' + ["Fluids","Filters","Brakes","Engine","Electrical","Suspension","Tyres","Accessories"].map(function(c){ return opt(c,c); }).join("") + '</select>') + '</div>' +
+    '<div class="field-row">' + field("SKU", '<input type="text" name="sku" required placeholder="SPK-IR01">') + field("Category", '<select name="category">' + listOf("categories").map(function(c){ return opt(c,c); }).join("") + '</select>') + '</div>' +
     '<div class="field-row">' + field("Opening stock", '<input type="number" name="stock" min="0" step="1" value="0" required>') + field("Reorder at", '<input type="number" name="reorder" min="0" step="1" value="5" required>') + '</div>' +
     '<div class="field-row"><div data-cost>' + field("Cost price", '<input type="number" name="cost" min="0" step="1" value="0">') + '</div>' + field("Selling price", '<input type="number" name="price" min="0" step="1" required placeholder="25">') + '</div>' +
     field("Supplier", '<select name="supplier">' + DB.suppliers.map(function(s){ return opt(s.id, s.name); }).join("") + '</select>') +
@@ -2323,7 +2430,7 @@ function modalAdjust(p){
   var body = '<p style="margin:0 0 12px;font-weight:600">' + esc(p.name) + ' <span style="color:var(--text-muted);font-weight:400">· ' + p.stock + ' in stock now</span></p>' +
     '<div class="field-row">' + field("New stock count", '<input type="number" name="stock" min="0" step="1" value="' + p.stock + '" required>') + field("Reorder at", '<input type="number" name="reorder" min="0" step="1" value="' + p.reorder + '" required>') + '</div>' +
     '<div class="field-row"><div data-cost>' + field("Cost price", '<input type="number" name="cost" min="0" step="1" value="' + p.cost + '">') + '</div>' + field("Selling price", '<input type="number" name="price" min="0" step="1" value="' + p.price + '"' + (can("cost") ? '' : ' disabled title="Only owners and managers can change prices"') + '>') + '</div>' +
-    field("Reason", '<select name="reason">' + ["Stock count","Damaged","Returned","Other"].map(function(r){ return opt(r,r); }).join("") + '</select>') +
+    field("Reason", '<select name="reason">' + listOf("adjustReasons").map(function(r){ return opt(r,r); }).join("") + '</select>') +
     imageField(p.image || "");
   openModal("Adjust stock", body, "Save changes", function(fd){
     var ns = parseInt(fd.get("stock"),10) || 0;
@@ -2494,26 +2601,30 @@ document.addEventListener("click", function(e){
     case "edit-order": if(o) modalEditOrder(o); break;
     case "po-toggle-done": state.poShowDone = !state.poShowDone; renderInventory(); break;
     case "app-name": modalAppName(); break;
-    case "checklist-add": modalChecklistItem(); break;
-    case "checklist-rename": modalChecklistItem(+el.dataset.i); break;
-    case "checklist-move": {
-      var ml = checklist().slice(), from = +el.dataset.i, to = from + (+el.dataset.d);
+    case "list-add": modalListItem(el.dataset.k); break;
+    case "list-rename": modalListItem(el.dataset.k, +el.dataset.i); break;
+    case "list-move": {
+      var lk = el.dataset.k, ml = listOf(lk).slice(), from = +el.dataset.i, to = from + (+el.dataset.d);
       if(to < 0 || to >= ml.length) break;
       ml.splice(to, 0, ml.splice(from, 1)[0]);
-      setChecklist(ml);
+      setList(lk, ml);
       break;
     }
-    case "checklist-remove": {
-      var rl = checklist().slice();
-      if(rl.length <= 3){ toast("Keep at least 3 checks on the list", true); break; }
+    case "list-remove": {
+      var rk = el.dataset.k, def = listDef(rk), rl = listOf(rk).slice();
+      if(rl.length <= def.min){ toast("Keep at least " + def.min + " " + def.unit + (def.min === 1 ? "" : "s"), true); break; }
       var removed = rl.splice(+el.dataset.i, 1)[0];
-      setChecklist(rl);
+      setList(rk, rl);
       toast("Removed " + removed);
       break;
     }
-    case "checklist-reset":
-      if(confirm("Restore the default 10-point checklist?")){ setChecklist(DEFAULT_INSPECTION.slice()); toast("Default checklist restored"); }
+    case "list-reset": {
+      var dk = el.dataset.k;
+      if(confirm("Restore the default " + listDef(dk).label.toLowerCase() + "?")){ setList(dk, DEFAULT_LISTS[dk].slice()); toast("Default restored"); }
       break;
+    }
+    case "timing-edit": modalTimings(+el.dataset.g); break;
+    case "set-tab": state.setTab = el.dataset.t; renderSettings(); break;
     case "ai-connect": modalAiKey(); break;
     case "ai-forget": try { localStorage.removeItem(AI_KEY); } catch(e){} aiState = {busy:false, answer:"", error:"", question:""}; toast("Key removed"); renderInsights(); break;
     case "ai-suggest": aiState.question = el.dataset.q; renderInsights(); var qa = $("#aiQuestion"); if(qa) qa.focus(); break;
