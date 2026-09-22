@@ -1,6 +1,6 @@
 {
   "name": "nexauto",
-  "version": "0.15.1",
+  "version": "0.16.0",
   "description": "NEXAUTO: workshop operations app for auto repair shops (demo)",
   "private": true,
   "scripts": {

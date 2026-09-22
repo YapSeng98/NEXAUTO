@@ -556,6 +556,26 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
 .perm-box input{width:18px;height:18px;accent-color:var(--green);margin:0;cursor:pointer;}
 .perm-box.locked{cursor:default;opacity:.55;}
 .perm-box.locked input{cursor:default;}
+
+/* ===== responsive corrections =====
+   The 4-up grids used to switch on at 700px, which is before the 232px sidebar
+   leaves enough room for their labels. Sizing by content instead of by
+   breakpoint means the column count follows the space actually available. */
+.quick-actions{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));}
+@media (min-width:700px){.quick-actions{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));}}
+.qa-btn{min-height:58px;}
+.qa-btn .ico{flex:0 0 32px;}
+.kpi-grid{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));}
+@media (min-width:700px){.kpi-grid{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));}}
+.kpi .label{min-height:0;}
+
+/* the two-column row needs more than 900px once the sidebar is taken out */
+@media (min-width:900px) and (max-width:1100px){.grid-2{grid-template-columns:minmax(0,1fr);}}
+
+/* long labels should wrap rather than push a row wide */
+.row-main .title{white-space:normal;}
+.line .l,.line .r{min-width:0;}
+.opp .t{overflow-wrap:anywhere;}
 </style>
 </head>
 <body>

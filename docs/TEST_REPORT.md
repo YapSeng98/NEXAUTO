@@ -44,6 +44,26 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Locked settings | 9 | 9 |
 | Role permissions | 20 | 20 |
 
+## Responsive audit (v0.16.0)
+
+Checked at 390px (phone), 768px (tablet, and the width an iPad in split view
+actually renders at) and 1024px, across every view, with the order panel open.
+The browser extension renders at a fixed 2560px viewport, so window resizing does
+not drive media queries — the views were loaded in sized iframes instead, which
+get their own viewport, and audited for horizontal page scroll, content clipped
+inside its box, and elements past the right edge.
+
+**One real fault.** The four-up grids — quick actions and the KPI row — switched
+to four columns at `min-width:700px`. At 768px the 232px sidebar leaves roughly
+480px of content, so four buttons got ~110px each and every label wrapped or
+collided. Reported by a user from an iPad. Both grids now size by content
+(`repeat(auto-fit, minmax(165px, 1fr))`), so the column count follows the space
+actually available: two across at 390 and 768, four at 1024 and up.
+
+Everything else came back clean. The remaining horizontal overflow is all inside
+containers that scroll on purpose — wide tables in `.table-wrap`, filter chips in
+`.chips` — and no view scrolls the page sideways at any of the three widths.
+
 ## The permission matrix is editable (v0.15.0)
 
 `PERMS` was a constant. It is now the *default* — an owner opens
