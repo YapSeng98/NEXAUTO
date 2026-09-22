@@ -643,6 +643,21 @@ T('Resetting the demo restores every default',()=>{const b=app();addTo(b,'paymen
 T('No script errors',()=>{const b=app();b.go('settings');return b.errs.length===0;});
 }
 
+// ============ 34. LOCKED SETTINGS ============
+S('34 Locked settings');
+{
+const as=(u,p)=>{const b=app(null,{anon:true});b.login(u,p);return b;};
+T('A technician is told why the Lists tab is empty',()=>{const b=as('marcus.lee','tech123');b.setTab('lists');const t=b.$('#v-settings').textContent;return t.includes('Only an owner or manager can change this')&&t.includes("The shop's lists");});
+T('And the Timing tab',()=>{const b=as('marcus.lee','tech123');b.setTab('timing');return b.$('#v-settings').textContent.includes('Only an owner or manager can change this');});
+T('An advisor gets the same message',()=>{const b=as('priya.nair','advisor123');b.setTab('lists');return !!b.$('#v-settings .locked-note');});
+T('Neither tab renders any editable control',()=>{const b=as('marcus.lee','tech123');b.setTab('lists');const none=!b.$('[data-action="list-add"]')&&!b.$('[data-action="list-remove"]');b.setTab('timing');return none&&!b.$('[data-action="timing-edit"]');});
+T('A manager sees the real thing, not the message',()=>{const b=as('joanne.lim','manager123');b.setTab('lists');return !b.$('#v-settings .locked-note')&&!!b.$('[data-action="list-add"][data-k="inspection"]');});
+T('An owner sees the real thing too',()=>{const b=app();b.setTab('timing');return !b.$('#v-settings .locked-note')&&!!b.$('[data-action="timing-edit"][data-g="0"]');});
+T('Usernames are not sent to staff who cannot manage accounts',()=>{const b=as('marcus.lee','tech123');b.setTab('users');const t=b.$('#v-settings').textContent;return t.includes('Alex Tan')&&!t.includes('alex.tan')&&!b.$('#v-settings').innerHTML.includes('alex.tan');});
+T('The owner still sees them',()=>{const b=app();b.setTab('users');return b.$('#v-settings').textContent.includes('alex.tan');});
+T('No script errors',()=>{const b=as('marcus.lee','tech123');b.setTab('lists');b.setTab('timing');return b.errs.length===0;});
+}
+
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;
 for(const [s,n,r,e] of results){ if(s!==cur){console.log('\n'+s);cur=s;} console.log(`  ${r==='PASS'?'✓':'✗'} ${n}${e?'  ['+e+']':''}`); r==='PASS'?pass++:fail++; }

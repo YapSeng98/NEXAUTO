@@ -181,8 +181,9 @@ font origins. Needs a real host; GitHub Pages cannot set headers, so use the
   Correct choice, but any XSS reads it. Server-side sessions belong in
   `HttpOnly; Secure; SameSite=Lax` cookies.
 - **L3.** No rate limit on anything except login. Cheap to add server-side.
-- **L4.** Usernames are enumerable through the user list in Settings for any role
-  that can open it — acceptable, but worth knowing.
+- **L4.** ~~Usernames are enumerable through the user list in Settings.~~ Fixed in
+  v0.14.0: the username is omitted from the markup for any role without
+  `staff`, rather than hidden with CSS.
 - **L5.** No password complexity rule beyond a 6-character minimum.
 
 ### M5. The AI panel puts an API key in browser storage

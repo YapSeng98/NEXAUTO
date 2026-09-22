@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 411 of 411 checks passed.**
+**Result: 420 of 420 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -41,6 +41,20 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Purchase order list | 9 | 9 |
 | Quotation preview | 19 | 19 |
 | Shop-configurable settings | 19 | 19 |
+| Locked settings | 9 | 9 |
+
+## Settings a role cannot change (v0.14.0)
+
+Splitting Settings into tabs left a hole: a technician opening **Lists** or
+**Timing** saw a completely blank page, because every card on it is gated. Those
+tabs now render a locked card explaining that the values are set for the whole
+workshop and who to ask. Reported from the screen by a user.
+
+Fixed alongside it: the staff list was rendering each person's **username** and
+hiding it with CSS from anyone without account-management rights, which is the
+same weak pattern as C1. The username is now left out of the HTML entirely for
+those roles — a check asserts it is absent from `innerHTML`, not merely
+invisible.
 
 ## Everything a shop can configure (v0.13.0)
 

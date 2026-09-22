@@ -543,6 +543,11 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
   .qd-sub,.qd-meta,.qd-parties h4,.qd-h,.qd-sku,.qd-foot{color:#555 !important;}
 }
 
+
+.locked-note{text-align:center;padding:34px 24px;}
+.locked-note svg{width:26px;height:26px;color:var(--text-muted);margin-bottom:10px;}
+.lock-title{margin:0;font-weight:600;font-size:14.5px;}
+.lock-body{margin:6px auto 0;font-size:13px;color:var(--text-secondary);max-width:42ch;line-height:1.55;}
 </style>
 </head>
 <body>
@@ -706,6 +711,7 @@ var ICON = {
   users:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M16 14.2c2.5.4 4.5 2.6 4.5 5.8"/>',
   chart:'<path d="M4 19V11M10 19V5M16 19v-6M22 19H2"/>',
   gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 14.1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  lock:'<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
   doc:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>',
   up:'<path d="M12 19V6"/><path d="M6 11l6-6 6 6"/>',
   down:'<path d="M12 5v13"/><path d="M6 13l6 6 6-6"/>',
@@ -2051,6 +2057,11 @@ function askClaude(question){
 }
 
 /* ================= settings ================= */
+function settingsLocked(what){
+  return '<div class="card locked-note">' + icon("lock") +
+    '<p class="lock-title">Only an owner or manager can change this</p>' +
+    '<p class="lock-body">' + esc(what) + ' are set for the whole workshop. Ask an owner or manager if something here needs changing.</p></div>';
+}
 var SET_TABS = [["general","General"],["users","Users"],["lists","Lists"],["timing","Timing"]];
 function renderSettings(){
   var cur = DB.settings.color || THEMES[0].c;
@@ -2062,7 +2073,7 @@ function renderSettings(){
     '<div class="swatches">' + THEMES.map(function(t){ return '<button class="swatch' + (cur.toLowerCase() === t.c.toLowerCase() ? ' active' : '') + '" style="background:' + t.c + '" data-action="theme" data-c="' + t.c + '" aria-label="' + t.name + '" title="' + t.name + '"></button>'; }).join("") +
     '<label class="sr-only" for="customColor">Custom colour</label><input type="color" id="customColor" value="' + cur + '" title="Custom colour"></div></div>';
   var users = '<div class="card"><div class="section-head"><h2>Users</h2><button class="btn primary" data-action="new-staff" data-staff>' + icon("plus") + 'Add user</button></div>' +
-    activeUsers().map(function(s){ return '<div class="line"><div class="l" style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:30px;height:30px;flex-basis:30px;font-size:11px">' + initials(s.name) + '</span><span>' + esc(s.name) + (s.id === state.userId ? ' <span class="badge b-green">You</span>' : '') + '<span style="display:block;font-size:12px;color:var(--text-muted)">' + esc(s.username || "—") + '</span></span></div><div class="r"><span class="badge ' + (s.role === "technician" ? "b-neutral" : "b-green") + '">' + ROLE_LABEL[s.role] + '</span><button class="btn sm" data-action="edit-staff" data-id="' + s.id + '" data-staff>Edit</button></div></div>'; }).join("") +
+    activeUsers().map(function(s){ return '<div class="line"><div class="l" style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:30px;height:30px;flex-basis:30px;font-size:11px">' + initials(s.name) + '</span><span>' + esc(s.name) + (s.id === state.userId ? ' <span class="badge b-green">You</span>' : '') + '' + (can("staff") ? '<span style="display:block;font-size:12px;color:var(--text-muted)">' + esc(s.username || "—") + '</span>' : '') + '</span></div><div class="r"><span class="badge ' + (s.role === "technician" ? "b-neutral" : "b-green") + '">' + ROLE_LABEL[s.role] + '</span><button class="btn sm" data-action="edit-staff" data-id="' + s.id + '" data-staff>Edit</button></div></div>'; }).join("") +
     '<p class="sub" style="color:var(--text-muted);font-size:12px;margin:12px 0 0">Each user signs in with their own username and password. Owners see everything and manage users. Managers see profit but cannot manage users. Advisors see prices but not cost or profit. Technicians only see their own jobs, with no prices.</p></div>';
   general += '<div class="card" data-staff><div class="section-head"><h2>Workshop name</h2><button class="btn sm" data-action="app-name">' + icon("pencil") + 'Rename</button></div>' +
     '<p class="sub" style="color:var(--text-secondary);margin:0;font-size:13px">Currently <b style="color:var(--text-primary)">' + esc(appName()) + '</b> \u2014 shown on the sign-in page, in the sidebar and in the browser tab.</p></div>';
@@ -2070,8 +2081,8 @@ function renderSettings(){
   users += timingCardsHTML("staff");
   html += tab === "general" ? general
     : tab === "users" ? users
-    : tab === "lists" ? LIST_DEFS.map(listCardHTML).join("")
-    : timingCardsHTML("config");
+    : tab === "lists" ? (can("config") ? LIST_DEFS.map(listCardHTML).join("") : settingsLocked("The shop's lists"))
+    : (can("config") ? timingCardsHTML("config") : settingsLocked("Follow-up, warning and stock timings"));
   $("#v-settings").innerHTML = html;
 }
 
