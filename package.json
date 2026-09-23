@@ -1,10 +1,10 @@
 {
   "name": "nexauto",
-  "version": "0.21.2",
+  "version": "0.24.0",
   "description": "NEXAUTO: workshop operations app for auto repair shops (demo)",
   "private": true,
   "scripts": {
-    "test": "node tests/suite.js"
+    "test": "node --max-old-space-size=4096 tests/suite.js"
   },
   "devDependencies": {
     "jsdom": "^24.0.0"

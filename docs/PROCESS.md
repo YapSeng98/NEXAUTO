@@ -159,6 +159,34 @@ and out of every report.
 A job with no `settled` field at all — anything created before this existed —
 counts as paid, so history is unaffected.
 
+## Where a price comes from
+
+Neither a part's price nor a labour price is typed from memory.
+
+| Line | Price comes from | Who can change the source |
+|---|---|---|
+| Part | The inventory price list | Anyone with `cost` |
+| Labour, picked from the list | **Settings → Lists → Services and labour prices** | Owner or manager (`config`) |
+| Labour, "Something else…" | Typed on the job | Anyone with `price`; a technician leaves it for an advisor |
+
+A technician has no `price` right, so they see the service names with no figures
+beside them — but the line they add still carries the shop's price. That is the
+same rule parts have always followed, and it is why a technician's labour no
+longer blocks the quote waiting to be priced.
+
+Removing or repricing a service does not touch jobs already quoted: every line
+copied the name and price when it was added.
+
+## Tax
+
+`settings.money.taxRate` defaults to **0**, and at zero there is no tax line
+anywhere — a shop that is not registered sees what it always saw. Above zero,
+the tax is worked out on the discounted amount and shown as its own line to the
+customer, under whatever name the shop uses (GST, SST, VAT).
+
+Profit and margin are worked out on the amount **before** tax, because the tax
+was never the shop's money to keep.
+
 ## 4. Follow-ups
 
 | Type | Created when | Due |

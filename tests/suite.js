@@ -6,6 +6,9 @@ const PW={s1:'owner123',s2:'manager123',s3:'advisor123',s4:'tech123',s5:'tech123
 // The authoritative permission list, read out of BASE_PERMS in the source:
 // the app runs inside an IIFE, so its constants are not reachable from here.
 const PERM_KEYS=RAW.match(/owner:\s*\{([^}]+)\}/)[1].split(',').map(s=>s.split(':')[0].trim());
+// Taken from the source, not repeated here: bumping the seed version used to
+// break every test until the key was updated in two places.
+const DBKEY=RAW.match(/var KEY = "([^"]+)"/)[1];
 const session=(userId='s1',at=Date.now())=>JSON.stringify({userId,at,remember:true});
 function app(storage,opts={}){
   const dom=new JSDOM(RAW,{runScripts:'dangerously',url:'https://nexauto.test/',beforeParse(w){
@@ -14,7 +17,7 @@ function app(storage,opts={}){
     if(storage) for(const k in storage) w.localStorage.setItem(k,storage[k]);
     if(opts.session) w.localStorage.setItem('nexauto_session',opts.session);
   }});
-  const w=dom.window,d=w.document,errs=[];w.addEventListener('error',e=>errs.push(e.message));
+  const w=dom.window,d=w.document,errs=[];w.addEventListener('error',e=>errs.push(e.message));OPEN.push(w);
   const A={w,d,errs,
     $:s=>d.querySelector(s),$$:s=>[...d.querySelectorAll(s)],
     click(s){const e=typeof s==='string'?d.querySelector(s):s;if(!e)throw new Error('element not found: '+s);e.dispatchEvent(new w.MouseEvent('click',{bubbles:true}));},
@@ -40,7 +43,7 @@ function app(storage,opts={}){
     go(v,f){A.click(`[data-action="goto"][data-view="${v}"]`+(f?`[data-filter="${f}"]`:''));},
     openOrder(id){A.go('orders');const f=A.$('[data-action="order-filter"][data-f="all"]');if(f)A.click(f);A.click(`[data-action="open-order"][data-id="${id}"]`);},
     tab(t){A.click(`[data-action="order-tab"][data-tab="${t}"]`);},
-    db(){return JSON.parse(w.localStorage.getItem('nexauto_demo_v7'));},
+    db(){return JSON.parse(w.localStorage.getItem(DBKEY));},
     part(sku){return A.db().inventory.find(p=>p.sku===sku);},
     order(id){return A.db().orders.find(o=>o.id===id);},
     checkAll(s='good'){A.$$(`[data-action="insp-set"][data-s="${s}"]`).forEach((_,i)=>A.click(A.$$(`[data-action="insp-set"][data-s="${s}"]`)[i]));},
@@ -48,7 +51,10 @@ function app(storage,opts={}){
   };
   return A;
 }
-function T(name,fn){try{const r=fn();results.push([section,name,r===false?'FAIL':'PASS','']);}catch(e){results.push([section,name,'FAIL',e.message]);}}
+// Windows built inside a check are closed when it ends. Ones built at section
+// scope are shared by later checks, so they sit below the mark and survive.
+const OPEN=[];
+function T(name,fn){const mark=OPEN.length;try{const r=fn();results.push([section,name,r===false?'FAIL':'PASS','']);}catch(e){results.push([section,name,'FAIL',e.message]);}finally{while(OPEN.length>mark){try{OPEN.pop().close();}catch(e){}}}}
 function S(n){section=n;}
 
 // ============ 1. CHECK-IN ============
@@ -88,13 +94,13 @@ T('Cannot send an empty quote',()=>{a.click('[data-action="send-quote"]');return
 T('Add part from stock copies price and cost',()=>{a.click('[data-action="add-part"]');a.F('sku').value='BRK-PADF1';a.F('qty').value='1';a.submit();const i=a.order('WO-1047').items[0];return i.price===180&&i.cost===80;});
 T('Adding same part twice merges quantity',()=>{a.click('[data-action="add-part"]');a.F('sku').value='BRK-PADF1';a.F('qty').value='1';a.submit();const it=a.order('WO-1047').items;return it.length===1&&it[0].qty===2;});
 T('Zero quantity rejected',()=>{a.click('[data-action="add-part"]');a.F('qty').value='0';a.submit();const ok=a.modalOpen();a.click('[data-action="close-modal"]');return ok;});
-T('Add labor',()=>{a.click('[data-action="add-labor"]');a.F('name').value='Labor: brakes';a.F('price').value='150';a.F('cost').value='40';a.submit();return a.order('WO-1047').items.length===2;});
+T('Add labor',()=>{a.click('[data-action="add-labor"]');a.set('service','__custom');a.F('name').value='Labor: brakes';a.F('price').value='150';a.F('cost').value='40';a.submit();return a.order('WO-1047').items.length===2;});
 T('Totals are correct (2x180 + 150 = 510)',()=>a.$('#panelBody .grand').textContent.includes('$510'));
 T('Profit shown to owner (510 - 200 = 310, 61%)',()=>a.$('#panelBody').textContent.includes('Profit $310')&&a.$('#panelBody').textContent.includes('61%'));
 T('Discount cannot exceed subtotal',()=>{a.change(a.$('[data-action="discount"]'),'9999');return a.order('WO-1047').discount===510;});
 T('Owner can give a large discount',()=>{a.change(a.$('[data-action="discount"]'),'200');return a.order('WO-1047').discount===200;});
 T('Send quote sets status Sent',()=>{a.change(a.$('[data-action="discount"]'),'0');a.click('[data-action="send-quote"]');return a.order('WO-1047').quoteStatus==='sent';});
-T('Editing items after sending returns quote to Draft',()=>{a.click('[data-action="add-labor"]');a.F('name').value='Wash';a.F('price').value='20';a.submit();return a.order('WO-1047').quoteStatus==='draft';});
+T('Editing items after sending returns quote to Draft',()=>{a.click('[data-action="add-labor"]');a.set('service','__custom');a.F('name').value='Wash';a.F('price').value='20';a.submit();return a.order('WO-1047').quoteStatus==='draft';});
 T('Changing discount after sending returns quote to Draft',()=>{a.click('[data-action="send-quote"]');a.change(a.$('[data-action="discount"]'),'10');return a.order('WO-1047').quoteStatus==='draft';});
 T('Remove item works and logs its name',()=>{const id=a.order('WO-1047').items[2].id;a.click(`[data-action="remove-item"][data-item="${id}"]`);const o=a.order('WO-1047');return o.items.length===2&&o.log.some(l=>l.x.includes('Wash'));});
 T('No script errors',()=>a.errs.length===0);}
@@ -119,7 +125,7 @@ T('No script errors',()=>a.errs.length===0);}
 S('5 Service and payment');
 {const a=app();
 a.openOrder('WO-1044');
-T('Extra work added in service needs approval',()=>{a.tab('items');a.click('[data-action="add-labor"]');a.F('name').value='Wheel alignment';a.F('price').value='60';a.submit();return a.$('#panelBody').textContent.includes('Needs approval');});
+T('Extra work added in service needs approval',()=>{a.tab('items');a.click('[data-action="add-labor"]');a.set('service','__custom');a.F('name').value='Wheel alignment';a.F('price').value='60';a.submit();return a.$('#panelBody').textContent.includes('Needs approval');});
 T('Payment button hidden while extra work pending',()=>{a.click('[data-action="work-done"]');return !a.$('[data-action="take-payment"]');});
 T('Approve extra work unlocks payment',()=>{a.click('[data-action="approve-extra"]');return !!a.$('[data-action="take-payment"]');});
 T('Payment closes order with correct amount (320 + 60 = 380)',()=>{a.click('[data-action="take-payment"]');a.F('method').value='Cash';a.submit();const o=a.order('WO-1044');return o.stage==='completed'&&o.payment.amount===380&&o.payment.method==='Cash';});
@@ -128,7 +134,7 @@ T('Sale written to stock history',()=>a.db().movements.some(m=>m.ref==='WO-1044'
 T('Next service follow-up created',()=>a.db().opportunities.some(o=>o.sourceOrderId==='WO-1044'&&o.type==='service-due'));
 T('Old open "service due" follow-up for same customer is closed (no duplicates)',()=>{const b=app();b.openOrder('WO-1045');b.click('[data-action="take-payment"]');b.submit();
   b.click('[data-action="close-panel"]');b.click('#v-orders [data-action="new-order"]');b.set('customer','c7');b.F('mileage').value='30000';b.submit();
-  const id=b.db().orders.at(-1).id;b.click('[data-action="start-insp"]');b.checkAll();b.click('[data-action="finish-insp"]');b.click('[data-action="add-labor"]');b.F('name').value='Svc';b.F('price').value='50';b.submit();
+  const id=b.db().orders.at(-1).id;b.click('[data-action="start-insp"]');b.checkAll();b.click('[data-action="finish-insp"]');b.click('[data-action="add-labor"]');b.set('service','__custom');b.F('name').value='Svc';b.F('price').value='50';b.submit();
   b.click('[data-action="send-quote"]');b.click('[data-action="approve-quote"]');b.click('[data-action="work-done"]');b.click('[data-action="take-payment"]');b.submit();
   return b.db().opportunities.filter(o=>o.customerId==='c7'&&o.type==='service-due'&&o.status==='open').length===1;});
 T('Cannot take payment on an order with no items',()=>{const b=app();b.openOrder('WO-1045');
@@ -548,16 +554,16 @@ T('They can add a part from stock',()=>{const b=tech();toQuote(b);b.click('[data
 T('The part carries the price list price even though they cannot see it',()=>{const b=tech();toQuote(b);b.click('[data-action="add-part"]');b.F('sku').value='BRK-PADF1';b.submit();const it=b.order('WO-1047').items[0];const p=b.part('BRK-PADF1');return it.price===p.price&&it.cost===p.cost;});
 T('The part picker hides prices from them',()=>{const b=tech();toQuote(b);b.click('[data-action="add-part"]');const txt=[...b.F('sku').options].map(o=>o.textContent).join(' ');b.click('[data-action="close-modal"]');return !txt.includes('$');});
 T('The labour form asks for no price',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');const noPrice=!b.F('price')&&!b.F('cost');b.click('[data-action="close-modal"]');return noPrice;});
-T('Labour they add is flagged as needing a price',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.F('name').value='Replace wheel bearing';b.submit();const it=b.order('WO-1047').items[0];return it.needsPrice===true&&it.price===0;});
-T('The line records who added it',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.F('name').value='Replace wheel bearing';b.submit();return b.order('WO-1047').items[0].by==='s4'&&b.$('#panelBody').textContent.includes('added by Marcus Lee');});
-T('A technician can remove their own unpriced line',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.F('name').value='Replace wheel bearing';b.submit();b.click('[data-action="remove-item"]');return b.order('WO-1047').items.length===0;});
-T('A technician cannot remove a line an advisor added',()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123');toQuote(b);b.click('[data-action="add-labor"]');b.F('name').value='Advisor line';b.F('price').value='90';b.submit();const c=app(b.storage(),{anon:true});c.login('marcus.lee','tech123');c.openOrder('WO-1047');c.tab('items');return !c.$('[data-action="remove-item"]');});
-T('A technician cannot set a price',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.F('name').value='Replace wheel bearing';b.submit();return !b.$('[data-action="price-item"]');});
-T('An advisor sees the unpriced line and can price it',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.F('name').value='Replace wheel bearing';b.submit();const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1047');c.tab('items');return c.$('#panelBody').textContent.includes('Needs pricing')&&!!c.$('[data-action="price-item"]');});
-T('Pricing it clears the flag and sets the amount',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.F('name').value='Replace wheel bearing';b.submit();const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1047');c.tab('items');c.click('[data-action="price-item"]');c.F('price').value='240';c.submit();const it=c.order('WO-1047').items[0];return it.price===240&&!it.needsPrice;});
-T('A zero price is rejected',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.F('name').value='Replace wheel bearing';b.submit();const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1047');c.tab('items');c.click('[data-action="price-item"]');c.F('price').value='0';c.submit();const ok=c.modalOpen()&&c.err().includes('above zero');c.click('[data-action="close-modal"]');return ok;});
-T('The quote cannot be sent while a line needs pricing',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.F('name').value='Replace wheel bearing';b.submit();const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1047');c.click('[data-action="send-quote"]');return c.order('WO-1047').quoteStatus==='draft'&&c.toast().includes('needs a price');});
-T('Once priced the quote sends',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.F('name').value='Replace wheel bearing';b.submit();const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1047');c.tab('items');c.click('[data-action="price-item"]');c.F('price').value='240';c.submit();c.click('[data-action="send-quote"]');return c.order('WO-1047').quoteStatus==='sent';});
+T('Labour they add is flagged as needing a price',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.set('service','__custom');b.F('name').value='Replace wheel bearing';b.submit();const it=b.order('WO-1047').items[0];return it.needsPrice===true&&it.price===0;});
+T('The line records who added it',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.set('service','__custom');b.F('name').value='Replace wheel bearing';b.submit();return b.order('WO-1047').items[0].by==='s4'&&b.$('#panelBody').textContent.includes('added by Marcus Lee');});
+T('A technician can remove their own unpriced line',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.set('service','__custom');b.F('name').value='Replace wheel bearing';b.submit();b.click('[data-action="remove-item"]');return b.order('WO-1047').items.length===0;});
+T('A technician cannot remove a line an advisor added',()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123');toQuote(b);b.click('[data-action="add-labor"]');b.set('service','__custom');b.F('name').value='Advisor line';b.F('price').value='90';b.submit();const c=app(b.storage(),{anon:true});c.login('marcus.lee','tech123');c.openOrder('WO-1047');c.tab('items');return !c.$('[data-action="remove-item"]');});
+T('A technician cannot set a price',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.set('service','__custom');b.F('name').value='Replace wheel bearing';b.submit();return !b.$('[data-action="price-item"]');});
+T('An advisor sees the unpriced line and can price it',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.set('service','__custom');b.F('name').value='Replace wheel bearing';b.submit();const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1047');c.tab('items');return c.$('#panelBody').textContent.includes('Needs pricing')&&!!c.$('[data-action="price-item"]');});
+T('Pricing it clears the flag and sets the amount',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.set('service','__custom');b.F('name').value='Replace wheel bearing';b.submit();const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1047');c.tab('items');c.click('[data-action="price-item"]');c.F('price').value='240';c.submit();const it=c.order('WO-1047').items[0];return it.price===240&&!it.needsPrice;});
+T('A zero price is rejected',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.set('service','__custom');b.F('name').value='Replace wheel bearing';b.submit();const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1047');c.tab('items');c.click('[data-action="price-item"]');c.F('price').value='0';c.submit();const ok=c.modalOpen()&&c.err().includes('above zero');c.click('[data-action="close-modal"]');return ok;});
+T('The quote cannot be sent while a line needs pricing',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.set('service','__custom');b.F('name').value='Replace wheel bearing';b.submit();const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1047');c.click('[data-action="send-quote"]');return c.order('WO-1047').quoteStatus==='draft'&&c.toast().includes('needs a price');});
+T('Once priced the quote sends',()=>{const b=tech();toQuote(b);b.click('[data-action="add-labor"]');b.set('service','__custom');b.F('name').value='Replace wheel bearing';b.submit();const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1047');c.tab('items');c.click('[data-action="price-item"]');c.F('price').value='240';c.submit();c.click('[data-action="send-quote"]');return c.order('WO-1047').quoteStatus==='sent';});
 T('Adding to a job in service still counts as extra work',()=>{const b=tech();b.openOrder('WO-1044');b.tab('items');b.click('[data-action="add-part"]');b.F('sku').value='WPR-STD01';b.submit();const it=b.order('WO-1044').items.slice(-1)[0];return it.approved===false&&it.by==='s4';});
 T('Technicians still cannot discount or take payment',()=>{const b=tech();toQuote(b);return !b.$('[data-action="discount"]')&&!b.$('[data-action="take-payment"]');});
 T('No script errors',()=>{const b=tech();toQuote(b);return b.errs.length===0;});
@@ -617,7 +623,7 @@ T('But it still lists the work and what was found',()=>{const b=app(null,{anon:t
 T('An advisor still gets the priced version',()=>{const b=app(null,{anon:true});b.login('priya.nair','advisor123');b.openOrder('WO-1043');b.tab('items');b.click('[data-action="preview-quote"]');return b.$('#docTitle').textContent==='Quotation preview'&&b.$('#docBody').textContent.includes('Total');});
 T('There is nothing to preview before the inspection is done',()=>{const b=adv();b.openOrder('WO-1047');b.tab('items');return !b.$('[data-action="preview-quote"]');});
 T('Closing the preview leaves the job open behind it',()=>{const b=adv();openPreview(b,'WO-1043');b.click('[data-action="close-doc"]');return !b.$('#docWrap').classList.contains('open')&&b.$('#panel').classList.contains('open');});
-T('The customer name is escaped, not rendered as markup',()=>{const b=adv();const o=b.order('WO-1043');const db=b.db();const c=db.customers.find(x=>x.id===o.customerId);b.w.localStorage.setItem('nexauto_demo_v7',JSON.stringify(Object.assign(db,{customers:db.customers.map(x=>x.id===c.id?Object.assign({},x,{name:'<img src=x>'}):x)})));const c2=app(b.storage(),{anon:true});c2.login('priya.nair','advisor123');openPreview(c2,'WO-1043');return !c2.$('#docBody').querySelector('img');});
+T('The customer name is escaped, not rendered as markup',()=>{const b=adv();const o=b.order('WO-1043');const db=b.db();const c=db.customers.find(x=>x.id===o.customerId);b.w.localStorage.setItem(DBKEY,JSON.stringify(Object.assign(db,{customers:db.customers.map(x=>x.id===c.id?Object.assign({},x,{name:'<img src=x>'}):x)})));const c2=app(b.storage(),{anon:true});c2.login('priya.nair','advisor123');openPreview(c2,'WO-1043');return !c2.$('#docBody').querySelector('img');});
 T('No script errors',()=>{const b=adv();openPreview(b,'WO-1043');return b.errs.length===0;});
 }
 
@@ -716,7 +722,7 @@ T('A line added that way is linked, not matched by wording',()=>{const b=adv();p
 T('The finding shows as Quoted even when renamed',()=>{const b=adv();prep(b);b.click('[data-action="add-labor"][data-prefill]');b.F('name').value='Skim discs and fit new pads';b.F('price').value='240';b.submit();return b.$('#panelBody').textContent.includes('Quoted');});
 T('A renamed line still suppresses the chase-up follow-up',()=>{const b=adv();prep(b);b.click('[data-action="add-labor"][data-prefill]');b.F('name').value='Skim discs and fit new pads';b.F('price').value='240';b.submit();payOff(b);return !b.db().opportunities.some(o=>o.sourceOrderId==='WO-1047'&&o.type==='inspection-finding');});
 T('A problem nobody quoted still raises one',()=>{const b=adv();prep(b);b.click('[data-action="add-labor"]:not([data-prefill])');b.F('name').value='Something unrelated';b.F('price').value='90';b.submit();payOff(b);return b.db().opportunities.some(o=>o.sourceOrderId==='WO-1047'&&o.type==='inspection-finding'&&o.text.includes('Brake pads'));});
-T('The old wording match still works for lines named after the finding',()=>{const b=adv();prep(b);b.click('[data-action="add-labor"]:not([data-prefill])');b.F('name').value='Repair: Brake pads and discs';b.F('price').value='240';b.submit();payOff(b);return !b.db().opportunities.some(o=>o.sourceOrderId==='WO-1047'&&o.type==='inspection-finding');});
+T('The old wording match still works for lines named after the finding',()=>{const b=adv();prep(b);b.click('[data-action="add-labor"]:not([data-prefill])');b.set('service','__custom');b.F('name').value='Repair: Brake pads and discs';b.F('price').value='240';b.submit();payOff(b);return !b.db().opportunities.some(o=>o.sourceOrderId==='WO-1047'&&o.type==='inspection-finding');});
 T('No script errors',()=>{const b=adv();prep(b);return b.errs.length===0;});
 }
 
@@ -892,6 +898,83 @@ T('And they can then actually rename one',()=>{const b=app();tick(b,'advisor','s
 T('Revoking it from a manager takes it away',()=>{const b=app();tick(b,'manager','suppliers',false);const c=app(b.storage(),{anon:true});c.login('joanne.lim','manager123');sup(c);return !c.$('[data-action="edit-supplier"]')&&!c.$('[data-action="new-supplier"]');});
 T('The owner keeps it whatever the matrix says',()=>{const b=app();sup(b);return b.d.documentElement.dataset.canSuppliers==='1';});
 T('No script errors',()=>{const b=app();sup(b);b.click('[data-action="edit-supplier"][data-id="sp1"]');b.F('name').value='Castrol X';b.submit();return b.errs.length===0;});
+}
+
+S('45 Service price list');
+{
+const lists=b=>{b.setTab('lists');};
+const as=(u,p)=>{const c=app(null,{anon:true});c.login(u,p);return c;};
+const toQuote=b=>{b.openOrder('WO-1047');b.click('[data-action="start-insp"]');b.checkAll();b.click('[data-action="finish-insp"]');b.tab('items');};
+
+T('The shop ships with a service list',()=>{const b=app();return b.db().settings.services.length>=10;});
+T('Owners and managers get the card',()=>{const b=app();lists(b);const m=as('joanne.lim','manager123');lists(m);return !!b.$('[data-action="service-add"]')&&!!m.$('[data-action="service-add"]');});
+T('Advisors and technicians do not',()=>{const a=as('priya.nair','advisor123');lists(a);const t=as('marcus.lee','tech123');lists(t);return !a.$('[data-action="service-add"]')&&!t.$('[data-action="service-add"]');});
+T('A service can be added',()=>{const b=app();lists(b);b.click('[data-action="service-add"]');b.F('name').value='Headlight restoration';b.F('price').value='70';b.F('cost').value='15';b.submit();const sv=b.db().settings.services.find(x=>x.name==='Headlight restoration');return sv.price===70&&sv.cost===15;});
+T('A duplicate name is rejected',()=>{const b=app();lists(b);b.click('[data-action="service-add"]');b.F('name').value='Wheel alignment';b.F('price').value='90';b.submit();return b.err().includes('already have a service');});
+T('A service can be repriced',()=>{const b=app();lists(b);const id=b.db().settings.services[4].id;b.click(`[data-action="service-edit"][data-id="${id}"]`);b.F('price').value='95';b.submit();return b.db().settings.services.find(x=>x.id===id).price===95;});
+T('A service can be removed',()=>{const b=app();lists(b);const n=b.db().settings.services.length;const id=b.db().settings.services[0].id;b.click(`[data-action="service-remove"][data-id="${id}"]`);return b.db().settings.services.length===n-1;});
+T('Restore default puts the list back',()=>{const b=app();lists(b);b.click(`[data-action="service-remove"][data-id="${b.db().settings.services[0].id}"]`);b.click('[data-action="service-reset"]');return b.db().settings.services.length>=10;});
+T('Changes survive a reload',()=>{const b=app();lists(b);const id=b.db().settings.services[2].id;b.click(`[data-action="service-edit"][data-id="${id}"]`);b.F('price').value='111';b.submit();const c=app(b.storage());return c.db().settings.services.find(x=>x.id===id).price===111;});
+T('An advisor forcing a change is refused',()=>{const a=as('priya.nair','advisor123');a.go('settings');a.d.body.insertAdjacentHTML('beforeend','<button id="x" data-action="service-add"></button>');a.click('#x');return a.toast().includes('owner or manager')&&!a.modalOpen();});
+
+T('Adding labour offers the price list',()=>{const b=app();toQuote(b);b.click('[data-action="add-labor"]');const opts=[...b.F('service').options].map(o=>o.textContent);b.click('[data-action="close-modal"]');return opts.some(t=>t.includes('Wheel alignment'))&&opts.some(t=>t.includes('Something else'));});
+T('Picking one takes its price and cost',()=>{const b=app();toQuote(b);b.click('[data-action="add-labor"]');const sv=b.db().settings.services.find(x=>x.name==='Wheel alignment');b.set('service',sv.id);b.submit();const it=b.order('WO-1047').items[0];return it.name==='Wheel alignment'&&it.price===sv.price&&it.cost===sv.cost&&!it.needsPrice;});
+T('The line remembers which service it came from',()=>{const b=app();toQuote(b);b.click('[data-action="add-labor"]');const sv=b.db().settings.services[1];b.set('service',sv.id);b.submit();return b.order('WO-1047').items[0].service===sv.id;});
+T('An advisor sees the price beside each service',()=>{const a=as('priya.nair','advisor123');toQuote(a);a.click('[data-action="add-labor"]');const txt=[...a.F('service').options].map(o=>o.textContent).join('|');a.click('[data-action="close-modal"]');return txt.includes('$');});
+T('A technician does not',()=>{const t=as('marcus.lee','tech123');toQuote(t);t.click('[data-action="add-labor"]');const txt=[...t.F('service').options].map(o=>o.textContent).join('|');t.click('[data-action="close-modal"]');return !txt.includes('$');});
+T('But their line still carries the shop price',()=>{const t=as('marcus.lee','tech123');toQuote(t);t.click('[data-action="add-labor"]');const sv=t.db().settings.services.find(x=>x.name==='Wheel alignment');t.set('service',sv.id);t.submit();const it=t.order('WO-1047').items[0];return it.price===sv.price&&!it.needsPrice;});
+T('So the quote is no longer held up waiting to be priced',()=>{const t=as('marcus.lee','tech123');toQuote(t);t.click('[data-action="add-labor"]');t.set('service',t.db().settings.services[0].id);t.submit();const c=app(t.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1047');c.click('[data-action="send-quote"]');return c.order('WO-1047').quoteStatus==='sent';});
+T('Something else still gives the old free-text box',()=>{const b=app();toQuote(b);b.click('[data-action="add-labor"]');b.set('service','__custom');b.F('name').value='Straighten bumper bracket';b.F('price').value='45';b.submit();const it=b.order('WO-1047').items[0];return it.name==='Straighten bumper bracket'&&it.price===45&&!it.service;});
+T('A technician describing their own work still needs pricing',()=>{const t=as('marcus.lee','tech123');toQuote(t);t.click('[data-action="add-labor"]');t.set('service','__custom');t.F('name').value='Odd noise, needs investigation';t.submit();return t.order('WO-1047').items[0].needsPrice===true;});
+T('Repricing a service does not reprice work already quoted',()=>{const b=app();toQuote(b);b.click('[data-action="add-labor"]');const sv=b.db().settings.services.find(x=>x.name==='Wheel alignment');b.set('service',sv.id);b.submit();b.click('[data-action="close-panel"]');b.setTab('lists');b.click(`[data-action="service-edit"][data-id="${sv.id}"]`);b.F('price').value='999';b.submit();return b.order('WO-1047').items[0].price===sv.price;});
+T('Removing a service leaves quoted lines alone',()=>{const b=app();toQuote(b);b.click('[data-action="add-labor"]');const sv=b.db().settings.services[2];b.set('service',sv.id);b.submit();b.click('[data-action="close-panel"]');b.setTab('lists');b.click(`[data-action="service-remove"][data-id="${sv.id}"]`);return b.order('WO-1047').items[0].name===sv.name;});
+T('A shop with no services falls back to describing the work',()=>{const b=app();b.setTab('lists');b.db().settings.services.slice().forEach(sv=>b.click(`[data-action="service-remove"][data-id="${sv.id}"]`));toQuote(b);b.click('[data-action="add-labor"]');const only=[...b.F('service').options].length===1;b.F('name').value='Hand written';b.F('price').value='30';b.submit();return only&&b.order('WO-1047').items[0].name==='Hand written';});
+T('No script errors',()=>{const b=app();lists(b);b.click('[data-action="service-add"]');b.F('name').value='X';b.F('price').value='1';b.submit();return b.errs.length===0;});
+}
+
+S('46 Money rules the shop sets');
+{
+const gen=b=>{b.setTab('general');};
+const as=(u,p)=>{const c=app(null,{anon:true});c.login(u,p);return c;};
+const setMoney=(b,f)=>{gen(b);b.click('[data-action="money-rules"]');Object.keys(f).forEach(k=>{b.F(k).value=f[k];});b.submit();};
+
+T('Tax is off until the shop turns it on',()=>{const b=app();return b.db().settings.money.taxRate===0;});
+T('With no tax the total is what it always was',()=>{const b=app();b.openOrder('WO-1043');b.tab('items');return !b.$('#panelBody').textContent.includes('GST');});
+T('Setting a rate adds a tax line to the job',()=>{const b=app();setMoney(b,{taxRate:'9'});b.openOrder('WO-1043');b.tab('items');return b.$('#panelBody').textContent.includes('GST 9%');});
+T('The tax is worked out on the discounted amount',()=>{const b=app();setMoney(b,{taxRate:'10'});const o=b.order('WO-1043');const sub=o.items.reduce((a,i)=>a+i.qty*i.price,0);const net=sub-(o.discount||0);const want='$'+Math.round(Math.round(net*10)/100).toLocaleString();b.openOrder('WO-1043');b.tab('items');return b.$('#panelBody').textContent.includes(want);});
+T('The customer sees it on the quotation',()=>{const b=app();setMoney(b,{taxRate:'9'});b.openOrder('WO-1043');b.tab('items');b.click('[data-action="preview-quote"]');return b.$('#docBody').textContent.includes('GST 9%');});
+T('The tax name is the shop\'s own word',()=>{const b=app();setMoney(b,{taxRate:'6',taxLabel:'SST'});b.openOrder('WO-1043');b.tab('items');return b.$('#panelBody').textContent.includes('SST 6%');});
+T('Profit is worked out before tax, because the tax was never the shop\'s',()=>{const b=app();const before=b.order('WO-1043');b.openOrder('WO-1043');b.tab('items');const p1=b.$('#panelBody').textContent.match(/Profit \$([\d,]+)/)[1];b.click('[data-action="close-panel"]');setMoney(b,{taxRate:'9'});b.openOrder('WO-1043');b.tab('items');const p2=b.$('#panelBody').textContent.match(/Profit \$([\d,]+)/)[1];return p1===p2;});
+T('A rate over 100 is rejected',()=>{const b=app();gen(b);b.click('[data-action="money-rules"]');b.F('taxRate').value='150';b.submit();return b.err().includes('between 0 and 100');});
+
+T('The currency symbol is the shop\'s choice',()=>{const b=app();setMoney(b,{currency:'RM'});b.go('reports');return b.$('#v-reports').textContent.includes('RM');});
+T('And it reaches the customer document',()=>{const b=app();setMoney(b,{currency:'RM'});b.openOrder('WO-1043');b.tab('items');b.click('[data-action="preview-quote"]');return b.$('#docBody').textContent.includes('RM');});
+T('An empty symbol is rejected',()=>{const b=app();gen(b);b.click('[data-action="money-rules"]');b.F('currency').value=' ';b.submit();return b.err().includes('currency symbol');});
+
+T('The advisor discount cap is no longer fixed at 10%',()=>{const b=app();setMoney(b,{discountCap:'25'});const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1043');c.tab('items');const o=c.order('WO-1043');const sub=o.items.reduce((a,i)=>a+i.qty*i.price,0);const el=c.$('[data-action="discount"]');c.change(el,String(Math.floor(sub*0.2)));return c.order('WO-1043').discount===Math.floor(sub*0.2);});
+T('Going over the cap is still pulled back, with the shop\'s own number',()=>{const b=app();setMoney(b,{discountCap:'5'});const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.openOrder('WO-1043');c.tab('items');const o=c.order('WO-1043');const sub=o.items.reduce((a,i)=>a+i.qty*i.price,0);c.change(c.$('[data-action="discount"]'),String(sub));return c.toast().includes('up to 5%');});
+T('An owner is still not capped',()=>{const b=app();setMoney(b,{discountCap:'5'});b.openOrder('WO-1043');b.tab('items');const o=b.order('WO-1043');const sub=o.items.reduce((a,i)=>a+i.qty*i.price,0);b.change(b.$('[data-action="discount"]'),String(Math.floor(sub*0.5)));return b.order('WO-1043').discount===Math.floor(sub*0.5);});
+T('Quote validity is the shop\'s choice',()=>{const b=app();setMoney(b,{quoteValidDays:'30'});b.openOrder('WO-1043');b.tab('items');b.click('[data-action="preview-quote"]');return b.$('#docBody').textContent.includes('valid for 30 days');});
+T('A manager may set the money rules',()=>{const m=as('joanne.lim','manager123');gen(m);return !!m.$('[data-action="money-rules"]');});
+T('An advisor may not',()=>{const a=as('priya.nair','advisor123');a.go('settings');a.d.body.insertAdjacentHTML('beforeend','<button id="x" data-action="money-rules"></button>');a.click('#x');return a.toast().includes('owner or manager')&&!a.modalOpen();});
+T('No script errors',()=>{const b=app();setMoney(b,{taxRate:'9',currency:'RM'});return b.errs.length===0;});
+}
+
+S('47 Workshop details on the paperwork');
+{
+const gen=b=>{b.setTab('general');};
+const as=(u,p)=>{const c=app(null,{anon:true});c.login(u,p);return c;};
+
+T('The shop ships with an address and phone',()=>{const b=app();const sh=b.db().settings.shop;return !!sh.address&&!!sh.phone;});
+T('They appear on the quotation',()=>{const b=app();b.openOrder('WO-1043');b.tab('items');b.click('[data-action="preview-quote"]');const t=b.$('#docBody').textContent;const sh=b.db().settings.shop;return t.includes(sh.address)&&t.includes(sh.phone);});
+T('And on a technician\'s job sheet',()=>{const t=as('marcus.lee','tech123');t.openOrder('WO-1043');t.tab('items');t.click('[data-action="preview-quote"]');return t.$('#docBody').textContent.includes(t.db().settings.shop.address);});
+T('An owner can change them',()=>{const b=app();gen(b);b.click('[data-action="shop-details"]');b.F('address').value='1 Jalan Besar';b.F('phone').value='6000 1234';b.F('regNo').value='UEN 999';b.submit();const sh=b.db().settings.shop;return sh.address==='1 Jalan Besar'&&sh.regNo==='UEN 999';});
+T('The change reaches the document',()=>{const b=app();gen(b);b.click('[data-action="shop-details"]');b.F('address').value='1 Jalan Besar';b.submit();b.openOrder('WO-1043');b.tab('items');b.click('[data-action="preview-quote"]');return b.$('#docBody').textContent.includes('1 Jalan Besar');});
+T('A blank field is simply left off',()=>{const b=app();gen(b);b.click('[data-action="shop-details"]');b.F('address').value='';b.F('phone').value='';b.F('regNo').value='';b.submit();b.openOrder('WO-1043');b.tab('items');b.click('[data-action="preview-quote"]');return !b.$('#docBody').textContent.includes('undefined');});
+T('The details are escaped, not rendered as markup',()=>{const b=app();gen(b);b.click('[data-action="shop-details"]');b.F('address').value='<img src=x>';b.submit();b.openOrder('WO-1043');b.tab('items');b.click('[data-action="preview-quote"]');return !b.$('#docBody').querySelector('img');});
+T('A manager cannot change them, only the owner',()=>{const m=as('joanne.lim','manager123');m.go('settings');m.d.body.insertAdjacentHTML('beforeend','<button id="x" data-action="shop-details"></button>');m.click('#x');return m.toast().includes('owner')&&!m.modalOpen();});
+T('A new workshop starts with no details of the demo shop',()=>{const b=app();return b.db().settings.shop.address!=='';});
+T('No script errors',()=>{const b=app();gen(b);b.click('[data-action="shop-details"]');b.F('phone').value='6000';b.submit();return b.errs.length===0;});
 }
 
 // ============ REPORT ============

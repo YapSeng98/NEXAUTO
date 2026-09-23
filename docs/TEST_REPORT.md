@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 564 of 564 checks passed.**
+**Result: 615 of 615 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -52,6 +52,61 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Process bar when money is owed | 10 | 10 |
 | Money owed in the pipeline | 10 | 10 |
 | Supplier management | 25 | 25 |
+| Service price list | 23 | 23 |
+| Money rules the shop sets | 18 | 18 |
+| Workshop details on the paperwork | 10 | 10 |
+
+## A shop that sets its own prices and rules (v0.24.0)
+
+Five things a workshop decides for itself were decided in the source code
+instead. All five now live in Settings.
+
+**Labour was free text.** Parts have always been picked from the price list, so
+a part carries its price automatically — there is even a test called "The part
+carries the price list price even though they cannot see it." Labour was a
+description typed by hand with a price typed from memory, which meant the same
+job could be quoted at two prices by two advisors, and a technician's line was
+always flagged **Needs pricing**, physically blocking the quote until an advisor
+went back to it.
+
+Labour is now picked from a **service price list** the owner or manager
+maintains, carrying a price and an internal cost. A technician picking
+"Wheel alignment" adds it at the shop's price without ever seeing the price, and
+the quote is no longer held up. **"Something else…"** keeps the old free-text box
+for genuine one-offs, still flagged for pricing when a technician writes it.
+
+Quoted lines copy the name and price at the time, so repricing or removing a
+service never rewrites a job that is already quoted. Both are tested.
+
+**The other four:**
+
+| Was | Now |
+|---|---|
+| `money()` hardcoded `"$"` | Currency symbol is the shop's own |
+| No tax anywhere | A named tax at a rate the shop sets, shown separately to the customer. Defaults to **zero**, so a shop that is not registered sees exactly what it saw before |
+| Advisor discount capped at a hardcoded `0.1` | A percentage in Settings, and the toast quotes the shop's own number |
+| `QUOTE_VALID_DAYS = 14` | Configurable, and the quotation footer follows it |
+| Quotation showed only the workshop name | Address, phone and registration number, printed under the name. A blank field is left off rather than printed empty |
+
+**Profit is worked out before tax.** `totals()` now returns `net` (the shop's
+money) and `total` (what the customer hands over). Margin and profit use `net`,
+because the tax was never the shop's to keep — there is a test that turning tax
+on does not change the profit figure.
+
+### Two problems the work surfaced
+
+**The suite ran the heap out.** Every check builds a jsdom window and nothing
+ever closed one, so they all stayed alive with their timers. At ~600 checks Node
+died with "Ineffective mark-compacts near heap limit" — and raising
+`--max-old-space-size` to 4GB did not save it, because the leak grew with the
+suite. `T()` now closes any window a check opened, while windows built at section
+scope sit below a watermark and survive for the checks that share them.
+
+**The suite hardcoded the storage key.** Bumping the seed to `nexauto_demo_v8`
+broke every test at once, because `nexauto_demo_v7` was written out in two places
+in `suite.js`. It now reads `KEY` out of the source, so the next bump cannot
+desync them. The seed version had to move because `settings` gained `services`,
+`money` and `shop` — the rule recorded in ARCHITECTURE.md.
 
 ## Editable suppliers, behind their own permission (v0.23.0)
 

@@ -184,7 +184,14 @@ erDiagram
 7. **Checklist snapshot.** A job copies the inspection checklist when it is created, for the same reason item prices are copied: editing the template must not rewrite history.
 8. **Unpriced lines block the quote.** Anything flagged `needsPrice` stops `doSendQuote`, so a customer never receives a quote with a zero line in it.
 9. **A finding is answered by a link, not by wording.** `answersFinding()` checks the `finding` index first and falls back to a name match, so a line renamed beyond recognition still counts and the follow-up is not raised.
-10. **Revenue means money received.** Anything with `payment.settled === false` is excluded from the dashboard and every report until it is confirmed. A missing `settled` counts as settled.
+10. **A quoted line keeps its own price.** A labour line copies the service's
+    name, price and cost at the moment it is added, and keeps `service` as a
+    pointer back. Repricing or deleting a service never rewrites a job that was
+    already quoted.
+11. **Profit is worked out before tax.** `totals()` returns `net` (subtotal less
+    discount) and `total` (`net` plus tax). Margin and profit use `net` — the tax
+    was never the shop's money.
+12. **Revenue means money received.** Anything with `payment.settled === false` is excluded from the dashboard and every report until it is confirmed. A missing `settled` counts as settled.
 11. **A new workshop is a different shape of the same object.** `blankShop()` builds one with a single owner, no jobs or customers, counters from 1001, and optionally the sample catalogue at zero stock.
 
 ### Settings
@@ -202,7 +209,7 @@ different workshop without edits:
 
 ## Storage (demo)
 
-Everything is saved as one JSON object in browser storage under `nexauto_demo_v7`.
+Everything is saved as one JSON object in browser storage under `nexauto_demo_v8`.
 The session, sign-in lockouts and the optional AI key live under their own keys —
 see [ARCHITECTURE.md](ARCHITECTURE.md). **Changing the shape of the data means
 bumping both `KEY` and `DB.v`**, which reseeds; leaving them alone means
@@ -215,3 +222,20 @@ returning visitors silently keep the old shape.
 - Add `Invoice` (number, tax, status) and allow several `Payment` rows per order, for deposits and partial payments.
 - Reserve stock inside a database transaction, so two simultaneous approvals can't oversell.
 - Move `settings` to a `shop_settings` row per shop, and the lists to their own lookup tables so they can be referenced rather than copied as strings.
+
+## Shop settings
+
+Everything under `settings` is what one workshop decides for itself. The same
+code runs a different shop by changing only this object.
+
+| Field | Shape | Notes |
+|---|---|---|
+| appName | string | Sign-in page, sidebar, browser tab and every document |
+| color | string | Brand colour; everything else is derived from it |
+| shop | `{address, phone, regNo}` | Printed under the name on quotations and job sheets. A blank field is left off rather than printed empty |
+| money | `{currency, taxLabel, taxRate}` | `taxRate` is a percentage and defaults to **0**, which removes the tax line entirely |
+| services | `[{id, name, price, cost}]` | The labour price list. An **empty array is a real answer** — unlike the other lists it does not fall back to the defaults, because a shop is allowed to sell no fixed services |
+| lists | `{inspection, payment, categories, adjustReasons, tiers}` | Falls back to the defaults when empty |
+| timings | numbers | Includes `discountCap` (percent an advisor may give) and `quoteValidDays` |
+| perms | `{role: {flag: bool}}` | Merged over `BASE_PERMS`; the owner row is forced on |
+

@@ -75,3 +75,30 @@ In this demo, hidden fields are removed by the browser. In production, the serve
 2. Filter rows, for example so technicians only get their own orders.
 3. Strip fields before sending, so cost, profit and revenue never reach advisors or technicians.
 4. Re-check every write, such as price edits, discounts over 10%, or payments by technicians.
+
+## Who sets up the workshop
+
+Settings is where a shop configures itself. Each card is gated by an existing
+permission rather than by a hardcoded role, so an owner can move any of it.
+
+| Settings card | Flag | Owner | Manager | Advisor | Technician |
+|---|---|---|---|---|---|
+| App colour | `config` | ✓ | ✓ | – | – |
+| Workshop name | `staff` | ✓ | – | – | – |
+| Workshop details (address, phone, reg. no.) | `staff` | ✓ | – | – | – |
+| Money and quotes (currency, tax, discount cap, validity) | `config` | ✓ | ✓ | – | – |
+| Users and sign-in policy | `staff` | ✓ | – | – | – |
+| Roles | owner only | ✓ | – | – | – |
+| Services and labour prices | `config` | ✓ | ✓ | – | – |
+| The other lists | `config` | ✓ | ✓ | – | – |
+| Timing | `config` | ✓ | ✓ | – | – |
+| Suppliers | `suppliers` | ✓ | ✓ | – | – |
+| Reset demo data | `staff` | ✓ | – | – | – |
+
+The split is deliberate: a manager runs the shop day to day, so they set prices,
+lists and timings. Anything that could lock people out — users, roles, the
+shop's own identity — stays with the owner.
+
+**Every one of these re-checks the permission in its handler**, not just in CSS.
+Forcing the button into the page and clicking it is refused, and there are tests
+that do exactly that.

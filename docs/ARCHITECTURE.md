@@ -5,7 +5,7 @@
 ```mermaid
 flowchart LR
   U["Browser"] --> APP["index.html<br/>UI + logic + auth"]
-  APP --> LS[("Browser storage<br/>nexauto_demo_v7")]
+  APP --> LS[("Browser storage<br/>nexauto_demo_v8")]
   APP -. "optional, visitor's own key" .-> AI["Anthropic API"]
   APP -. "SRI-pinned" .-> CDN["Chart.js"]
 ```
@@ -18,7 +18,7 @@ flowchart LR
   Change and input events have their own delegated handlers.
 - Role gating sets `data-can-*` flags on `<html>`; CSS hides elements marked
   `data-cost`, `data-price`, `data-revenue`, `data-purchase`, `data-staff`,
-  `data-edit`, `data-checkin` and `data-config`. **This hides, it does not
+  `data-edit`, `data-checkin`, `data-config` and `data-suppliers`. **This hides, it does not
   withhold** — see [SECURITY.md](SECURITY.md) C1.
 - Everything a shop can configure lives in `DB.settings`, so the same code drives
   a different workshop's lists, timings, permissions and name.
@@ -47,13 +47,13 @@ see the same data. The backend that fixes that is in
 
 | Section | Contents |
 |---|---|
-| Constants | `STAGES`, `BASE_PERMS`, `PERM_DEFS`, `DEFAULT_LISTS`, `LIST_DEFS`, `DEFAULT_TIMINGS`, `THEMES`, `NAV`, `ICON` |
+| Constants | `STAGES`, `BASE_PERMS`, `PERM_DEFS`, `DEFAULT_LISTS`, `LIST_DEFS`, `DEFAULT_TIMINGS`, `DEFAULT_SERVICES`, `DEFAULT_MONEY`, `THEMES`, `NAV`, `ICON` |
 | Credentials | `digest()`, `setPassword()`, `checkPassword()` — demo-grade, see SECURITY.md H1 |
 | `seed()` / `buildHistory()` | Demo data, including six months of deterministic history |
 | Storage | `save()`, versioned load, `KEY` / `DB.v` |
 | Session | `readSession()`, `writeSession()`, lockout counters |
 | First run | `blankShop()`, `modalSetupShop()` — a workshop that is not the demo, created from the sign-in page |
-| Settings | `listOf()`, `timing()`, `appName()`, `checklist()`, `perms()` — every shop-configurable value, including the role matrix |
+| Settings | `listOf()`, `timing()`, `appName()`, `checklist()`, `perms()`, `services()`, `moneyCfg()`, `taxRate()`, `shopField()` — every shop-configurable value, including the role matrix and the labour price list |
 | Helpers | `can()`, `me()`, `isMine()`, `totals()`, `avail()`, `reserve()`, `move()`, `log()`, `answersFinding()`, `isSettled()`, `owedOrders()` |
 | Insights engine | `jobStatus()`, `attentionList()`, `owedCardHTML()`, `reorderPlan()`, `customerStats()` |
 | Views | `renderDashboard`, `renderOrders`, `renderInventory`, `renderCustomers`, `renderReports`, `renderInsights`, `renderSettings` |
@@ -61,14 +61,14 @@ see the same data. The backend that fixes that is in
 | Quote document | `quoteDocHTML()`, `previewQuote()`, `openDoc()` — priced for advisors, a job sheet for technicians |
 | AI panel | `aiContext()`, `askClaude()` — off unless the visitor supplies a key |
 | Actions | `doStartInsp`, `doFinishInsp`, `doSendQuote`, `doApprove`, `doApproveExtra`, `doDecline`, `doWorkDone` |
-| Modals | Check-in, edit job, customer, vehicle, part, labor, price item, payment, stock adjust, PO, supplier, user, list item, timings, app name, API key |
+| Modals | Check-in, edit job, customer, vehicle, part, labor, price item, payment, stock adjust, PO, supplier, service, shop details, money rules, user, list item, timings, app name, API key |
 | Events | Click, change, input and keydown delegation |
 
 ### Storage layout
 
 | Key | Holds | Survives |
 |---|---|---|
-| `nexauto_demo_v7` | The entire database: staff, customers, orders, parts, movements, settings | Until the seed version changes |
+| `nexauto_demo_v8` | The entire database: staff, customers, orders, parts, movements, settings | Until the seed version changes |
 | `nexauto_session` | `{userId, at, remember}` — in `localStorage` if "keep me signed in", else `sessionStorage` | 12 hours by default, configurable |
 | `nexauto_lockouts` | Failed sign-in counters per username | Until cleared or expired |
 | `nexauto_ai_key` | The visitor's own Anthropic key, if they added one | Until disconnected |
@@ -77,6 +77,18 @@ see the same data. The backend that fixes that is in
 reseeds only when the version differs, so leaving it alone means returning
 visitors silently keep an older shape — which happened once already and is
 recorded in [TEST_REPORT.md](TEST_REPORT.md).
+
+### Two traps in the test suite
+
+- **Every check builds a jsdom window, and nothing closed them.** They stayed
+  alive with their timers, so the suite's memory grew with the suite and Node
+  died of heap exhaustion at around 600 checks. `T()` now closes any window a
+  check opened; windows built at section scope are shared by later checks, so
+  they sit below a watermark and survive. Raising `--max-old-space-size` alone
+  does not fix this — it only moves the cliff.
+- **The suite must not repeat the storage key.** It reads `KEY` out of
+  `index.html`. Writing `nexauto_demo_v7` into `suite.js` meant a seed bump broke
+  every test at once, for a reason that looked nothing like the cause.
 
 ## Production target
 

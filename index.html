@@ -763,7 +763,7 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
 var $ = function(s){ return document.querySelector(s); };
 var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
 function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
-function money(n){ return "$" + Math.round(Number(n)||0).toLocaleString(); }
+function money(n){ return money$() + Math.round(Number(n)||0).toLocaleString(); }
 function uid(p){ return p + Math.random().toString(36).slice(2,8); }
 function nowISO(){ return new Date().toISOString(); }
 function isToday(iso){ return iso && new Date(iso).toDateString() === new Date().toDateString(); }
@@ -822,8 +822,27 @@ var LIST_DEFS = [
 var DEFAULT_TIMINGS = {
   followDeclined:14, followFinding:30, followService:180, serviceKm:10000,
   ageWarn:1, ageLate:3, stockLookback:90, stockCover:45,
-  sessionHours:12, maxAttempts:5, lockSeconds:60
+  sessionHours:12, maxAttempts:5, lockSeconds:60,
+  discountCap:10, quoteValidDays:14
 };
+/* What the shop charges for its own work. Parts have always come from the price
+   list; labour was free text, so the same job could be quoted two different ways
+   by two advisors, and a technician's line always had to be priced by hand. */
+var DEFAULT_SERVICES = [
+  {id:"sv1", name:"Minor service \u2014 oil and filter", price:120, cost:45},
+  {id:"sv2", name:"Major service", price:320, cost:130},
+  {id:"sv3", name:"Brake pad replacement, per axle", price:90, cost:25},
+  {id:"sv4", name:"Brake fluid change", price:70, cost:18},
+  {id:"sv5", name:"Wheel alignment", price:80, cost:20},
+  {id:"sv6", name:"Tyre fitting and balancing, per wheel", price:25, cost:6},
+  {id:"sv7", name:"Battery replacement", price:40, cost:10},
+  {id:"sv8", name:"Air-conditioning regas", price:150, cost:60},
+  {id:"sv9", name:"Diagnostic check", price:60, cost:15},
+  {id:"sv10", name:"Timing belt replacement", price:450, cost:180}
+];
+/* Money rules a shop sets once. Tax defaults to nothing charged, so a workshop
+   that is not registered sees exactly what it saw before. */
+var DEFAULT_MONEY = {currency:"$", taxLabel:"GST", taxRate:0};
 function listOf(k){
   var v = DB && DB.settings && DB.settings.lists && DB.settings.lists[k];
   return (v && v.length) ? v : DEFAULT_LISTS[k];
@@ -832,6 +851,24 @@ function timing(k){
   var t = DB && DB.settings && DB.settings.timings;
   var v = t && t[k];
   return (typeof v === "number" && !isNaN(v)) ? v : DEFAULT_TIMINGS[k];
+}
+/* Unlike the other lists, a shop is allowed to have no services at all — so an
+   empty array is a real answer here, not a reason to fall back to the defaults. */
+function services(){
+  var v = DB && DB.settings && DB.settings.services;
+  return Array.isArray(v) ? v : DEFAULT_SERVICES;
+}
+function service(id){ return services().filter(function(x){ return x.id === id; })[0]; }
+function money$(){ return moneyCfg("currency"); }
+function moneyCfg(k){
+  var m = DB && DB.settings && DB.settings.money;
+  var v = m && m[k];
+  return (v === undefined || v === null || v === "") && v !== 0 ? DEFAULT_MONEY[k] : v;
+}
+function taxRate(){ var r = Number(moneyCfg("taxRate")); return isNaN(r) || r < 0 ? 0 : r; }
+function shopField(k){
+  var sh = DB && DB.settings && DB.settings.shop;
+  return (sh && sh[k]) || "";
 }
 var DEFAULT_INSPECTION = ["Engine oil level and condition","Brake pads and discs","Tyres and tread depth","Battery health","Lights and signals","Suspension and steering","Coolant level","Wipers and washer","Air-con performance","Underbody and leaks"];
 var BASE_PERMS = {
@@ -1048,9 +1085,12 @@ function seed(){
     {id:"m4", sku:"FLT-OIL01", qty:-1, type:"sale", ref:"WO-1042", reason:"", by:"s3", at:ago(150)}
   ]);
   seeding = false;
-  return {v:7, staff:staff, suppliers:suppliers, inventory:inventory, customers:customers, orders:orders,
+  return {v:8, staff:staff, suppliers:suppliers, inventory:inventory, customers:customers, orders:orders,
     purchaseOrders:purchaseOrders, opportunities:opportunities, movements:movements, nextWO:1048, nextPO:202,
     settings:{color:null, appName:DEFAULT_APP_NAME, timings:{},
+      services:DEFAULT_SERVICES.map(function(x){ return {id:x.id, name:x.name, price:x.price, cost:x.cost}; }),
+      money:{currency:DEFAULT_MONEY.currency, taxLabel:DEFAULT_MONEY.taxLabel, taxRate:DEFAULT_MONEY.taxRate},
+      shop:{address:"12 Kaki Bukit Road 1, #03-14", phone:"6841 2200", regNo:"UEN 200412345K"},
       lists:Object.keys(DEFAULT_LISTS).reduce(function(m, k){ m[k] = DEFAULT_LISTS[k].slice(); return m; }, {})}};
 }
 
@@ -1163,13 +1203,13 @@ function buildHistory(now, baseCustomers, inventory, staff){
 /* ================= storage ================= */
 // Bump BOTH of these whenever the seed gains a field, or returning visitors keep
 // their old blob and silently miss the new data.
-var KEY = "nexauto_demo_v7";
+var KEY = "nexauto_demo_v8";
 var SESSION_KEY = "nexauto_session";
 var LOCKOUT_KEY = "nexauto_lockouts";
 
 var DB = null;
 try { DB = JSON.parse(localStorage.getItem(KEY)); } catch(e){ DB = null; }
-if(!DB || DB.v !== 7) DB = seed();
+if(!DB || DB.v !== 8) DB = seed();
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch(e){ toast("Browser storage is full \u2014 remove a part photo or reset the demo data.", true); } }
 
 /* ================= session ================= */
@@ -1244,8 +1284,13 @@ function advisors(){ return activeUsers().filter(function(s){ return s.role !== 
 function totals(o){
   var sub = 0, cost = 0;
   o.items.forEach(function(i){ sub += i.qty * i.price; cost += i.qty * i.cost; });
-  var total = Math.max(0, sub - (o.discount||0));
-  return {sub:sub, total:total, cost:cost, profit:total - cost, margin: total ? Math.round((total - cost) / total * 100) : 0};
+  /* net is the shop's money, total is what the customer hands over. Profit is
+     worked out on net, because the tax was never the shop's to keep. */
+  var net = Math.max(0, sub - (o.discount||0));
+  var tax = Math.round(net * taxRate()) / 100;
+  var total = net + tax;
+  return {sub:sub, net:net, tax:tax, total:total, cost:cost,
+          profit:net - cost, margin: net ? Math.round((net - cost) / net * 100) : 0};
 }
 function inspCounts(o){
   var c = {good:0, attention:0, problem:0, unchecked:0};
@@ -1328,7 +1373,7 @@ function blankShop(o){
   var owner = {id:uid("s"), name:o.ownerName, role:"owner", username:o.username, active:true};
   setPassword(owner, o.password);
   var sample = seed();   // borrow its catalogue, never its jobs or customers
-  return {v:7, staff:[owner],
+  return {v:8, staff:[owner],
     suppliers: o.withCatalogue ? sample.suppliers : [],
     inventory: o.withCatalogue ? sample.inventory.map(function(p){
       return {sku:p.sku, name:p.name, category:p.category, stock:0, reserved:0,
@@ -1337,6 +1382,9 @@ function blankShop(o){
     customers:[], orders:[], purchaseOrders:[], opportunities:[], movements:[],
     nextWO:1001, nextPO:101,
     settings:{color:null, appName:o.shopName, timings:{},
+      services:o.withCatalogue ? DEFAULT_SERVICES.map(function(x){ return {id:x.id, name:x.name, price:x.price, cost:x.cost}; }) : [],
+      money:{currency:DEFAULT_MONEY.currency, taxLabel:DEFAULT_MONEY.taxLabel, taxRate:DEFAULT_MONEY.taxRate},
+      shop:{address:"", phone:"", regNo:""},
       lists:Object.keys(DEFAULT_LISTS).reduce(function(m, k){ m[k] = DEFAULT_LISTS[k].slice(); return m; }, {})}};
 }
 function modalSetupShop(){
@@ -1770,6 +1818,7 @@ function orderItems(o){
   if(o.items.length){
     html += '<div class="totals" data-price><div><span>Subtotal</span><span>' + money(t.sub) + '</span></div>' +
       '<div><span>Discount</span>' + (editable && o.stage === "quotation" ? '<input type="number" min="0" step="1" data-action="discount" value="' + (o.discount||0) + '">' : '<span>' + money(o.discount) + '</span>') + '</div>' +
+      (t.tax ? '<div><span>' + esc(moneyCfg("taxLabel")) + ' ' + taxRate() + '%</span><span>' + money(t.tax) + '</span></div>' : '') +
       '<div class="grand"><span>Total</span><span>' + money(t.total) + '</span></div>' +
       '<div data-cost style="color:var(--text-secondary);font-size:12.5px"><span>Cost ' + money(t.cost) + '</span><span>Profit ' + money(t.profit) + ' · ' + t.margin + '%</span></div></div>';
   }
@@ -1815,17 +1864,19 @@ function closeDoc(){
   $("#docWrap").classList.remove("open");
   document.body.classList.remove("printing-doc");
 }
-var QUOTE_VALID_DAYS = 14;
 function quoteDocHTML(o){
   var c = cust(o.customerId), v = veh(c, o.vehicleId), t = totals(o), priced = can("price");
   var issued = o.quoteStatus === "draft" ? new Date() : new Date(stageStart(o));
-  var expires = new Date(issued.getTime() + QUOTE_VALID_DAYS * 86400000);
+  var expires = new Date(issued.getTime() + timing("quoteValidDays") * 86400000);
   var fmt = function(d){ return d.toLocaleDateString(undefined, {day:"numeric", month:"long", year:"numeric"}); };
   var findings = o.inspection.filter(function(i){ return i.status === "problem" || i.status === "attention"; });
   var statusNote = {draft:"Draft — not yet sent to the customer", sent:"Sent to the customer", approved:"Approved by the customer", rejected:"Declined by the customer"}[o.quoteStatus];
 
   var html = '<div class="quote-doc">' +
-    '<div class="qd-head"><div><p class="qd-shop">' + esc(appName()) + '</p><p class="qd-sub">Workshop operations</p></div>' +
+    '<div class="qd-head"><div><p class="qd-shop">' + esc(appName()) + '</p>' +
+      [shopField("address"), shopField("phone"), shopField("regNo")].filter(Boolean)
+        .map(function(x){ return '<p class="qd-sub">' + esc(x) + '</p>'; }).join("") +
+      (shopField("address") || shopField("phone") || shopField("regNo") ? '' : '<p class="qd-sub">Workshop operations</p>') + '</div>' +
       '<div class="qd-meta"><p class="qd-no">' + (priced ? 'Quotation ' : 'Job sheet ') + esc(o.id) + '</p>' +
       '<p>Issued ' + fmt(issued) + '</p><p>Valid until ' + fmt(expires) + '</p></div></div>' +
     '<div class="qd-status ' + (o.quoteStatus === "approved" ? "ok" : o.quoteStatus === "rejected" ? "no" : "") + '">' + esc(statusNote) + '</div>' +
@@ -1854,8 +1905,9 @@ function quoteDocHTML(o){
   if(priced){
     html += '<div class="qd-totals"><div><span>Subtotal</span><span>' + money(t.sub) + '</span></div>' +
       (o.discount ? '<div><span>Discount</span><span>− ' + money(o.discount) + '</span></div>' : '') +
+      (t.tax ? '<div><span>' + esc(moneyCfg("taxLabel")) + ' ' + taxRate() + '%</span><span>' + money(t.tax) + '</span></div>' : '') +
       '<div class="qd-grand"><span>Total</span><span>' + money(t.total) + '</span></div></div>' +
-      '<p class="qd-foot">Prices include parts and labour for the work listed above. Anything found once work is under way will be quoted separately and needs your approval before we proceed. This quotation is valid for ' + QUOTE_VALID_DAYS + ' days.</p>';
+      '<p class="qd-foot">Prices include parts and labour for the work listed above. Anything found once work is under way will be quoted separately and needs your approval before we proceed. This quotation is valid for ' + timing("quoteValidDays") + ' days.</p>';
   } else {
     html += '<p class="qd-foot">Everything the customer has agreed to, without pricing. Anything else you find needs an advisor to quote it before you carry on — add it to the job and leave a note.</p>';
   }
@@ -2338,12 +2390,27 @@ function renderSettings(){
     '<p class="sub" style="color:var(--text-muted);font-size:12px;margin:12px 0 0">Each user signs in with their own username and password. Owners see everything and manage users. Managers see profit but cannot manage users. Advisors see prices but not cost or profit. Technicians only see their own jobs, with no prices.</p></div>';
   general += '<div class="card" data-staff><div class="section-head"><h2>Workshop name</h2><button class="btn sm" data-action="app-name">' + icon("pencil") + 'Rename</button></div>' +
     '<p class="sub" style="color:var(--text-secondary);margin:0;font-size:13px">Currently <b style="color:var(--text-primary)">' + esc(appName()) + '</b> \u2014 shown on the sign-in page, in the sidebar and in the browser tab.</p></div>';
+  /* A quotation with no address is not a quotation anybody would accept, so the
+     shop's own details sit next to its name and land on the document. */
+  general += '<div class="card" data-staff><div class="section-head"><h2>Workshop details</h2><button class="btn sm" data-action="shop-details">' + icon("pencil") + 'Edit</button></div>' +
+    '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Printed on every quotation and job sheet, under the workshop name.</p>' +
+    '<div class="line"><div class="l">Address</div><div class="r">' + (shopField("address") ? esc(shopField("address")) : '<span style="color:var(--text-muted)">Not set</span>') + '</div></div>' +
+    '<div class="line"><div class="l">Phone</div><div class="r">' + (shopField("phone") ? esc(shopField("phone")) : '<span style="color:var(--text-muted)">Not set</span>') + '</div></div>' +
+    '<div class="line"><div class="l">Registration no.</div><div class="r">' + (shopField("regNo") ? esc(shopField("regNo")) : '<span style="color:var(--text-muted)">Not set</span>') + '</div></div></div>';
+  /* Money rules, which a manager is trusted with because they are day-to-day
+     trading decisions rather than who-can-do-what. */
+  general += '<div class="card" data-config><div class="section-head"><h2>Money and quotes</h2><button class="btn sm" data-action="money-rules">' + icon("pencil") + 'Edit</button></div>' +
+    '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">How money is shown and what an advisor may give away without asking.</p>' +
+    '<div class="line"><div class="l">Currency</div><div class="r">' + esc(money$()) + '</div></div>' +
+    '<div class="line"><div class="l">' + esc(moneyCfg("taxLabel")) + '</div><div class="r">' + (taxRate() ? taxRate() + '% on every quote' : '<span style="color:var(--text-muted)">Not charged</span>') + '</div></div>' +
+    '<div class="line"><div class="l">Discount an advisor may give</div><div class="r">' + timing("discountCap") + '% without a manager</div></div>' +
+    '<div class="line"><div class="l">A quote stays valid for</div><div class="r">' + timing("quoteValidDays") + ' days</div></div></div>';
   general += '<div class="card" data-staff><div class="section-head"><h2>Demo data</h2></div><p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">Your changes are saved in this browser. Reset to start the demo fresh.</p><button class="btn danger" data-action="reset">Reset demo data</button></div>';
   users += timingCardsHTML("staff");
   html += tab === "general" ? general
     : tab === "users" ? users
     : tab === "roles" ? (can("staff") ? rolesCardHTML() : settingsLocked("an owner", "What each role is allowed to do is set for the whole workshop."))
-    : tab === "lists" ? (can("config") ? LIST_DEFS.map(listCardHTML).join("") : settingsLocked("an owner or manager", "The shop's lists are set for the whole workshop."))
+    : tab === "lists" ? (can("config") ? serviceCardHTML() + LIST_DEFS.map(listCardHTML).join("") : settingsLocked("an owner or manager", "The shop's lists are set for the whole workshop."))
     : (can("config") ? timingCardsHTML("config") : settingsLocked("an owner or manager", "Follow-up, warning and stock timings are set for the whole workshop."));
   $("#v-settings").innerHTML = html;
 }
@@ -2358,6 +2425,108 @@ function setList(k, list){
 function listDupe(k, name, exceptIdx){
   var n = name.trim().toLowerCase();
   return listOf(k).some(function(x, i){ return i !== exceptIdx && x.trim().toLowerCase() === n; });
+}
+/* The service price list. Kept beside the other lists because that is where an
+   owner looks for "things my shop decides", but it carries a price and a cost
+   rather than just a name, so it needs its own card. */
+function serviceCardHTML(){
+  var list = services();
+  var rows = list.map(function(sv){
+    return '<div class="line"><div class="l"><span>' + esc(sv.name) + '</span></div>' +
+      '<div class="r"><span data-price>' + money(sv.price) + '</span>' +
+      '<span class="badge b-neutral" data-cost>cost ' + money(sv.cost || 0) + '</span>' +
+      '<button class="btn sm" data-action="service-edit" data-id="' + sv.id + '">Edit</button>' +
+      '<button class="icon-btn" data-action="service-remove" data-id="' + sv.id + '" aria-label="Remove">' + icon("trash") + '</button></div></div>';
+  }).join("");
+  return '<div class="card" data-config><div class="section-head"><h2>Services and labour prices</h2>' +
+    '<span style="display:flex;gap:8px"><button class="btn sm" data-action="service-reset">Restore default</button>' +
+    '<button class="btn primary sm" data-action="service-add">' + icon("plus") + 'Add service</button></span></div>' +
+    '<p class="sub" style="color:var(--text-secondary);margin:0 0 12px;font-size:13px">The work your shop sells, and what it charges. Picked from a list when adding labour to a quote, so the same job costs the same whoever writes it up. A technician picking one adds it at your price without ever seeing the price.</p>' +
+    (rows || '<div class="empty">No services yet. Add one, or staff will have to type and price every line by hand.</div>') + '</div>';
+}
+function setServices(list){ DB.settings.services = list; save(); renderSettings(); }
+function serviceDupe(name, exceptId){
+  var n = name.trim().toLowerCase();
+  return services().some(function(x){ return x.id !== exceptId && x.name.trim().toLowerCase() === n; });
+}
+function serviceFields(sv){
+  sv = sv || {};
+  return field("Service", '<input type="text" name="name" required value="' + esc(sv.name || "") + '" placeholder="Wheel alignment">') +
+    '<div class="field-row">' + field("Price to customer", '<input type="number" name="price" min="0" step="1" required value="' + (sv.price === undefined ? "" : sv.price) + '" placeholder="80">') +
+    field("Internal cost", '<input type="number" name="cost" min="0" step="1" value="' + (sv.cost || 0) + '">') + '</div>' +
+    '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">Cost is what the work costs you before profit. Leave it at zero if you do not track it \u2014 the margin on Reports will just read high.</p>';
+}
+function modalShopDetails(){
+  var body = field("Address", '<input type="text" name="address" value="' + esc(shopField("address")) + '" placeholder="12 Kaki Bukit Road 1, #03-14">') +
+    field("Phone", '<input type="tel" name="phone" value="' + esc(shopField("phone")) + '" placeholder="6841 2200">') +
+    field("Registration no.", '<input type="text" name="regNo" value="' + esc(shopField("regNo")) + '" placeholder="UEN 200412345K">') +
+    '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">Leave anything blank and it is simply left off the document.</p>';
+  openModal("Workshop details", body, "Save", function(fd){
+    DB.settings.shop = {address:String(fd.get("address") || "").trim(),
+                        phone:String(fd.get("phone") || "").trim(),
+                        regNo:String(fd.get("regNo") || "").trim()};
+    toast("Workshop details saved"); refresh();
+  });
+}
+function modalMoneyRules(){
+  var body = '<div class="field-row">' +
+      field("Currency symbol", '<input type="text" name="currency" maxlength="4" required value="' + esc(money$()) + '">') +
+      field("Tax name", '<input type="text" name="taxLabel" maxlength="12" value="' + esc(moneyCfg("taxLabel")) + '" placeholder="GST">') + '</div>' +
+    field("Tax rate %", '<input type="number" name="taxRate" min="0" max="100" step="0.1" value="' + taxRate() + '">') +
+    '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">Zero means no tax line at all. Anything above zero is added on top of the quote total and shown separately to the customer.</p>' +
+    '<div class="field-row">' +
+      field("Advisor discount cap %", '<input type="number" name="discountCap" min="0" max="100" step="1" required value="' + timing("discountCap") + '">') +
+      field("Quote valid for (days)", '<input type="number" name="quoteValidDays" min="1" step="1" required value="' + timing("quoteValidDays") + '">') + '</div>';
+  openModal("Money and quotes", body, "Save", function(fd){
+    var cur = String(fd.get("currency") || "").trim();
+    if(!cur) return "Give a currency symbol.";
+    var rate = Number(fd.get("taxRate"));
+    if(isNaN(rate) || rate < 0 || rate > 100) return "Tax rate must be between 0 and 100.";
+    var cap = Number(fd.get("discountCap"));
+    if(isNaN(cap) || cap < 0 || cap > 100) return "Discount cap must be between 0 and 100.";
+    var days = Number(fd.get("quoteValidDays"));
+    if(isNaN(days) || days < 1) return "A quote must stay valid for at least a day.";
+    DB.settings.money = {currency:cur, taxLabel:String(fd.get("taxLabel") || "").trim() || "Tax", taxRate:rate};
+    DB.settings.timings = DB.settings.timings || {};
+    DB.settings.timings.discountCap = cap;
+    DB.settings.timings.quoteValidDays = days;
+    toast("Money rules saved"); refresh();
+  });
+}
+function modalAddService(){
+  openModal("Add service", serviceFields(), "Add service", function(fd){
+    var name = fd.get("name").trim(), price = Number(fd.get("price"));
+    if(serviceDupe(name)) return "You already have a service with that name.";
+    if(isNaN(price) || price < 0) return "Enter a valid price.";
+    var list = services().slice();
+    list.push({id:uid("sv"), name:name, price:price, cost:Number(fd.get("cost")) || 0});
+    setServices(list); toast("Service added");
+  });
+}
+function modalEditService(sv){
+  if(!sv) return;
+  var used = DB.orders.filter(function(o){
+    return o.items.some(function(i){ return i.service === sv.id; });
+  }).length;
+  openModal("Edit service", serviceFields(sv) +
+    '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">' +
+      (used ? 'On ' + used + ' job' + (used === 1 ? '' : 's') + ' already. Changing the price here does not reprice work already quoted.'
+            : 'Not used on any job yet.') + '</p>' +
+    '<button type="button" class="btn danger sm" data-action="service-remove" data-id="' + sv.id + '">' + icon("trash") + 'Remove service</button>',
+    "Save changes", function(fd){
+      var name = fd.get("name").trim(), price = Number(fd.get("price"));
+      if(serviceDupe(name, sv.id)) return "You already have a service with that name.";
+      if(isNaN(price) || price < 0) return "Enter a valid price.";
+      sv.name = name; sv.price = price; sv.cost = Number(fd.get("cost")) || 0;
+      setServices(services()); toast("Service updated");
+    });
+}
+/* Quoted lines copy the name and price at the time, so removing a service never
+   rewrites history — it only stops it being offered again. */
+function removeService(sv){
+  if(!sv) return;
+  setServices(services().filter(function(x){ return x.id !== sv.id; }));
+  closeModal(); toast(sv.name + " removed. Jobs already quoted keep it.");
 }
 function listCardHTML(def){
   var list = listOf(def.key);
@@ -2558,21 +2727,47 @@ function modalAddPart(o){
     refresh();
   });
 }
+/* Labour is picked from the shop's own price list, the same way a part is picked
+   from the inventory. That keeps one job at one price whoever quotes it, and it
+   means a technician — who cannot see prices — still adds a priced line, so the
+   quote is not held up waiting for an advisor. "Something else" keeps the old
+   free-text box for genuine one-offs. */
 function modalAddLabor(o, prefill, findingIdx){
-  var priced = can("price");
-  var body = field("Description", '<input type="text" name="name" required placeholder="Labor: wheel alignment" value="' + esc(prefill || "") + '">') +
-    (priced ? '<div class="field-row">' + field("Price to customer", '<input type="number" name="price" min="0" step="1" required placeholder="80">') + '<div data-cost>' + field("Internal cost", '<input type="number" name="cost" min="0" step="1" value="0">') + '</div></div>'
-            : '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">Describe the work. An advisor puts a price on it before the quote goes to the customer.</p>');
+  var priced = can("price"), list = services();
+  var opts = list.map(function(sv){
+    return opt(sv.id, sv.name + (priced ? " \u00b7 " + money(sv.price) : ""));
+  }).join("");
+  var custom = opt("__custom", list.length ? "Something else\u2026" : "Describe the work\u2026", !list.length || !!prefill);
+  var body = field("Work", '<select name="service">' + opts + custom + '</select>') +
+    '<div id="svCustom"' + ((list.length && !prefill) ? ' hidden' : '') + '>' +
+      field("Description", '<input type="text" name="name" placeholder="Labor: wheel alignment" value="' + esc(prefill || "") + '">') +
+      (priced ? '<div class="field-row">' + field("Price to customer", '<input type="number" name="price" min="0" step="1" placeholder="80">') + '<div data-cost>' + field("Internal cost", '<input type="number" name="cost" min="0" step="1" value="0">') + '</div></div>' : '') +
+    '</div>' +
+    (priced ? '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">Prices come from Settings \u2192 Lists. You can still change one for this job.</p>'
+            : '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">Pick the work from the list. Anything you describe yourself is priced by an advisor before the quote goes out.</p>');
   openModal(priced ? "Add labor" : "Add work needed", body, "Add to quote", function(fd){
-    var price = priced ? Number(fd.get("price")) : 0;
-    if(priced && (isNaN(price) || price < 0)) return "Enter a valid price.";
-    var line = {id:uid("i"), type:"labor", sku:"", name:fd.get("name").trim(), qty:1, price:price,
-      cost:priced ? (Number(fd.get("cost")) || 0) : 0, approved:false, by:me().id, needsPrice:!priced};
+    var pick = fd.get("service"), sv = pick === "__custom" ? null : service(pick);
+    var name = sv ? sv.name : String(fd.get("name") || "").trim();
+    if(!name) return "Pick the work, or describe it.";
+    var price, cost, needs;
+    if(sv){ price = sv.price; cost = sv.cost || 0; needs = false; }
+    else if(priced){
+      price = Number(fd.get("price"));
+      if(isNaN(price) || price < 0) return "Enter a valid price.";
+      cost = Number(fd.get("cost")) || 0; needs = false;
+    } else { price = 0; cost = 0; needs = true; }
+    var line = {id:uid("i"), type:"labor", sku:"", name:name, qty:1, price:price,
+      cost:cost, approved:false, by:me().id, needsPrice:needs};
+    if(sv) line.service = sv.id;
     if(findingIdx !== undefined && findingIdx !== null && findingIdx !== "") line.finding = Number(findingIdx);
     o.items.push(line);
     if(o.quoteStatus === "sent"){ o.quoteStatus = "draft"; }
-    log(o, "Added " + fd.get("name").trim() + (priced ? "" : " (needs pricing)"));
-    toast(priced ? "Labor added" : "Added for the advisor to price"); refresh();
+    log(o, "Added " + name + (needs ? " (needs pricing)" : ""));
+    toast(needs ? "Added for the advisor to price" : "Labor added"); refresh();
+  }, function(form){
+    var sel = form.querySelector('[name=service]'), box = form.querySelector("#svCustom");
+    if(!sel || !box) return;
+    sel.addEventListener("change", function(){ box.hidden = sel.value !== "__custom"; });
   });
 }
 function modalPriceItem(o, it){
@@ -2977,6 +3172,12 @@ document.addEventListener("click", function(e){
       var po = DB.purchaseOrders.filter(function(x){ return x.id === el.dataset.id; })[0];
       if(po){ po.items.forEach(function(i){ var p = part(i.sku); if(p){ p.stock += i.qty; move(p.sku, i.qty, "receive", po.id); } }); po.status = "received"; po.receivedAt = nowISO(); toast(po.id + " received. Stock updated."); refresh(); }
       break;
+    case "shop-details": if(!can("staff")){ toast("Only an owner can change the workshop's details", true); return; } modalShopDetails(); break;
+    case "money-rules": if(!can("config")){ toast("Only an owner or manager can change the money rules", true); return; } modalMoneyRules(); break;
+    case "service-add": if(!can("config")){ toast("Only an owner or manager can change service prices", true); return; } modalAddService(); break;
+    case "service-edit": if(!can("config")){ toast("Only an owner or manager can change service prices", true); return; } modalEditService(service(el.dataset.id)); break;
+    case "service-remove": if(!can("config")){ toast("Only an owner or manager can change service prices", true); return; } removeService(service(el.dataset.id)); break;
+    case "service-reset": if(!can("config")){ toast("Only an owner or manager can change service prices", true); return; } setServices(DEFAULT_SERVICES.map(function(x){ return {id:x.id, name:x.name, price:x.price, cost:x.cost}; })); toast("Service list restored"); break;
     case "new-supplier": if(!can("suppliers")){ toast("Only roles allowed to manage suppliers can add one", true); return; } modalNewSupplier(); break;
     case "edit-supplier": if(!can("suppliers")){ toast("Ask an owner or manager to change a supplier", true); return; } modalEditSupplier(supplier(el.dataset.id)); break;
     case "remove-supplier": if(!can("suppliers")){ toast("Ask an owner or manager to change a supplier", true); return; } removeSupplier(supplier(el.dataset.id)); break;
@@ -3013,8 +3214,9 @@ document.addEventListener("change", function(e){
   if(!o) return;
   if(el.dataset.action === "insp-note"){ o.inspection[+el.dataset.i].note = el.value.trim(); save(); }
   if(el.dataset.action === "discount"){ o.discount = Math.max(0, Math.round(Number(el.value)||0)); if(o.discount > totals(o).sub) o.discount = totals(o).sub;
-    var capD = Math.floor(totals(o).sub * 0.1);
-    if(!can("cost") && o.discount > capD){ o.discount = capD; toast("Advisors can give up to 10% (" + money(capD) + "). Ask a manager for more.", true); }
+    var pct = timing("discountCap");
+    var capD = Math.floor(totals(o).sub * pct / 100);
+    if(!can("cost") && o.discount > capD){ o.discount = capD; toast("Advisors can give up to " + pct + "% (" + money(capD) + "). Ask a manager for more.", true); }
     if(o.quoteStatus === "sent") o.quoteStatus = "draft"; log(o, "Discount set to " + money(o.discount)); refresh(); }
 });
 document.addEventListener("input", function(e){

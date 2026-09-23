@@ -57,7 +57,7 @@ every signed-in user regardless of role.
 
 ### C2. The whole database is user-writable
 
-`localStorage["nexauto_demo_v7"]` holds orders, payments, stock, costs and the
+`localStorage["nexauto_demo_v8"]` holds orders, payments, stock, costs and the
 staff table. Confirmed readable and editable from the page context. A user can:
 
 - set their own `role` to `"owner"` and reload,

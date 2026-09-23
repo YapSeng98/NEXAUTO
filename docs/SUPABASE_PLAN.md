@@ -383,6 +383,34 @@ tablets, that sequence is a race. Each becomes one `security definer` RPC:
 | RPC | Why it must be atomic |
 |---|---|
 | `approve_quote(order_id)` | Reserve every part, or reserve none. A partial reserve oversells stock |
+### Services, tax and shop identity
+
+The demo keeps these in `settings`. In Postgres they are rows and columns:
+
+```sql
+create table service (
+  id          uuid primary key default gen_random_uuid(),
+  shop_id     uuid not null references shop(id),
+  name        text not null,
+  price_cents int  not null check (price_cents >= 0),
+  cost_cents  int  not null default 0,
+  active      bool not null default true,
+  unique (shop_id, lower(name))
+);
+```
+
+`order_item` keeps `service_id` as a **nullable** pointer plus its own `name`,
+`price_cents` and `cost_cents`. The pointer is for reporting — which services
+earn — and the copied values are what the customer was actually quoted. Deleting
+a service must never rewrite a quoted line, which is why `active` is a flag
+rather than a delete, and why the columns are copied rather than joined.
+
+`shop` carries `address`, `phone`, `reg_no`, `currency`, `tax_label` and
+`tax_rate`. Quote and invoice totals store `net_cents`, `tax_cents` and
+`total_cents` **as calculated at the time**, because a rate change must not
+retroactively alter last year's invoices. Revenue views sum `net_cents`; the tax
+was never the shop's money.
+
 | `take_payment(order_id, method, amount, settled)` | Deduct stock, write movements, close the job, create follow-ups — all or nothing. `settled` records whether the money actually arrived |
 | `settle_payment(order_id)` | Confirm money that arrived later, and stamp who confirmed it |
 | `receive_po(po_id)` | Increment stock and mark received together |
