@@ -134,7 +134,9 @@ So payment records **whether the money arrived**:
 
 Anything still owed is visible in two places. In **Orders** the row carries an
 amber **Money owed** badge in place of Completed, and a *Money owed* filter lists
-them; under **Insights → Money owed** you get the amount, the method, how many
+them — the filter chips run in the same order as the job's own progress bar, so
+Money owed sits between Awaiting payment and Completed rather than at the end.
+Under **Insights → Money owed** you get the amount, the method, how many
 days it has been outstanding and a **Received** button that settles it.
 
 Both places that draw progress say so too. The job's own bar gains a **Money

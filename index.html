@@ -134,6 +134,8 @@ select{padding:8px 10px;}
 .btn.sm{padding:6px 10px;font-size:12.5px;}
 .btn.ghost{border-color:transparent;background:transparent;}
 .link-btn{background:none;border:none;color:var(--green-dark);font-weight:600;font-size:12.5px;padding:2px 4px;}
+/* a link sitting inside a line of text, so it keeps the line's left edge */
+.link-btn.tight{padding:0;font-size:13.5px;}
 
 .chips{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;scrollbar-width:none;}
 .chip{flex:0 0 auto;padding:7px 13px;border-radius:999px;border:1px solid var(--border-strong);background:var(--surface);font-size:12.5px;font-weight:500;white-space:nowrap;color:var(--text-secondary);}
@@ -596,6 +598,19 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
 .pipe-row.owed span{color:var(--amber);}
 .pipe-row.owed .bar > i{background:var(--amber);}
 .pipe-row.owed .count{color:var(--amber);}
+
+/* Phone-sized touch targets. These controls are tapped on the shop floor, often
+   with a glove on, and inherited 17-29px from the desktop rules. This block sits
+   last on purpose: the base .icon-btn and .link-btn rules are declared further
+   up, and a media query carries no extra specificity to beat them. */
+@media (max-width:767px){
+  .btn.sm{padding:9px 13px;font-size:13px;min-height:38px;}
+  .seg button{padding:9px 14px;font-size:12.5px;min-height:38px;}
+  .icon-btn{padding:9px;}
+  .link-btn{padding:6px 5px;}
+  .link-btn.tight{padding:7px 0;}
+  .totals input{padding:8px 10px;min-height:38px;}
+}
 </style>
 </head>
 <body>
@@ -1570,7 +1585,8 @@ function isOpenJob(o){ return o.stage !== "completed" && o.stage !== "declined";
 function isOwed(o){ return !!o.payment && o.payment.settled === false; }
 function renderOrders(){
   var base = visibleOrders();
-  var filters = ["open","all"].concat(STAGES, ["declined", "owed"]);
+  // the same order as the job's own progress bar: money owed sits before Completed
+  var filters = ["open","all"].concat(STAGES.slice(0, -1), ["owed", "completed", "declined"]);
   var chips = filters.map(function(f){
     var n = f === "all" ? base.length
       : f === "open" ? base.filter(isOpenJob).length
@@ -1651,7 +1667,7 @@ function orderOverview(o, c, v){
   var html = stepper +
     (closed ? '' : '<div class="section-head" style="margin:16px 0 4px"><h2>Job details</h2><button class="btn sm" data-action="edit-order">' + icon("pencil") + 'Edit details</button></div>') +
     '<dl class="kv">' +
-    '<dt>Customer</dt><dd><button class="link-btn" style="padding:0;font-size:13.5px" data-action="open-customer" data-id="' + c.id + '">' + esc(c.name) + '</button> <span class="badge b-amber">' + esc(c.tier) + '</span></dd>' +
+    '<dt>Customer</dt><dd><button class="link-btn tight" data-action="open-customer" data-id="' + c.id + '">' + esc(c.name) + '</button> <span class="badge b-amber">' + esc(c.tier) + '</span></dd>' +
     '<dt>Phone</dt><dd>' + esc(c.phone) + '</dd>' +
     '<dt>Vehicle</dt><dd>' + esc(v.model) + '</dd>' +
     '<dt>Mileage</dt><dd>' + Number(o.mileage||0).toLocaleString() + ' km</dd>' +

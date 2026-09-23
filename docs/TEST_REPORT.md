@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 536 of 536 checks passed.**
+**Result: 538 of 538 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -26,7 +26,7 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Reports | 15 | 15 |
 | Reports by role | 5 | 5 |
 | Orders list with history | 14 | 14 |
-| Technician check-in | 12 | 12 |
+| Technician check-in | 13 | 13 |
 | Job notes | 16 | 16 |
 | Part photos | 10 | 10 |
 | Edit job details | 16 | 16 |
@@ -34,7 +34,7 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Job ageing and reminders | 12 | 12 |
 | Reorder suggestions | 10 | 10 |
 | Editable lists | 18 | 18 |
-| AI panel | 9 | 9 |
+| AI panel | 11 | 11 |
 | Quote stage messaging | 7 | 7 |
 | Technician line items | 18 | 18 |
 | Workshop name | 11 | 11 |
@@ -43,6 +43,14 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Shop-configurable settings | 19 | 19 |
 | Locked settings | 9 | 9 |
 | Role permissions | 25 | 25 |
+| Findings linked to quote lines | 7 | 7 |
+| First-run workshop setup | 19 | 19 |
+| Settings gating | 7 | 7 |
+| Awaiting payment stage | 10 | 10 |
+| Money that arrives later | 16 | 16 |
+| Owed jobs in the orders list | 12 | 12 |
+| Process bar when money is owed | 10 | 10 |
+| Money owed in the pipeline | 10 | 10 |
 
 ## Awaiting payment, and money that arrives later (v0.21.0)
 
