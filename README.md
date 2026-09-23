@@ -18,7 +18,7 @@ Workshop operations app for auto repair shops. It covers vehicle check-in, inspe
 | Customers | Customer profiles, multiple vehicles, service history, lifetime spend, follow-ups |
 | Insights | Jobs that have stalled and why, stock to reorder with suggested quantities, customers worth calling, and an optional Ask-anything panel |
 | Reports | Revenue over 7 days, 30 days or 6 months, gross profit and margin, average ticket, quote approval rate, parts vs labor, completed jobs and revenue per technician |
-| Settings | Five tabs — General (workshop name, brand colour, reset), Users (staff and sign-in policy), Roles (what each role may do), Lists (inspection checklist, payment methods, part categories, adjustment reasons, customer tiers), Timing (follow-ups, stalled-job thresholds, stock planning) |
+| Settings | Five tabs — General (workshop name and details, brand colour, currency, tax, discount cap, quote validity, reset), Users (staff and sign-in policy), Roles (what each role may do), Lists (services and labour prices, inspection checklist, payment methods, part categories, adjustment reasons, customer tiers), Timing (follow-ups, stalled-job thresholds, stock planning) |
 
 ## Signing in
 
@@ -99,12 +99,17 @@ Full details: [docs/PROCESS.md](docs/PROCESS.md)
 
 1. Sign in as **alex.tan / owner123** (Owner), then open **Orders → WO-1047** (the BMW).
 2. Start the inspection, mark all 10 items, and set one to **Problem**. Then finish the inspection.
-3. In **Quote and items**, click **Add to quote** on the finding, add a part, and send the quote.
+3. In **Quote and items**, click **Add to quote** on the finding, add a part, then
+   **+ Labor** and pick a service — it arrives already priced from your list. Send the quote.
 4. Click **Approved**. Parts are now reserved (check **Inventory**).
 5. Add another part. It's flagged **Needs approval** and blocks payment until you approve it.
-6. Mark the work done, then take payment. Stock is deducted and follow-ups are created.
-7. **Sign out**, then sign in as **priya.nair / advisor123** (Advisor). Profit is hidden and discounts are capped at 10%.
-8. Sign out and sign in as **marcus.lee / tech123** (Technician). You only see your own jobs, with no prices.
+6. Mark the work done. The job moves to **Awaiting payment** — finished, waiting to be collected.
+7. Take payment. Answer **Has the money arrived?** with **No** and the job still closes, but
+   the amount is tracked as **Money owed** and kept out of revenue until you confirm it.
+8. **Sign out**, then sign in as **priya.nair / advisor123** (Advisor). Profit is hidden and
+   a discount is capped at whatever you set in Settings (10% to begin with).
+9. Sign out and sign in as **marcus.lee / tech123** (Technician). You only see your own jobs,
+   with no prices — but the labour you add still carries the shop's price.
 
 ## Project structure
 
@@ -137,16 +142,27 @@ The suite loads `index.html` in a simulated browser, signs in through the real l
 Nothing about the workshop is baked into the code. An owner or manager can change
 all of this in **Settings**, and it takes effect immediately:
 
-| Tab | What you control |
-|---|---|
-| General | The workshop's name (sign-in page, sidebar, browser tab) and the brand colour every other shade is derived from |
-| Users | Who works here, their role and credentials; and how long a session lasts before it expires |
-| Roles | What each role is allowed to do, as a tick-box matrix |
-| Lists | The inspection checklist, payment methods, part categories, stock adjustment reasons and customer tiers |
-| Timing | When follow-ups are due, how many days a job can sit before it is flagged amber then red, and the window the reorder suggestions are calculated over |
+| Tab | What you control | Who |
+|---|---|---|
+| General | The workshop's name, its address, phone and registration number (all printed on the quotation), the brand colour, and the money rules — currency, tax, how much an advisor may discount without asking, and how long a quote stays valid | Owner, except the money rules which a manager may set too |
+| Users | Who works here, their role and credentials; and how long a session lasts before it expires | Owner |
+| Roles | What each role is allowed to do, as a tick-box matrix | Owner |
+| Lists | **Services and labour prices**, plus the inspection checklist, payment methods, part categories, stock adjustment reasons and customer tiers | Owner or manager |
+| Timing | When follow-ups are due, how many days a job can sit before it is flagged amber then red, and the window the reorder suggestions are calculated over | Owner or manager |
 
-Jobs copy the inspection checklist when they are created, so editing the list
-never rewrites a job already under way.
+Suppliers are maintained in **Inventory → Suppliers**, behind their own
+permission. Everyone can read the list; only the roles you allow can change it.
+
+Two rules make this safe to change while the shop is running:
+
+- **Jobs copy what they need when they are created.** A job takes the inspection
+  checklist at check-in, and a quoted line copies the service's name and price
+  when it is added. Editing a list or repricing a service never rewrites work
+  already under way.
+- **Tax is off until you turn it on.** The rate defaults to zero, and at zero
+  there is no tax line anywhere. Above zero it is worked out on the discounted
+  amount and shown separately to the customer. Profit and margin are always
+  calculated *before* tax, because the tax was never the shop's money.
 
 ## Ask-anything panel (optional)
 
