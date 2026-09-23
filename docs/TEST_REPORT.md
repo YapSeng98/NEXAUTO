@@ -52,6 +52,41 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Process bar when money is owed | 10 | 10 |
 | Money owed in the pipeline | 10 | 10 |
 
+## Responsive sweep: 616 screens (v0.22.0)
+
+The jsdom suite cannot see layout, so the breakpoints were checked in a real
+browser instead. Each of `index.html`'s widths was mounted in a sized iframe —
+`resize_window` does not drive media queries in the extension, which renders at a
+fixed viewport, so the iframe is what makes the breakpoints fire. Every
+combination was walked automatically: **14 widths** (360, 390, 414, 520, 700,
+767, 768, 820, 900, 1024, 1180, 1280, 1440, 1680) × **4 roles** × every view
+the role can open, plus all four job-panel tabs — 616 screens.
+
+Each screen was checked for three things: the document scrolling sideways, any
+element crossing the right edge of the viewport, and text clipped inside its own
+box. Elements inside a deliberately scrollable strip (the filter chips, wide
+tables) and the closed job panel, which hides with a transform rather than
+`display:none`, are excluded — both looked like overflow before that was fixed.
+
+**No horizontal overflow and no clipped text was found at any width.**
+
+The sweep did find that the small controls kept their desktop sizing on phones:
+
+| Control | Was | Now |
+|---|---|---|
+| Inspection Good / Attention / Problem | 25px | 38px |
+| `.btn.sm` (Adjust, Rename, Received, Sign out…) | 29px | 38px |
+| Job panel close | 28px | 38px |
+| Discount field | 27px | 38px |
+| Customer name link | 17px | 29px |
+| "View orders" link | 19px | 27px |
+
+All now clear the 24px minimum in WCAG 2.5.8. The touch block sits **last** in
+the stylesheet on purpose: `.icon-btn` and `.link-btn` are declared further down
+than the `max-width:767px` block, and a media query carries no extra
+specificity, so an earlier block silently lost. That is the same class of bug as
+the z-index one below — correct CSS that never applied.
+
 ## Awaiting payment, and money that arrives later (v0.21.0)
 
 Two gaps a user asked about, and both were real.

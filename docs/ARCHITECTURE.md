@@ -26,6 +26,11 @@ flowchart LR
   modals `70`, toasts `80`, the job panel `31`. A modal below the sign-in screen
   is open, focusable and invisible — which happened, and which no jsdom test can
   see, because jsdom does not paint.
+- **Source order matters too.** The stylesheet is one long block with no
+  cascade layers, so a rule only wins over an equally specific one by coming
+  later. A media query adds no specificity — so the phone touch-target block
+  sits at the very end, after `.icon-btn` and `.link-btn`. Put it where the
+  other `max-width:767px` rules are and it silently does nothing.
 
 ### Why it is built this way
 
