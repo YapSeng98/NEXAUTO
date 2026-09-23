@@ -812,6 +812,41 @@ T('And do not appear in the stalled-job warnings',()=>{const b=app();owe(b);b.go
 T('No script errors',()=>{const b=app();owe(b);b.go('orders');return b.errs.length===0;});
 }
 
+// ============ 42. THE PROCESS BAR WHEN MONEY IS OWED ============
+S('42 Process bar when money is owed');
+{
+const owe=b=>{b.openOrder('WO-1045');b.click('[data-action="take-payment"]');b.set('settled','no');b.submit();};
+const stepText=b=>[...b.$$('#panelBody .stepper .step span')].map(e=>e.textContent);
+const nowStep=b=>{const el=b.$('#panelBody .stepper .step.now span');return el&&el.textContent;};
+T('A paid job ends on Completed',()=>{const b=app();b.openOrder('WO-1045');b.click('[data-action="take-payment"]');b.submit();return nowStep(b)==='Completed'&&stepText(b).indexOf('Money owed')===-1;});
+T('An owed job gains a Money owed step',()=>{const b=app();owe(b);return stepText(b).indexOf('Money owed')>-1;});
+T('It sits between Awaiting payment and Completed',()=>{const b=app();owe(b);const t=stepText(b);return t.indexOf('Money owed')===t.indexOf('Awaiting payment')+1&&t.indexOf('Completed')===t.indexOf('Money owed')+1;});
+T('The bar rests on Money owed, not Completed',()=>{const b=app();owe(b);return nowStep(b)==='Money owed';});
+T('Completed is not yet marked done',()=>{const b=app();owe(b);const steps=b.$$('#panelBody .stepper .step');const last=steps[steps.length-1];return !last.className.includes('done')&&!last.className.includes('now');});
+T('Everything before it is marked done',()=>{const b=app();owe(b);const steps=b.$$('#panelBody .stepper .step');return steps.slice(0,5).every(s=>s.className.includes('done'));});
+T('The money step is flagged as waiting rather than progressing',()=>{const b=app();owe(b);return b.$('#panelBody .stepper .step.now').className.includes('owed');});
+T('Settling it collapses the bar back to Completed',()=>{const b=app();owe(b);b.click('[data-action="settle-payment"]');return nowStep(b)==='Completed'&&stepText(b).indexOf('Money owed')===-1;});
+T('A declined job still shows its own message, not a bar',()=>{const b=app();b.openOrder('WO-1043');b.click('[data-action="decline-quote"]');return !b.$('#panelBody .stepper')&&b.$('#panelBody').textContent.includes('declined the quotation');});
+T('No script errors',()=>{const b=app();owe(b);return b.errs.length===0;});
+}
+
+// ============ 43. MONEY OWED IN THE PIPELINE ============
+S('43 Money owed in the pipeline');
+{
+const owe=b=>{b.openOrder('WO-1045');b.click('[data-action="take-payment"]');b.set('settled','no');b.submit();b.click('[data-action="close-panel"]');b.go('dashboard');};
+const rows=b=>[...b.$$('#v-dashboard .pipe-row')].map(r=>r.textContent);
+T('With nothing owed the pipeline is just the stages',()=>{const b=app();b.go('dashboard');return rows(b).length===5&&!rows(b).some(t=>t.includes('Money owed'));});
+T('Owing money adds a row',()=>{const b=app();owe(b);return rows(b).some(t=>t.includes('Money owed'));});
+T('It sits last, after the stages',()=>{const b=app();owe(b);const r=rows(b);return r[r.length-1].includes('Money owed');});
+T('The count matches what is owed',()=>{const b=app();owe(b);const row=[...b.$$('#v-dashboard .pipe-row')].find(r=>r.textContent.includes('Money owed'));return Number(row.querySelector('.count').textContent)===b.db().orders.filter(o=>o.payment&&o.payment.settled===false).length;});
+T('It is styled as waiting, not as a stage',()=>{const b=app();owe(b);return !!b.$('#v-dashboard .pipe-row.owed');});
+T('Tapping it opens the owed filter',()=>{const b=app();owe(b);b.click('#v-dashboard .pipe-row.owed');const ids=b.$$('#v-orders [data-action="open-order"]').map(r=>r.dataset.id);return ids.length===1&&ids[0]==='WO-1045';});
+T('Settling removes the row again',()=>{const b=app();owe(b);b.openOrder('WO-1045');b.click('[data-action="settle-payment"]');b.click('[data-action="close-panel"]');b.go('dashboard');return !rows(b).some(t=>t.includes('Money owed'));});
+T('A technician never sees it',()=>{const b=app();owe(b);const c=app(b.storage(),{anon:true});c.login('marcus.lee','tech123');c.go('dashboard');return !c.$('#v-dashboard .pipe-row.owed');});
+T('An advisor does not either, having no revenue rights',()=>{const b=app();owe(b);const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.go('dashboard');return !c.$('#v-dashboard .pipe-row.owed');});
+T('No script errors',()=>{const b=app();owe(b);return b.errs.length===0;});
+}
+
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;
 for(const [s,n,r,e] of results){ if(s!==cur){console.log('\n'+s);cur=s;} console.log(`  ${r==='PASS'?'✓':'✗'} ${n}${e?'  ['+e+']':''}`); r==='PASS'?pass++:fail++; }

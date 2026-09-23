@@ -587,6 +587,15 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
    setup form opens behind it. */
 .modal-wrap{z-index:70;}
 .toast{z-index:80;}
+
+/* the money-owed step rests amber, because nothing is progressing */
+.stepper .step.now.owed i{background:var(--amber);box-shadow:0 0 0 4px color-mix(in srgb, var(--amber) 22%, transparent);}
+.stepper .step.now.owed span{color:var(--amber);}
+
+/* the owed row is money resting outside the flow, so it reads amber */
+.pipe-row.owed span{color:var(--amber);}
+.pipe-row.owed .bar > i{background:var(--amber);}
+.pipe-row.owed .count{color:var(--amber);}
 </style>
 </head>
 <body>
@@ -769,7 +778,7 @@ function icon(name){ return '<svg viewBox="0 0 24 24" fill="none" stroke="curren
 
 /* ================= constants ================= */
 var STAGES = ["reception","pre-inspection","quotation","in-service","awaiting-payment","completed"];
-var STAGE_LABEL = {"reception":"Reception","pre-inspection":"Inspection","quotation":"Quotation","in-service":"In service","awaiting-payment":"Awaiting payment","completed":"Completed","declined":"Declined"};
+var STAGE_LABEL = {"reception":"Reception","pre-inspection":"Inspection","quotation":"Quotation","in-service":"In service","awaiting-payment":"Awaiting payment","money-owed":"Money owed","completed":"Completed","declined":"Declined"};
 var STAGE_BADGE = {"reception":"b-neutral","pre-inspection":"b-amber","quotation":"b-amber","in-service":"b-green","awaiting-payment":"b-amber","completed":"b-muted","declined":"b-red"};
 var DEFAULT_APP_NAME = "NEXAUTO";
 /* Shop-configurable lists. Anything here can be edited in Settings; the defaults
@@ -1528,9 +1537,12 @@ function renderDashboard(){
   var src = can("all") ? DB.orders : DB.orders.filter(function(o){ return o.technicianId === u.id; });
   var maxC = 1;
   // every stage except the last one, which is Completed
-  var counts = STAGES.slice(0, -1).map(function(st){ var c = src.filter(function(o){ return o.stage === st; }).length; if(c > maxC) maxC = c; return {st:st, c:c}; });
+  var counts = STAGES.slice(0, -1).map(function(st){ var c = src.filter(function(o){ return o.stage === st; }).length; if(c > maxC) maxC = c; return {st:st, label:STAGE_LABEL[st], c:c}; });
+  // money owed is not a stage, so it only joins the list when there is some
+  var owedN = can("revenue") ? src.filter(isOwed).length : 0;
+  if(owedN){ if(owedN > maxC) maxC = owedN; counts.push({st:"owed", label:"Money owed", c:owedN, owed:true}); }
   var pipe = counts.map(function(x){
-    return '<button class="pipe-row" data-action="goto" data-view="orders" data-filter="' + x.st + '"><div style="flex:1;padding-right:16px"><span>' + STAGE_LABEL[x.st] + '</span><div class="bar"><i style="width:' + Math.round(x.c/maxC*100) + '%"></i></div></div><span class="count">' + x.c + '</span></button>';
+    return '<button class="pipe-row' + (x.owed ? ' owed' : '') + '" data-action="goto" data-view="orders" data-filter="' + x.st + '"><div style="flex:1;padding-right:16px"><span>' + x.label + '</span><div class="bar"><i style="width:' + Math.round(x.c/maxC*100) + '%"></i></div></div><span class="count">' + x.c + '</span></button>';
   }).join("");
 
   var oppHtml = opps.length ? opps.slice(0,5).map(oppRowHTML).join("") : '<div class="empty">No follow-ups due. New ones appear when orders close.</div>';
@@ -1627,9 +1639,13 @@ function renderOrderPanel(o){
   $("#panelFoot").innerHTML = orderActions(o, ic);
 }
 function orderOverview(o, c, v){
-  var idx = STAGES.indexOf(o.stage);
+  // A job closed with the money still out rests on an extra step before
+  // Completed, so the bar shows where it actually is rather than claiming done.
+  var owing = isOwed(o);
+  var steps = owing ? STAGES.slice(0, -1).concat(["money-owed", "completed"]) : STAGES;
+  var idx = owing ? steps.indexOf("money-owed") : steps.indexOf(o.stage);
   var stepper = o.stage === "declined" ? '<div class="hint warn">Customer declined the quotation. A follow-up was added to their profile.</div>' :
-    '<div class="stepper">' + STAGES.map(function(s,i){ return '<div class="step ' + (i < idx ? 'done' : i === idx ? 'now' : '') + '"><i></i><span>' + STAGE_LABEL[s] + '</span></div>'; }).join("") + '</div>';
+    '<div class="stepper">' + steps.map(function(s,i){ return '<div class="step ' + (i < idx ? 'done' : i === idx ? 'now' : '') + (s === "money-owed" ? ' owed' : '') + '"><i></i><span>' + STAGE_LABEL[s] + '</span></div>'; }).join("") + '</div>';
   var closed = o.stage === "completed" || o.stage === "declined";
   var techField = esc(staffName(o.technicianId));
   var html = stepper +

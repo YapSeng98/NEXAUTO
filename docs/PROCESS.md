@@ -137,6 +137,14 @@ amber **Money owed** badge in place of Completed, and a *Money owed* filter list
 them; under **Insights → Money owed** you get the amount, the method, how many
 days it has been outstanding and a **Received** button that settles it.
 
+Both places that draw progress say so too. The job's own bar gains a **Money
+owed** step between Awaiting payment and Completed, resting there in amber, with
+Completed not yet reached — so the bar never claims a job is finished while the
+money is out. The dashboard's **Workshop pipeline** gains a Money owed row
+whenever there is any, after the stages and in amber, because it is value
+sitting outside the flow rather than a step in it. Both disappear the moment it
+is settled.
+
 **Why the job closes rather than staying open.** "Awaiting payment" means the car
 is still on the forecourt and nobody has paid. Money in flight is a different
 thing: the car has gone and the work is finished. Keeping the job open would

@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 516 of 516 checks passed.**
+**Result: 536 of 536 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -78,8 +78,15 @@ created before `settled` existed still count as paid.
 
 Bug 25 was the cost of a design decision made without following it through the
 rest of the UI: closing the job is right, but only if the outstanding money is
-visible where people actually look. The row now badges **Money owed** instead of
-Completed, and there is a filter chip for it.
+visible where people actually look. Chased through three screens in the end, each
+one reported by the user from what they were looking at: the Orders row badges
+**Money owed** instead of Completed with a filter chip beside it; the job's own
+progress bar gains a Money owed step between Awaiting payment and Completed and
+rests there rather than claiming the job is done; and the dashboard pipeline
+grows a Money owed row whenever there is any.
+
+The lesson is worth recording: a state that exists in the data has to exist in
+every place the data is drawn, or it is invisible exactly when it matters.
 
 Verified end to end in a browser as well: a job driven from check-in through
 inspection, quoting, approval, work done, closed on a bank transfer with the
