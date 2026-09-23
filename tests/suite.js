@@ -3,6 +3,9 @@ const path=require('path');const FILE=process.argv[2]||path.join(__dirname,'..',
 const RAW=fs.readFileSync(FILE,'utf8').replace(/<script src=[^>]+><\/script>/,'').replace(/<link[^>]+>/g,'').replace('<script>','<script>window.scrollTo=function(){};');
 const results=[];let section='';
 const PW={s1:'owner123',s2:'manager123',s3:'advisor123',s4:'tech123',s5:'tech123'};
+// The authoritative permission list, read out of BASE_PERMS in the source:
+// the app runs inside an IIFE, so its constants are not reachable from here.
+const PERM_KEYS=RAW.match(/owner:\s*\{([^}]+)\}/)[1].split(',').map(s=>s.split(':')[0].trim());
 const session=(userId='s1',at=Date.now())=>JSON.stringify({userId,at,remember:true});
 function app(storage,opts={}){
   const dom=new JSDOM(RAW,{runScripts:'dangerously',url:'https://nexauto.test/',beforeParse(w){
@@ -669,8 +672,13 @@ T('Only the owner can open the Roles tab',()=>{const b=app();b.setTab('roles');c
 T('A manager is told the owner owns this, not "owner or manager"',()=>{const c=as('joanne.lim','manager123');c.setTab('roles');const t=c.$('.locked-note').textContent;return t.includes('Only an owner can change this')&&!t.includes('or manager');});
 T('The locked message reads as a sentence',()=>{const c=as('joanne.lim','manager123');c.setTab('roles');const t=c.$('.locked-note').textContent;return t.includes('What each role is allowed to do is set for the whole workshop.')&&!t.includes('do are set');});
 T('Lists and Timing still say owner or manager, because they are',()=>{const c=as('marcus.lee','tech123');c.setTab('lists');const a1=c.$('.locked-note').textContent;c.setTab('timing');const a2=c.$('.locked-note').textContent;return a1.includes('Only an owner or manager can change this')&&a1.includes("lists are set")&&a2.includes('timings are set');});
-T('The matrix covers every permission and every role',()=>{const b=app();b.setTab('roles');const rows=b.$$('.perm-table tbody tr').length;const boxes=b.$$('[data-action="perm-toggle"]').length;return rows===12&&boxes===48;});
-T('The owner column is on and locked',()=>{const b=app();b.setTab('roles');const own=b.$$('[data-action="perm-toggle"][data-role="owner"]');return own.length===12&&own.every(x=>x.checked&&x.disabled);});
+// The app runs inside an IIFE, so its constants are not reachable from here.
+// Read the owner row of BASE_PERMS out of the source instead: that is the
+// authoritative key list, so a permission that exists but was never added to
+// the matrix now fails rather than passing a hardcoded count.
+T('Every permission in the model has a row in the matrix',()=>{const b=app();b.setTab('roles');const rows=b.$$('[data-action="perm-toggle"][data-role="owner"]').map(x=>x.dataset.k);return PERM_KEYS.length>=13&&PERM_KEYS.every(k=>rows.includes(k))&&rows.length===PERM_KEYS.length;});
+T('The matrix covers every permission and every role',()=>{const b=app();b.setTab('roles');const n=PERM_KEYS.length;const rows=b.$$('.perm-table tbody tr').length;const boxes=b.$$('[data-action="perm-toggle"]').length;return rows===n&&boxes===n*4;});
+T('The owner column is on and locked',()=>{const b=app();b.setTab('roles');const own=b.$$('[data-action="perm-toggle"][data-role="owner"]');return own.length===PERM_KEYS.length&&own.every(x=>x.checked&&x.disabled);});
 T('It starts from the shipped defaults',()=>{const b=app();b.setTab('roles');const techPrice=b.$('[data-action="perm-toggle"][data-role="technician"][data-k="price"]');const advEdit=b.$('[data-action="perm-toggle"][data-role="advisor"][data-k="edit"]');return !techPrice.checked&&advEdit.checked;});
 
 T('Granting a technician prices takes effect immediately',()=>{const b=app();tick(b,'technician','price',true);const c=app(b.storage(),{anon:true});c.login('marcus.lee','tech123');return c.d.documentElement.dataset.canPrice==='1';});
@@ -847,6 +855,43 @@ T('Settling removes the row again',()=>{const b=app();owe(b);b.openOrder('WO-104
 T('A technician never sees it',()=>{const b=app();owe(b);const c=app(b.storage(),{anon:true});c.login('marcus.lee','tech123');c.go('dashboard');return !c.$('#v-dashboard .pipe-row.owed');});
 T('An advisor does not either, having no revenue rights',()=>{const b=app();owe(b);const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');c.go('dashboard');return !c.$('#v-dashboard .pipe-row.owed');});
 T('No script errors',()=>{const b=app();owe(b);return b.errs.length===0;});
+}
+
+S('44 Supplier management');
+{
+const sup=b=>{b.go('inventory');b.click('[data-action="inv-tab"][data-tab="suppliers"]');};
+const as=(u,p)=>{const b=app(null,{anon:true});b.login(u,p);return b;};
+const tick=(b,role,k,on)=>{b.setTab('roles');const el=b.$(`[data-action="perm-toggle"][data-role="${role}"][data-k="${k}"]`);el.checked=on;el.dispatchEvent(new b.w.Event('change',{bubbles:true}));};
+
+T('Managing suppliers is its own permission',()=>PERM_KEYS.includes('suppliers'));
+T('It has a row in the roles matrix',()=>{const b=app();b.setTab('roles');return !!b.$('[data-action="perm-toggle"][data-role="manager"][data-k="suppliers"]');});
+T('Owner and manager ship with it, advisor and technician do not',()=>{const b=app();b.setTab('roles');const on=r=>b.$(`[data-action="perm-toggle"][data-role="${r}"][data-k="suppliers"]`).checked;return on('owner')&&on('manager')&&!on('advisor')&&!on('technician');});
+
+T('An owner can open a supplier to edit it',()=>{const b=app();sup(b);b.click('[data-action="edit-supplier"][data-id="sp1"]');return b.$('#modalTitle').textContent==='Edit supplier'&&b.F('name').value==='Castrol Lubricants SG';});
+T('A manager can too',()=>{const c=as('joanne.lim','manager123');sup(c);return !!c.$('[data-action="edit-supplier"]')&&!!c.$('[data-action="new-supplier"]');});
+T('Renaming one sticks',()=>{const b=app();sup(b);b.click('[data-action="edit-supplier"][data-id="sp1"]');b.F('name').value='Castrol Lubricants Asia';b.F('phone').value='6123 9999';b.submit();const s=b.db().suppliers.find(x=>x.id==='sp1');return s.name==='Castrol Lubricants Asia'&&s.phone==='6123 9999';});
+T('The parts ordered from them follow the new name',()=>{const b=app();sup(b);b.click('[data-action="edit-supplier"][data-id="sp1"]');b.F('name').value='Castrol Lubricants Asia';b.submit();return b.$('#v-inventory').textContent.includes('Castrol Lubricants Asia');});
+T('A duplicate name is rejected',()=>{const b=app();sup(b);b.click('[data-action="edit-supplier"][data-id="sp1"]');b.F('name').value='AutoParts Hub';b.submit();return b.$('#formError').textContent.includes('already have a supplier')&&b.db().suppliers.find(x=>x.id==='sp1').name==='Castrol Lubricants SG';});
+T('And on a new one too',()=>{const b=app();sup(b);b.click('[data-action="new-supplier"]');b.F('name').value='AutoParts Hub';b.F('phone').value='6000 0000';b.submit();return b.$('#formError').textContent.includes('already have a supplier')&&b.db().suppliers.length===3;});
+T('The edit form says what is ordered from them',()=>{const b=app();sup(b);b.click('[data-action="edit-supplier"][data-id="sp2"]');return b.$('#modalBody').textContent.includes('6 parts');});
+T('Edits survive a reload',()=>{const b=app();sup(b);b.click('[data-action="edit-supplier"][data-id="sp1"]');b.F('name').value='Castrol Asia';b.submit();const c=app(b.storage());return c.db().suppliers.find(x=>x.id==='sp1').name==='Castrol Asia';});
+
+T('A supplier still on parts cannot be removed',()=>{const b=app();sup(b);b.click('[data-action="edit-supplier"][data-id="sp1"]');b.click('[data-action="remove-supplier"][data-id="sp1"]');return b.toast().includes('2 parts')&&b.db().suppliers.length===3;});
+T('The refusal names the purchase orders too',()=>{const b=app();sup(b);b.click('[data-action="edit-supplier"][data-id="sp2"]');b.click('[data-action="remove-supplier"][data-id="sp2"]');const t=b.toast();return t.includes('6 parts')&&t.includes('1 purchase order');});
+T('One nothing points at can be removed',()=>{const b=app();sup(b);b.click('[data-action="new-supplier"]');b.F('name').value='Tyre World';b.F('phone').value='6000 1111';b.submit();const id=b.db().suppliers.find(s=>s.name==='Tyre World').id;b.click(`[data-action="edit-supplier"][data-id="${id}"]`);b.click(`[data-action="remove-supplier"][data-id="${id}"]`);return b.db().suppliers.length===3&&b.toast().includes('Tyre World removed');});
+T('Removing it closes the form',()=>{const b=app();sup(b);b.click('[data-action="new-supplier"]');b.F('name').value='Tyre World';b.F('phone').value='6000 1111';b.submit();const id=b.db().suppliers.find(s=>s.name==='Tyre World').id;b.click(`[data-action="edit-supplier"][data-id="${id}"]`);b.click(`[data-action="remove-supplier"][data-id="${id}"]`);return !b.$('#modalWrap').classList.contains('open');});
+
+T('An advisor sees the list but cannot change it',()=>{const c=as('priya.nair','advisor123');sup(c);return c.$$('#v-inventory .row-card').length===3&&!c.$('[data-action="edit-supplier"]')&&c.d.documentElement.dataset.canSuppliers==='0';});
+T('They can still read who supplies what',()=>{const c=as('priya.nair','advisor123');sup(c);return c.$('#v-inventory').textContent.includes('Castrol Lubricants SG');});
+T('Forcing an edit is refused',()=>{const b=app();sup(b);const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');sup(c);c.d.body.insertAdjacentHTML('beforeend','<button id="x" data-action="edit-supplier" data-id="sp1"></button>');c.click('#x');return c.toast().includes('owner or manager')&&!c.$('#modalWrap').classList.contains('open');});
+T('Forcing a removal is refused too',()=>{const b=app();sup(b);const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');sup(c);c.d.body.insertAdjacentHTML('beforeend','<button id="x" data-action="remove-supplier" data-id="sp1"></button>');c.click('#x');return c.db().suppliers.length===3;});
+T('A technician cannot either',()=>{const c=as('marcus.lee','tech123');sup(c);return !c.$('[data-action="edit-supplier"]')&&!c.$('[data-action="new-supplier"]');});
+
+T('Granting it to an advisor opens the list up',()=>{const b=app();tick(b,'advisor','suppliers',true);const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');sup(c);return !!c.$('[data-action="edit-supplier"]')&&!!c.$('[data-action="new-supplier"]');});
+T('And they can then actually rename one',()=>{const b=app();tick(b,'advisor','suppliers',true);const c=app(b.storage(),{anon:true});c.login('priya.nair','advisor123');sup(c);c.click('[data-action="edit-supplier"][data-id="sp3"]');c.F('name').value='Brakeline Supply Co';c.submit();return c.db().suppliers.find(x=>x.id==='sp3').name==='Brakeline Supply Co';});
+T('Revoking it from a manager takes it away',()=>{const b=app();tick(b,'manager','suppliers',false);const c=app(b.storage(),{anon:true});c.login('joanne.lim','manager123');sup(c);return !c.$('[data-action="edit-supplier"]')&&!c.$('[data-action="new-supplier"]');});
+T('The owner keeps it whatever the matrix says',()=>{const b=app();sup(b);return b.d.documentElement.dataset.canSuppliers==='1';});
+T('No script errors',()=>{const b=app();sup(b);b.click('[data-action="edit-supplier"][data-id="sp1"]');b.F('name').value='Castrol X';b.submit();return b.errs.length===0;});
 }
 
 // ============ REPORT ============

@@ -251,6 +251,7 @@ html[data-can-staff="0"] [data-staff],
 html[data-can-edit="0"] [data-edit],
 html[data-can-checkin="0"] [data-checkin],
 html[data-can-config="0"] [data-config],
+html[data-can-suppliers="0"] [data-suppliers],
 html[data-can-revenue="1"] [data-personal]{display:none !important;}
 
 /* panels */
@@ -834,10 +835,10 @@ function timing(k){
 }
 var DEFAULT_INSPECTION = ["Engine oil level and condition","Brake pads and discs","Tyres and tread depth","Battery health","Lights and signals","Suspension and steering","Coolant level","Wipers and washer","Air-con performance","Underbody and leaks"];
 var BASE_PERMS = {
-  owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, approve:1, pay:1, checkin:1, config:1, additems:1},
-  manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, approve:1, pay:1, checkin:1, config:1, additems:1},
-  advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, approve:1, pay:1, checkin:1, config:0, additems:1},
-  technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, approve:0, pay:0, checkin:1, config:0, additems:1}
+  owner:      {cost:1, price:1, revenue:1, purchase:1, staff:1, all:1, edit:1, approve:1, pay:1, checkin:1, config:1, additems:1, suppliers:1},
+  manager:    {cost:1, price:1, revenue:1, purchase:1, staff:0, all:1, edit:1, approve:1, pay:1, checkin:1, config:1, additems:1, suppliers:1},
+  advisor:    {cost:0, price:1, revenue:0, purchase:1, staff:0, all:1, edit:1, approve:1, pay:1, checkin:1, config:0, additems:1, suppliers:0},
+  technician: {cost:0, price:0, revenue:0, purchase:0, staff:0, all:0, edit:0, approve:0, pay:0, checkin:1, config:0, additems:1, suppliers:0}
 };
 var ROLE_LABEL = {owner:"Owner", manager:"Manager", advisor:"Service advisor", technician:"Technician"};
 /* What each flag actually lets someone do, in the order the matrix shows them. */
@@ -852,6 +853,7 @@ var PERM_DEFS = [
   ["revenue",  "See shop revenue and reports", "Takings, profit and the whole Reports page"],
   ["pay",      "Take payment and close a job", ""],
   ["purchase", "Purchase orders and stock adjustments", "Raise POs, receive stock, correct counts"],
+  ["suppliers","Add and edit suppliers", "The list parts and purchase orders are ordered from. Everyone can read it"],
   ["config",   "Edit the shop's lists and timings", "Settings \u2192 Lists and Timing"],
   ["staff",    "Manage users and shop settings", "Add and edit staff, rename the workshop, sign-in policy"]
 ];
@@ -1226,6 +1228,15 @@ function veh(c, vid){ return c ? c.vehicles.filter(function(v){ return v.id === 
 function staffName(id){ var s = DB.staff.filter(function(x){ return x.id === id; })[0]; return s ? s.name : "Unassigned"; }
 function part(sku){ return DB.inventory.filter(function(p){ return p.sku === sku; })[0]; }
 function supplier(id){ return DB.suppliers.filter(function(s){ return s.id === id; })[0]; }
+/* What still points at a supplier. Purchase orders count even once received,
+   because they are the stock history — removing the supplier would leave rows
+   in Stock history naming nobody. */
+function supplierUse(id){
+  return {
+    parts: DB.inventory.filter(function(p){ return p.supplier === id; }).length,
+    orders: DB.purchaseOrders.filter(function(p){ return p.supplierId === id; }).length
+  };
+}
 function order(id){ return DB.orders.filter(function(o){ return o.id === id; })[0]; }
 function technicians(){ return activeUsers().filter(function(s){ return s.role === "technician"; }); }
 function advisors(){ return activeUsers().filter(function(s){ return s.role !== "technician"; }); }
@@ -1304,6 +1315,7 @@ function setRole(){
   root.dataset.canCost = p.cost; root.dataset.canPrice = p.price; root.dataset.canRevenue = p.revenue;
   root.dataset.canPurchase = p.purchase; root.dataset.canStaff = p.staff; root.dataset.canEdit = p.edit;
   root.dataset.canCheckin = p.checkin; root.dataset.canConfig = p.config;
+  root.dataset.canSuppliers = p.suppliers;
   var u = me();
   $("#sideAvatar").textContent = initials(u.name); $("#sideName").textContent = u.name; $("#sideRole").textContent = ROLE_LABEL[role];
   $("#topAvatar").textContent = initials(u.name); $("#userName").textContent = u.name; $("#userRole").textContent = ROLE_LABEL[role];
@@ -1929,11 +1941,22 @@ function renderInventory(){
         return '<tr><td>' + timeLabel(m.at) + '</td><td>' + esc(pp ? pp.name : m.sku) + '</td><td class="num" style="font-weight:700;color:' + (m.qty > 0 ? 'var(--green-dark)' : 'var(--red)') + '">' + (m.qty > 0 ? '+' : '') + m.qty + '</td><td><span class="badge ' + TL[m.type][1] + '">' + TL[m.type][0] + '</span></td><td>' + esc(m.ref || m.reason || "—") + '</td><td>' + esc(staffName(m.by)) + '</td></tr>'; }).join("") :
       '<tr><td colspan="6"><div class="empty" style="border:none">No stock movements yet.</div></td></tr>') + '</tbody></table></div>';
   } else {
-    html += '<div class="section-head"><h2>Suppliers</h2><button class="btn primary" data-action="new-supplier" data-purchase>' + icon("plus") + 'Add supplier</button></div>';
+    /* Everyone can read the list, because a part's supplier is worth knowing.
+       Only the roles with the flag get the Add button or a row that opens, and
+       these are left out of the markup rather than hidden with CSS. */
+    var editable = can("suppliers");
+    html += '<div class="section-head"><h2>Suppliers</h2>' +
+      (editable ? '<button class="btn primary" data-action="new-supplier" data-suppliers>' + icon("plus") + 'Add supplier</button>' : '') +
+      '</div>';
     html += '<div class="list">' + DB.suppliers.map(function(s){
-      var n = DB.inventory.filter(function(p){ return p.supplier === s.id; }).length;
-      return '<div class="row-card"><div class="row-main"><p class="title">' + esc(s.name) + '</p><p class="sub">' + esc(s.phone) + '</p></div><div class="row-end"><span class="badge b-neutral">' + n + ' parts</span></div></div>';
+      var n = supplierUse(s.id);
+      var inner = '<div class="row-main"><p class="title">' + esc(s.name) + '</p><p class="sub">' + esc(s.phone) + '</p></div>' +
+        '<div class="row-end"><span class="badge b-neutral">' + n.parts + ' part' + (n.parts === 1 ? '' : 's') + '</span></div>';
+      return editable
+        ? '<button class="row-card" data-action="edit-supplier" data-id="' + s.id + '">' + inner + '</button>'
+        : '<div class="row-card">' + inner + '</div>';
     }).join("") + '</div>';
+    if(!DB.suppliers.length) html += '<div class="empty">No suppliers yet. Add one before raising a purchase order.</div>';
   }
   $("#v-inventory").innerHTML = html;
 }
@@ -2718,8 +2741,50 @@ function modalNewPO(mode){
 }
 function modalNewSupplier(){
   openModal("Add supplier", field("Supplier name", '<input type="text" name="name" required placeholder="Tyre World Pte Ltd">') + field("Phone", '<input type="tel" name="phone" required placeholder="6234 5678">'), "Add supplier", function(fd){
-    DB.suppliers.push({id:uid("sp"), name:fd.get("name").trim(), phone:fd.get("phone").trim()}); toast("Supplier added"); refresh();
+    var name = fd.get("name").trim();
+    if(supplierNamed(name)) return "You already have a supplier called that.";
+    DB.suppliers.push({id:uid("sp"), name:name, phone:fd.get("phone").trim()}); toast("Supplier added"); refresh();
   });
+}
+function supplierNamed(name, exceptId){
+  return DB.suppliers.some(function(s){
+    return s.id !== exceptId && s.name.toLowerCase() === name.toLowerCase();
+  });
+}
+function modalEditSupplier(s){
+  if(!s) return;
+  var use = supplierUse(s.id);
+  var where = [];
+  if(use.parts) where.push(use.parts + " part" + (use.parts === 1 ? "" : "s"));
+  if(use.orders) where.push(use.orders + " purchase order" + (use.orders === 1 ? "" : "s"));
+  var body = field("Supplier name", '<input type="text" name="name" required value="' + esc(s.name) + '">') +
+    field("Phone", '<input type="tel" name="phone" required value="' + esc(s.phone) + '">') +
+    '<p class="sub" style="font-size:12.5px;color:var(--text-secondary);margin:0 0 12px">' +
+      (where.length ? 'Used by ' + where.join(" and ") + '. Renaming is safe — they follow the change.'
+                    : 'Nothing is ordered from them yet.') + '</p>' +
+    '<button type="button" class="btn danger sm" data-action="remove-supplier" data-id="' + s.id + '">' + icon("trash") + 'Remove supplier</button>';
+  openModal("Edit supplier", body, "Save changes", function(fd){
+    var name = fd.get("name").trim();
+    if(supplierNamed(name, s.id)) return "You already have a supplier called that.";
+    s.name = name; s.phone = fd.get("phone").trim();
+    toast("Supplier updated"); refresh();
+  });
+}
+/* Parts and purchase orders hold the supplier's id, so removing one that is
+   still in use would leave the inventory and the stock history pointing at
+   nothing. Say what is in the way rather than cascading the delete. */
+function removeSupplier(s){
+  if(!s) return;
+  var use = supplierUse(s.id);
+  if(use.parts || use.orders){
+    var bits = [];
+    if(use.parts) bits.push(use.parts + " part" + (use.parts === 1 ? "" : "s"));
+    if(use.orders) bits.push(use.orders + " purchase order" + (use.orders === 1 ? "" : "s"));
+    toast(s.name + " is still on " + bits.join(" and ") + ". Move those across first.", true);
+    return;
+  }
+  DB.suppliers = DB.suppliers.filter(function(x){ return x.id !== s.id; });
+  closeModal(); toast(s.name + " removed"); refresh();
 }
 function ownerCount(){ return activeUsers().filter(function(x){ return x.role === "owner"; }).length; }
 function roleOptions(sel){ return ["owner","manager","advisor","technician"].map(function(r){ return opt(r, ROLE_LABEL[r], r === sel); }).join(""); }
@@ -2912,7 +2977,9 @@ document.addEventListener("click", function(e){
       var po = DB.purchaseOrders.filter(function(x){ return x.id === el.dataset.id; })[0];
       if(po){ po.items.forEach(function(i){ var p = part(i.sku); if(p){ p.stock += i.qty; move(p.sku, i.qty, "receive", po.id); } }); po.status = "received"; po.receivedAt = nowISO(); toast(po.id + " received. Stock updated."); refresh(); }
       break;
-    case "new-supplier": modalNewSupplier(); break;
+    case "new-supplier": if(!can("suppliers")){ toast("Only roles allowed to manage suppliers can add one", true); return; } modalNewSupplier(); break;
+    case "edit-supplier": if(!can("suppliers")){ toast("Ask an owner or manager to change a supplier", true); return; } modalEditSupplier(supplier(el.dataset.id)); break;
+    case "remove-supplier": if(!can("suppliers")){ toast("Ask an owner or manager to change a supplier", true); return; } removeSupplier(supplier(el.dataset.id)); break;
     case "report-range": state.reportRange = el.dataset.r; renderReports(); break;
     case "sign-out": signOut(); break;
     case "toggle-pw": {

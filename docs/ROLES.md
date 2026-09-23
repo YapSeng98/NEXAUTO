@@ -25,14 +25,16 @@ disabled checkbox in devtools changes nothing.
 
 ## Permission flags
 
-Each role maps to a set of flags in the `PERMS` object in `index.html`.
+Each role maps to a set of flags in `BASE_PERMS` in `index.html`, and the
+owner can change every row but their own under **Settings → Roles**.
 
 | Flag | Meaning | Owner | Manager | Advisor | Technician |
 |---|---|---|---|---|---|
 | `cost` | See cost prices and profit on orders and parts, change prices | ✓ | ✓ | – | – |
 | `price` | See selling prices and totals | ✓ | ✓ | ✓ | – |
 | `revenue` | See shop revenue, profit and reports | ✓ | ✓ | – | – |
-| `purchase` | Purchase orders, receiving, stock adjustments, suppliers | ✓ | ✓ | ✓ | – |
+| `purchase` | Purchase orders, receiving, stock adjustments | ✓ | ✓ | ✓ | – |
+| `suppliers` | Add, rename and remove suppliers. Everyone can read the list | ✓ | ✓ | – | – |
 | `staff` | Add, edit and deactivate users | ✓ | – | – | – |
 | `all` | See every order and customer | ✓ | ✓ | ✓ | – |
 | `edit` | Price lines, discounts, send quotes | ✓ | ✓ | ✓ | – |

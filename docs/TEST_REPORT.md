@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 538 of 538 checks passed.**
+**Result: 564 of 564 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -42,7 +42,7 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Quotation preview | 19 | 19 |
 | Shop-configurable settings | 19 | 19 |
 | Locked settings | 9 | 9 |
-| Role permissions | 25 | 25 |
+| Role permissions | 26 | 26 |
 | Findings linked to quote lines | 7 | 7 |
 | First-run workshop setup | 19 | 19 |
 | Settings gating | 7 | 7 |
@@ -51,6 +51,35 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Owed jobs in the orders list | 12 | 12 |
 | Process bar when money is owed | 10 | 10 |
 | Money owed in the pipeline | 10 | 10 |
+| Supplier management | 25 | 25 |
+
+## Editable suppliers, behind their own permission (v0.23.0)
+
+Suppliers could be added but never corrected: the list row was a plain `div`,
+and there was no edit or delete action anywhere. A typo in a supplier's name was
+permanent.
+
+Suppliers now open an edit form, and **Add and edit suppliers** is its own row in
+Settings → Roles — on for owner and manager, off for advisor and technician, and
+changeable like every other flag. Reading the list stays open to everyone,
+because knowing who supplies a part is not sensitive.
+
+**Removing one is refused while anything points at it.** Parts hold
+`supplier` and purchase orders hold `supplierId`, so deleting a supplier in use
+would leave the inventory and the stock history naming nobody. The refusal says
+what is in the way — "still on 6 parts and 1 purchase order" — rather than
+cascading or silently orphaning.
+
+Two things the sweep surfaced while adding it:
+
+- The **Add supplier** button was gated with CSS only, so it was hidden but still
+  in the page for an advisor. It is now left out of the markup entirely when the
+  role lacks the flag, and every supplier action re-checks the permission in the
+  handler rather than trusting the button not to be there.
+- Two role tests asserted a hardcoded **12 permissions / 48 checkboxes**, so a
+  thirteenth permission broke them. They now read the key list out of
+  `BASE_PERMS` in the source, which means a permission that exists but was never
+  added to the matrix fails instead of passing a stale count.
 
 ## Responsive sweep: 616 screens (v0.22.0)
 
