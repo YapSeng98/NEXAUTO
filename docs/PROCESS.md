@@ -132,9 +132,17 @@ So payment records **whether the money arrived**:
 | Received now | Closes | Deducted | Counted | Created |
 | Awaiting funds | Closes | Deducted | **Not counted** | Created |
 
-Anything still owed appears under **Insights → Money owed** with the amount, the
-method and how many days it has been outstanding, and a **Received** button that
-settles it. Settling is written to the job's activity log with the name of
+Anything still owed is visible in two places. In **Orders** the row carries an
+amber **Money owed** badge in place of Completed, and a *Money owed* filter lists
+them; under **Insights → Money owed** you get the amount, the method, how many
+days it has been outstanding and a **Received** button that settles it.
+
+**Why the job closes rather than staying open.** "Awaiting payment" means the car
+is still on the forecourt and nobody has paid. Money in flight is a different
+thing: the car has gone and the work is finished. Keeping the job open would
+merge the two, so the open-jobs list would stop answering "what is in my
+workshop", and a transfer that takes a fortnight would sit in the stalled-job
+warnings for a fortnight. The work is complete; the money is tracked separately. Settling is written to the job's activity log with the name of
 whoever confirmed it. Until then the money stays out of the dashboard's revenue
 and out of every report.
 

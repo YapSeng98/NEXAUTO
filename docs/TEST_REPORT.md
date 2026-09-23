@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 506 of 506 checks passed.**
+**Result: 516 of 516 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -69,11 +69,17 @@ still created when the money is outstanding, that settling is logged with a name
 that someone without the payment permission cannot settle, and that records
 created before `settled` existed still count as paid.
 
-### The bug this found
+### The bugs this found
 
 | # | Bug | Found by |
 |---|---|---|
 | 24 | The dashboard pipeline was hardcoded to `STAGES.slice(0,4)`, so the new stage was invisible on it | `The pipeline counts it separately from work in progress` |
+| 25 | A job closed with the money still owed showed a plain **Completed** badge in Orders, identical to a paid one — the only sign was in Insights | A user asking where an unpaid job should sit |
+
+Bug 25 was the cost of a design decision made without following it through the
+rest of the UI: closing the job is right, but only if the outstanding money is
+visible where people actually look. The row now badges **Money owed** instead of
+Completed, and there is a filter chip for it.
 
 Verified end to end in a browser as well: a job driven from check-in through
 inspection, quoting, approval, work done, closed on a bank transfer with the

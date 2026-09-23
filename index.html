@@ -1555,17 +1555,22 @@ function oppRowHTML(o){
 
 /* ================= orders ================= */
 function isOpenJob(o){ return o.stage !== "completed" && o.stage !== "declined"; }
+function isOwed(o){ return !!o.payment && o.payment.settled === false; }
 function renderOrders(){
   var base = visibleOrders();
-  var filters = ["open","all"].concat(STAGES, ["declined"]);
+  var filters = ["open","all"].concat(STAGES, ["declined", "owed"]);
   var chips = filters.map(function(f){
-    var n = f === "all" ? base.length : f === "open" ? base.filter(isOpenJob).length : base.filter(function(o){ return o.stage === f; }).length;
-    var label = f === "all" ? "All" : f === "open" ? "Open" : STAGE_LABEL[f];
+    var n = f === "all" ? base.length
+      : f === "open" ? base.filter(isOpenJob).length
+      : f === "owed" ? base.filter(isOwed).length
+      : base.filter(function(o){ return o.stage === f; }).length;
+    var label = f === "all" ? "All" : f === "open" ? "Open" : f === "owed" ? "Money owed" : STAGE_LABEL[f];
     return '<button class="chip' + (state.orderFilter === f ? ' active' : '') + '" data-action="order-filter" data-f="' + f + '">' + label + '<span class="n">' + n + '</span></button>';
   }).join("");
   var q = state.orderQuery.toLowerCase();
   var list = base.filter(function(o){
     if(state.orderFilter === "open"){ if(!isOpenJob(o)) return false; }
+    else if(state.orderFilter === "owed"){ if(!isOwed(o)) return false; }
     else if(state.orderFilter !== "all" && o.stage !== state.orderFilter) return false;
     if(!q) return true;
     var c = cust(o.customerId), v = veh(c, o.vehicleId);
@@ -1587,7 +1592,10 @@ function orderRowHTML(o){
     '<div class="row-main"><p class="title"><span class="plate">' + esc(v ? v.plate : "—") + '</span>' + esc(c ? c.name : "") + '</p>' +
     '<p class="sub">' + esc(v ? v.model : "") + ' · Tech: <b style="font-weight:600;color:var(--text-primary)">' + esc(staffName(o.technicianId)) + '</b>' + flag + '</p>' +
     '<p class="sub" style="color:var(--text-muted);font-size:11.5px">' + o.id + ' · ' + timeLabel(o.createdAt) + '</p></div>' +
-    '<div class="row-end">' + (o.items.length ? '<span class="amt" data-price>' + money(t.total) + '</span>' : '') + '<span class="badge ' + STAGE_BADGE[o.stage] + '">' + STAGE_LABEL[o.stage] + '</span></div></button>';
+    '<div class="row-end">' + (o.items.length ? '<span class="amt" data-price>' + money(t.total) + '</span>' : '') +
+    (o.payment && o.payment.settled === false
+      ? '<span class="badge b-amber">Money owed</span>'
+      : '<span class="badge ' + STAGE_BADGE[o.stage] + '">' + STAGE_LABEL[o.stage] + '</span>') + '</div></button>';
 }
 
 /* ================= order panel ================= */

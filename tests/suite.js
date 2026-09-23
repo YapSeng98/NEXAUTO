@@ -795,6 +795,23 @@ T('Older jobs with no settled field still count as paid',()=>{const b=app();b.go
 T('No script errors',()=>{const b=app();payOff(b,'WO-1045',false);b.go('insights');return b.errs.length===0;});
 }
 
+// ============ 41. OWED JOBS IN THE ORDERS LIST ============
+S('41 Owed jobs in the orders list');
+{
+const owe=b=>{b.openOrder('WO-1045');b.click('[data-action="take-payment"]');b.set('settled','no');b.submit();b.click('[data-action="close-panel"]');};
+const rowFor=(b,id)=>b.$$('#v-orders [data-action="open-order"]').find(r=>r.dataset.id===id);
+T('An unpaid closed job is badged Money owed, not Completed',()=>{const b=app();owe(b);b.go('orders');b.click('[data-action="order-filter"][data-f="all"]');const r=rowFor(b,'WO-1045');return r.textContent.includes('Money owed')&&!r.textContent.includes('Completed');});
+T('A paid closed job still reads Completed',()=>{const b=app();b.openOrder('WO-1045');b.click('[data-action="take-payment"]');b.submit();b.click('[data-action="close-panel"]');b.go('orders');b.click('[data-action="order-filter"][data-f="all"]');return rowFor(b,'WO-1045').textContent.includes('Completed');});
+T('There is a Money owed filter with a count',()=>{const b=app();owe(b);b.go('orders');const chip=b.$('[data-action="order-filter"][data-f="owed"]');return !!chip&&Number(chip.querySelector('.n').textContent)===1;});
+T('The filter shows only what is owed',()=>{const b=app();owe(b);b.go('orders');b.click('[data-action="order-filter"][data-f="owed"]');const ids=b.$$('#v-orders [data-action="open-order"]').map(r=>r.dataset.id);return ids.length===1&&ids[0]==='WO-1045';});
+T('With nothing owed the chip reads zero',()=>{const b=app();b.go('orders');return Number(b.$('[data-action="order-filter"][data-f="owed"] .n').textContent)===0;});
+T('Settling it puts the row back to Completed',()=>{const b=app();owe(b);b.go('orders');b.click('[data-action="order-filter"][data-f="owed"]');b.click('[data-action="open-order"][data-id="WO-1045"]');b.click('[data-action="settle-payment"]');b.click('[data-action="close-panel"]');b.click('[data-action="order-filter"][data-f="all"]');return rowFor(b,'WO-1045').textContent.includes('Completed');});
+T('And empties the owed filter',()=>{const b=app();owe(b);b.openOrder('WO-1045');b.click('[data-action="settle-payment"]');b.click('[data-action="close-panel"]');b.go('orders');return Number(b.$('[data-action="order-filter"][data-f="owed"] .n').textContent)===0;});
+T('Owed jobs are not counted as open work',()=>{const b=app();owe(b);b.go('orders');b.click('[data-action="order-filter"][data-f="open"]');const openN=Number(b.$('[data-action="order-filter"][data-f="open"] .n').textContent);return !b.$$('#v-orders [data-action="open-order"]').some(r=>r.dataset.id==='WO-1045')&&openN===b.db().orders.filter(o=>o.stage!=='completed'&&o.stage!=='declined').length;});
+T('And do not appear in the stalled-job warnings',()=>{const b=app();owe(b);b.go('insights');return !b.$$('#v-insights [data-action="open-order"]').some(r=>r.dataset.id==='WO-1045');});
+T('No script errors',()=>{const b=app();owe(b);b.go('orders');return b.errs.length===0;});
+}
+
 // ============ REPORT ============
 let cur='';let pass=0,fail=0;
 for(const [s,n,r,e] of results){ if(s!==cur){console.log('\n'+s);cur=s;} console.log(`  ${r==='PASS'?'✓':'✗'} ${n}${e?'  ['+e+']':''}`); r==='PASS'?pass++:fail++; }
