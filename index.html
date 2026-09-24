@@ -105,6 +105,10 @@ select{padding:8px 10px;}
 .card h2{font-size:15px;font-weight:600;margin:0;}
 .grid-2{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-bottom:16px;}
 @media (min-width:900px){.grid-2{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);}}
+/* one card left in a two-column grid should fill the row, not sit in a
+   half-width track with the other one empty */
+.grid-2:has(> .card:only-child){grid-template-columns:minmax(0,1fr);}
+.grid-1{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-bottom:16px;}
 .grid-2 > .card + .card{margin-top:0;}
 
 .kpi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:16px;}
@@ -608,8 +612,8 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
   .btn.sm{padding:9px 13px;font-size:13px;min-height:38px;}
   .seg button{padding:9px 14px;font-size:12.5px;min-height:38px;}
   .icon-btn{padding:9px;}
-  .link-btn{padding:6px 5px;}
-  .link-btn.tight{padding:7px 0;}
+  .link-btn{padding:8px 5px;}
+  .link-btn.tight{padding:8px 0;}
   .totals input{padding:8px 10px;min-height:38px;}
 }
 </style>
@@ -1622,8 +1626,13 @@ function renderDashboard(){
 
   var oppHtml = opps.length ? opps.slice(0,5).map(oppRowHTML).join("") : '<div class="empty">No follow-ups due. New ones appear when orders close.</div>';
 
-  html += '<div class="grid-2"><div class="card"><div class="section-head"><h2>' + (can("all") ? "Workshop pipeline" : "My pipeline") + '</h2><button class="link-btn" data-action="goto" data-view="orders">View orders</button></div>' + pipe + '</div>' +
-    '<div class="card" data-edit><div class="section-head"><h2>Follow-ups</h2></div>' + oppHtml + '</div></div>';
+  /* Follow-ups is left out for a role that cannot act on them, rather than
+     hidden with CSS: a hidden card still holds its grid track open, which left
+     a technician's pipeline at half width with dead space beside it. */
+  var dashCards = ['<div class="card"><div class="section-head"><h2>' + (can("all") ? "Workshop pipeline" : "My pipeline") + '</h2><button class="link-btn" data-action="goto" data-view="orders">View orders</button></div>' + pipe + '</div>'];
+  if(can("edit")) dashCards.push('<div class="card"><div class="section-head"><h2>Follow-ups</h2></div>' + oppHtml + '</div>');
+  html += dashCards.length > 1 ? '<div class="grid-2">' + dashCards.join("") + '</div>'
+                               : '<div class="grid-1">' + dashCards[0] + '</div>';
   html += attentionCardHTML();
 
   if(can("purchase")){

@@ -1,6 +1,6 @@
 # Test report
 
-**Result: 615 of 615 checks passed.**
+**Result: 617 of 617 checks passed.**
 
 The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in through the real login form, clicks through each process as each role, and checks both what's on screen and the saved data. Run it with `npm install && npm test`.
 
@@ -15,7 +15,7 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Service and payment | 12 | 12 |
 | Inventory | 12 | 12 |
 | Customers and follow-ups | 10 | 10 |
-| Roles and permissions | 18 | 18 |
+| Roles and permissions | 20 | 20 |
 | User management | 12 | 12 |
 | Settings and saving | 6 | 6 |
 | Login | 17 | 17 |
@@ -55,6 +55,34 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Service price list | 23 | 23 |
 | Money rules the shop sets | 18 | 18 |
 | Workshop details on the paperwork | 10 | 10 |
+
+## Responsive sweep: 704 screens (v0.24.1)
+
+Re-run after the settings work, widened to **16 widths** (360 → 1920) × 4 roles
+× every view plus all four job-panel tabs, with a new check for a grid whose
+track is reserved for a card that role-gating hid.
+
+**It found one, and it was visible to the naked eye.** A technician's dashboard
+put "My pipeline" in a 487–671px column with a 389–537px empty track beside it,
+at every width from 1180 up. The Follow-ups card next to it is `data-edit`, so
+CSS hid it from a technician — but `.grid-2` had already reserved its column.
+Measured: `visible=1/2` for a technician at 1180, 1280, 1440, 1680 and 1920,
+against `2/2` for an advisor and owner.
+
+The card is now left out of the markup for roles that cannot act on it, and a
+`.grid-2` left holding one card spans the row. Two checks cover it.
+
+**Final: CLEAN across all 704 screens** — no horizontal overflow, no clipped
+text, no stranded grid, and every touch target clear of the 24px minimum in
+WCAG 2.5.8.
+
+One process note. An earlier pass of this sweep, driven through the browser
+extension, reported touch targets of 28px at exactly 767px — which direct
+measurement contradicted (38px, media query matching). The extension-driven run
+was unreliable and its tab died mid-sweep; re-running the whole thing in
+headless Chrome, which reads the result out of the DOM, gave a stable answer.
+**A measurement that disagrees with a direct check is the measurement's fault
+until proven otherwise.**
 
 ## A shop that sets its own prices and rules (v0.24.0)
 

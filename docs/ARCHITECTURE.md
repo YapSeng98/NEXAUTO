@@ -26,6 +26,12 @@ flowchart LR
   modals `70`, toasts `80`, the job panel `31`. A modal below the sign-in screen
   is open, focusable and invisible — which happened, and which no jsdom test can
   see, because jsdom does not paint.
+- **A hidden card still holds its grid track.** Role gating is CSS, so a card
+  the role may not see is `display:none` — but `.grid-2` had already reserved
+  two columns, leaving the survivor at 55% width with dead space beside it. That
+  is what a technician's dashboard looked like. Cards that a role cannot use are
+  now left out of the markup, and a `.grid-2` holding one card spans the row.
+  **Gating a grid child with CSS alone is a layout bug waiting to happen.**
 - **Source order matters too.** The stylesheet is one long block with no
   cascade layers, so a rule only wins over an equally specific one by coming
   later. A media query adds no specificity — so the phone touch-target block

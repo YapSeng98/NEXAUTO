@@ -197,7 +197,11 @@ T('Technician: can do inspection on own job',()=>{a.click('[data-action="close-p
 T('Technician: can mark work done but not take payment',()=>{const b=app();b.signIn('s5');b.openOrder('WO-1045');return !b.$('[data-action="take-payment"]')&&b.$('#panelFoot').textContent.includes('front desk to take payment');});
 T('Technician: customers limited to own jobs',()=>{a.click('[data-action="close-panel"]');a.go('customers');const n=a.$$('#v-customers .row-card').map(r=>r.dataset.id);return n.every(id=>a.db().orders.some(o=>o.customerId===id&&o.technicianId==='s4'));});
 T('Technician: customer history hides other techs\' jobs',()=>{a.click('[data-action="open-customer"][data-id="c1"]');return a.$$('#panelBody [data-action="open-order"]').every(b=>a.order(b.dataset.id).technicianId==='s4');});
-T('Technician: follow-ups and purchase hidden',()=>{a.click('[data-action="close-panel"]');a.go('dashboard');return !vis(a.$('#v-dashboard .card[data-edit]'))&&!vis(a.$('[data-action="new-po"]'));});
+T('Technician: follow-ups and purchase hidden',()=>{a.click('[data-action="close-panel"]');a.go('dashboard');return !a.$('#v-dashboard').textContent.includes('Follow-ups')&&!vis(a.$('[data-action="new-po"]'));});
+// The card is left out of the markup, not hidden: a hidden one still holds its
+// grid track open and stranded the pipeline at half width.
+T('And the pipeline is not left stranded in a half-width grid',()=>{a.go('dashboard');const g=a.$('#v-dashboard .grid-2');const one=a.$('#v-dashboard .grid-1');return !g&&!!one&&one.children.length===1;});
+T('An advisor still gets both cards side by side',()=>{const c=app(null,{anon:true});c.login('priya.nair','advisor123');c.go('dashboard');const g=c.$('#v-dashboard .grid-2');return !!g&&g.children.length===2&&c.$('#v-dashboard').textContent.includes('Follow-ups');});
 T('No script errors',()=>a.errs.length===0);}
 
 // ============ 9. USERS ============
