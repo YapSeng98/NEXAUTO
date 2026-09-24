@@ -84,6 +84,14 @@ reseeds only when the version differs, so leaving it alone means returning
 visitors silently keep an older shape — which happened once already and is
 recorded in [TEST_REPORT.md](TEST_REPORT.md).
 
+### Stylesheet layers
+
+The stylesheet is one block with no cascade layers, so visual passes are
+**appended at the end** and win on source order: the base rules, then the v0.9
+refresh, then the phone touch-target block, then the v0.25 visual pass. Editing
+a base rule to change an appearance usually means the later layer is already
+overriding it — add to the last layer instead.
+
 ### Two traps in the test suite
 
 - **Every check builds a jsdom window, and nothing closed them.** They stayed

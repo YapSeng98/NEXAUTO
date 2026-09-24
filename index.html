@@ -616,6 +616,83 @@ html[data-authed="0"] .login-screen{display:block;padding:0;}
   .link-btn.tight{padding:8px 0;}
   .totals input{padding:8px 10px;min-height:38px;}
 }
+
+/* ================= v0.25 visual pass =================
+   Appended last, after the touch-target block, so it wins on source order.
+   Three things: one elevation language instead of border-plus-shadow
+   everywhere, a firmer type hierarchy, and calmer surfaces so the green
+   actually means something. */
+:root{
+  --canvas:#F1F3EF;
+  --surface-2:#F6F8F5;
+  --border:#E6E9E3;
+  --radius:14px;
+  --radius-sm:10px;
+  --shadow-sm:0 1px 2px rgba(16,24,18,.04);
+  --shadow-card:0 1px 2px rgba(16,24,18,.04), 0 6px 16px -10px rgba(16,24,18,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --canvas:#0D100E; --surface:#151916; --surface-2:#1B201C; --border:#262C27;
+    --shadow-card:0 1px 2px rgba(0,0,0,.45), 0 8px 20px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --canvas:#0D100E; --surface:#151916; --surface-2:#1B201C; --border:#262C27;
+  --shadow-card:0 1px 2px rgba(0,0,0,.45), 0 8px 20px -12px rgba(0,0,0,.7);
+}
+
+/* Cards: one hairline plus a soft lift, never a heavy outline. */
+.card,.kpi,.qa-btn,.row-card,.table-wrap{box-shadow:var(--shadow-card);}
+.card{padding:18px 20px;}
+.section-head h2{font-size:15px;letter-spacing:-0.01em;}
+
+/* Numbers should read before their labels do. */
+.kpi{padding:16px 18px;}
+.kpi .label{font-size:12px;font-weight:500;letter-spacing:.01em;color:var(--text-muted);margin:0 0 8px;}
+.kpi .value{font-size:30px;letter-spacing:-0.02em;}
+.kpi .foot{font-size:12px;margin-top:8px;color:var(--text-secondary);}
+.kpi.hero .label,.kpi.hero .foot{color:rgba(255,255,255,.82);}
+
+/* The pipeline is a distribution, so let the track show and keep the fill calm. */
+.bar{height:8px;border-radius:99px;background:color-mix(in srgb, var(--text-muted) 16%, transparent);margin-top:8px;}
+.bar > i{border-radius:99px;background:var(--green);transition:width .3s ease;}
+.pipe-row{padding:13px 4px;border-radius:var(--radius-sm);}
+.pipe-row:hover{background:var(--surface-2);}
+.pipe-row.none .count{color:var(--text-muted);font-weight:600;}
+.pipe-row.none span{color:var(--text-secondary);}
+.pipe-row .count{font-size:16px;letter-spacing:-0.01em;}
+
+/* Rows: a little more air, and a clear hover so they read as clickable. */
+.row-card{padding:14px 16px;border-radius:var(--radius-sm);}
+.row-card:hover{border-color:var(--border-strong);}
+.line{padding:11px 0;}
+
+/* Quick actions read as one row of equals, with the primary carrying the weight. */
+.qa-btn{border-radius:var(--radius-sm);padding:14px;}
+.qa-btn:hover{border-color:var(--border-strong);}
+
+/* Chips and badges: pill shapes, quieter borders. */
+.chip{border-radius:99px;}
+.badge{border-radius:99px;letter-spacing:.01em;}
+
+/* Panel and modal sit above everything, so they get the only real shadow. */
+.panel{box-shadow:-24px 0 60px -30px rgba(16,24,18,.45);}
+.modal{box-shadow:0 24px 60px -20px rgba(16,24,18,.4);}
+@media (max-width:767px){
+  .panel{box-shadow:0 -20px 50px -25px rgba(16,24,18,.45);}
+  .card{padding:16px;}
+}
+
+/* Follow-ups were three solid amber blocks competing with the whole page for
+   attention. The urgency belongs on the due date, not on the whole row. */
+.opp{background:var(--surface-2);border-left:3px solid var(--amber);border-radius:var(--radius-sm);padding:12px 14px;}
+.opp .t{color:var(--text-secondary);}
+.opp .t b{margin-bottom:2px;}
+.opp:hover{background:color-mix(in srgb, var(--amber) 7%, var(--surface-2));}
+
+/* Cards hug their content instead of stretching to match the tallest one. */
+.grid-2{align-items:start;}
 </style>
 </head>
 <body>
@@ -1620,8 +1697,14 @@ function renderDashboard(){
   // money owed is not a stage, so it only joins the list when there is some
   var owedN = can("revenue") ? src.filter(isOwed).length : 0;
   if(owedN){ if(owedN > maxC) maxC = owedN; counts.push({st:"owed", label:"Money owed", c:owedN, owed:true}); }
+  var pipeTotal = counts.reduce(function(a, x){ return a + x.c; }, 0);
   var pipe = counts.map(function(x){
-    return '<button class="pipe-row' + (x.owed ? ' owed' : '') + '" data-action="goto" data-view="orders" data-filter="' + x.st + '"><div style="flex:1;padding-right:16px"><span>' + x.label + '</span><div class="bar"><i style="width:' + Math.round(x.c/maxC*100) + '%"></i></div></div><span class="count">' + x.c + '</span></button>';
+    /* Scaled against the whole pipeline, not the biggest stage. Against the
+       biggest, a shop with one job in each stage drew every bar 100% full,
+       which reads as "full" when it means "one". */
+    var share = pipeTotal ? Math.round(x.c / pipeTotal * 100) : 0;
+    if(x.c && share < 4) share = 4;
+    return '<button class="pipe-row' + (x.owed ? ' owed' : '') + (x.c ? '' : ' none') + '" data-action="goto" data-view="orders" data-filter="' + x.st + '"><div style="flex:1;padding-right:16px"><span>' + x.label + '</span><div class="bar"><i style="width:' + share + '%"></i></div></div><span class="count">' + x.c + '</span></button>';
   }).join("");
 
   var oppHtml = opps.length ? opps.slice(0,5).map(oppRowHTML).join("") : '<div class="empty">No follow-ups due. New ones appear when orders close.</div>';

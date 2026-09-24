@@ -56,6 +56,30 @@ The suite (`tests/suite.js`) loads `index.html` in a simulated browser, signs in
 | Money rules the shop sets | 18 | 18 |
 | Workshop details on the paperwork | 10 | 10 |
 
+## Visual pass, and a chart that lied (v0.25.0)
+
+**The pipeline bars were scaled against the biggest stage.** `width = c/maxC*100`
+meant that a shop with one job in each stage drew **every bar 100% full** — five
+identical full green bars that read as "full" when they meant "one". A
+technician, who rarely has more than one job per stage, saw nothing else.
+
+They are now scaled against the whole pipeline, so a bar is that stage's share
+of the work in the shop, with a 4% floor so a single job is still visible and
+empty stages read as empty.
+
+The rest was presentation, appended as a v0.25 layer so it wins on source order:
+
+- One elevation language. Cards had a full border *and* a shadow; they now have
+  a hairline plus a soft lift, and only the panel and modal get a real shadow.
+- Numbers lead their labels — KPI values 24px → 30px, labels muted and smaller.
+- Follow-ups were three solid amber blocks competing with the page. The urgency
+  now sits on the due date, with a thin amber edge on a neutral row.
+- Cards hug their content instead of stretching to match the tallest in the row.
+- Pill chips and badges, calmer canvas, consistent 14px radius.
+
+Re-swept afterwards — padding and type changes are exactly what reintroduces
+overflow — and it is **CLEAN across 660 screens**, in both light and dark.
+
 ## Responsive sweep: 704 screens (v0.24.1)
 
 Re-run after the settings work, widened to **16 widths** (360 → 1920) × 4 roles
