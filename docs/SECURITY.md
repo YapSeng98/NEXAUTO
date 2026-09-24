@@ -30,7 +30,9 @@ having no server. The fix is the backend in [SUPABASE_PLAN.md](SUPABASE_PLAN.md)
 ### C1. Role permissions are CSS, so hidden money is still delivered to the page
 
 `PERMS` sets `data-can-*` attributes on `<html>`, and a CSS rule hides elements
-marked `[data-cost]`, `[data-price]`, `[data-revenue]`:
+marked `[data-cost]`, `[data-price]`, `[data-revenue]`, `[data-purchase]`,
+`[data-staff]`, `[data-edit]`, `[data-checkin]`, `[data-config]` and
+`[data-suppliers]`:
 
 ```css
 html[data-can-cost="0"] [data-cost] { display:none !important; }
@@ -54,6 +56,38 @@ Disabling one CSS rule reveals every hidden number in the app at once.
 every signed-in user regardless of role.
 **Fix:** the server must never send fields the caller is not entitled to. Column
 -level grants + RLS, not CSS. See [SUPABASE_PLAN.md](SUPABASE_PLAN.md) §4.
+
+**Partially mitigated for actions, not for data.** Hiding an *action* with CSS
+turned out to be a bug in its own right, twice: the supplier **Add** button was
+invisible to an advisor but still in the page and still worked when clicked, and
+a role-gated dashboard card held its grid column open, stranding the card beside
+it. So:
+
+- Controls a role may not use — the supplier buttons, the Follow-ups card, the
+  service and money Settings cards — are now **left out of the markup**, not
+  hidden.
+- Every one of those handlers **re-checks the permission when it fires**, so
+  forcing the button back into the page and clicking it is refused. There are
+  tests that do exactly that.
+
+This narrows C1 to what it always really was: **a data-exposure problem.** Costs,
+prices and margins are still rendered for every role and hidden with CSS, and
+that cannot be fixed in the client. The action-level checks are still only as
+trustworthy as the browser they run in — see C2.
+
+### C1b. Shop-configurable money rules are client-side too
+
+An owner sets the tax rate, the currency, the advisor discount cap and the
+service price list in Settings, and all of it lives in `DB.settings`. A user who
+can write to storage (C2) can set their own discount cap to 100%, reprice a
+service, or switch the tax off. `totals()` recalculates from whatever is there.
+
+**Impact:** no pricing rule in the app is enforceable.
+**Fix:** price lists and money rules belong in server-owned tables, with the
+totals computed server-side at quote and invoice time. The shape is in
+[SUPABASE_PLAN.md](SUPABASE_PLAN.md) — the quote stores `net_cents`, `tax_cents`
+and `total_cents` as calculated, precisely so a later rate change cannot rewrite
+what a customer already agreed to.
 
 ### C2. The whole database is user-writable
 
@@ -290,7 +324,7 @@ them without a second factor.
 
 | | Finding | When |
 |---|---|---|
-| 1 | C1, C2, C3 — no server boundary | The Supabase migration; nothing else fixes these |
+| 1 | C1, C1b, C2, C3 — no server boundary | The Supabase migration; nothing else fixes these |
 | 2 | H1, H2 — credential handling | Falls out of Supabase Auth |
 | 3 | H3 — audit log | Phase 2 of the migration |
 | 4 | M3, M4 — SRI and CSP | **Now.** Independent of the backend, minutes of work |

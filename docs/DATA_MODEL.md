@@ -13,6 +13,7 @@ erDiagram
   WORK_ORDER ||--o{ ACTIVITY_LOG : records
   WORK_ORDER ||--o{ JOB_NOTE : carries
   PART ||--o{ ORDER_ITEM : "used as"
+  SERVICE ||--o{ ORDER_ITEM : "quoted as"
   SUPPLIER ||--o{ PART : supplies
   SUPPLIER ||--o{ PURCHASE_ORDER : receives
   PURCHASE_ORDER ||--|{ PO_LINE : lists
@@ -89,11 +90,12 @@ erDiagram
 | sku | FK → Part | Parts only |
 | name | string | |
 | qty | int | ≥ 1 |
-| price | money | **Copied** from the part when added |
-| cost | money | **Copied** from the part when added |
+| price | money | **Copied** from the part or service when added |
+| cost | money | **Copied** from the part or service when added |
 | approved | boolean | False until the customer approves. Extra work added in service starts as false |
 | by | FK → User | Who added the line |
-| needsPrice | boolean | Set when a technician adds work they cannot price. Blocks sending the quote until an advisor sets a price |
+| service | FK → Service | Labour only, and only when picked from the price list. A pointer for reporting; the name, price and cost beside it are the copies that count. Absent on free-text labour |
+| needsPrice | boolean | Set when a technician describes work themselves and cannot price it. Blocks sending the quote until an advisor sets a price. Never set when the line came from the service list, because that already carries a price |
 | finding | int | The index of the inspection point this line answers, stamped when the line is raised from a finding. Explicit rather than matched on wording, so renaming the line does not break the link |
 
 ### Payment
@@ -140,6 +142,23 @@ erDiagram
 | id | string, PK |
 | name | string |
 | phone | string |
+
+### Service
+The shop's labour price list. In the demo it lives in `settings.services`
+rather than as its own table, because it is a shop setting; in production it is
+a table (see [SUPABASE_PLAN.md](SUPABASE_PLAN.md)).
+
+| Field | Type | Notes |
+|---|---|---|
+| id | string, PK | |
+| name | string | Unique within the shop, case-insensitively |
+| price | money | What the customer is charged |
+| cost | money | What the work costs the shop. Zero is allowed, and makes the margin read high |
+
+An order item points at a service with `service`, but copies its name, price and
+cost. **Removing or repricing a service never changes a job already quoted** —
+and because of that, removing one is a plain delete here rather than the
+"still in use" refusal that protects suppliers.
 
 ### Purchase order
 | Field | Type | Notes |
